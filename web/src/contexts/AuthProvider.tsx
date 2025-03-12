@@ -11,6 +11,7 @@ import { message } from 'antd'
 import { auth } from '@/lib/firebase'
 import { authService, FirstAccessEligibility } from '@/services/auth'
 import { User, FirstAccessForm, UserType, UserRole } from '@/@types/user'
+import { handleTranslateFbError } from '@/utils/functions/firebaseTranslateErrors'
 
 interface IAuthContextData {
   isAuth: boolean
@@ -94,8 +95,8 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsAuth(true)
       messageApi.success('Login realizado com sucesso!')
     } catch (error: any) {
-      messageApi.error(error.message)
-      throw error
+      messageApi.error(handleTranslateFbError(error.code))
+      throw handleTranslateFbError(error)
     } finally {
       setIsAuthLoading(false)
     }
@@ -160,24 +161,37 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   const checkFirstAccess = async (email: string) => {
-    const { isEligible, userData } =
+    const { isEligible, isAlreadyRegistered, userData } =
       await authService.checkFirstAccessEligibility(email)
 
-    if (!isEligible) {
-      messageApi.error('Seu e-mail não está autorizado')
-
+    // Se o usuário já está registrado, não exibe erro e permite login normal
+    if (isAlreadyRegistered) {
+      messageApi.success('Seu e-mail está autorizado! Realize o login')
+      setIsFirstAccessEligible(false)
+      setIsFirstAccess(false)
+      setEmailLocked(false)
+      setFirstAccessData(undefined)
       return
     }
 
-    setIsFirstAccessEligible(isEligible)
-    setFirstAccessData(isEligible ? userData : undefined)
-    if (isEligible && isFirstAccess) {
+    // Se não é elegível e não está registrado, exibe erro
+    if (!isEligible) {
+      messageApi.error('Seu e-mail não está autorizado')
+      setIsFirstAccessEligible(false)
+      setIsFirstAccess(false)
+      setEmailLocked(false)
+      setFirstAccessData(undefined)
+      return
+    }
+
+    // Se é elegível (primeiro acesso pendente), configura o estado para primeiro acesso
+    setIsFirstAccessEligible(true)
+    setFirstAccessData(userData)
+    if (isFirstAccess) {
       setEmailLocked(true)
     } else {
       setEmailLocked(false)
-      setIsFirstAccess(false)
     }
-
     messageApi.success('Seu e-mail está autorizado! Realize o primeiro acesso')
   }
 

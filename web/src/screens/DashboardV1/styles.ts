@@ -2,7 +2,7 @@ import styled from 'styled-components'
 import { theme } from 'antd'
 import { Screen } from '@/utils/styles/commons'
 import { StyledMenu } from '@/utils/styles/antd'
-import { color, backgroundColor } from '@/utils/styles/colors'
+import { color, backgroundColor, textColor } from '@/utils/styles/colors'
 import { Globals } from '@/utils/styles/globals'
 import { font } from '@/utils/styles/fonts'
 
@@ -44,7 +44,7 @@ export const DashboardLogo = styled.div`
 `
 
 export const DashboardLogoImg = styled.img<{ opened: number }>`
-  height: ${({ opened }) => (opened ? '70%' : '40%')};
+  height: 60%;
   transition: 0.3s;
 `
 
@@ -52,7 +52,7 @@ export const DashboardSideMenuWrapper = styled.div`
   display: flex;
   width: 100%;
   height: calc(100% - ${Globals.layout.header.height});
-  padding-left: 10px;
+  padding: 10px;
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.08);
 `
 
@@ -85,17 +85,19 @@ export const DashboardMainHeader = styled.header`
 export const DashboardActiveViewLabel = styled.div`
   display: flex;
   flex-direction: column;
-  row-gap: 3px;
+  row-gap: 2px;
   margin: 0 auto 0 12px;
 
   h2 {
-    ${font('subtitle')}
-    ${color('colorTextHeading')}
+    font-weight: 600 !important;
+
+    ${font('small')}
+    ${textColor('colorTextHeading')}
   }
 
   p {
-    ${font('caption')}
-    ${color('colorTextDescription')}
+    ${font('xxs')}
+    ${textColor('colorTextDescription')}
   }
 `
 

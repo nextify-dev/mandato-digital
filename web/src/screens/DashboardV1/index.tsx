@@ -9,7 +9,8 @@ import { UserMenu } from '@/components'
 
 const DashboardV1 = () => {
   const { activeMenu, setActiveMenu, loadingMenus } = useViews()
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
+
   const [sideMenuOpened, setSideMenuOpened] = useState(true)
 
   if (!user) return null
@@ -25,8 +26,12 @@ const DashboardV1 = () => {
           <S.DashboardLogo>
             <S.DashboardLogoImg
               opened={sideMenuOpened ? 1 : 0}
-              src="/logo.png"
-              alt="Logo"
+              src={
+                sideMenuOpened
+                  ? '/logos/logo_mandato_full.png'
+                  : '/logos/logo_mandato_minified.png'
+              }
+              alt="Logo Mandato Digital"
             />
           </S.DashboardLogo>
         </S.DashboardSideMenuHeader>
@@ -50,7 +55,7 @@ const DashboardV1 = () => {
             <h2>{activeMenu?.menuName}</h2>
             <p>{activeMenu?.menuLegend}</p>
           </S.DashboardActiveViewLabel>
-          <UserMenu logout={logout} />
+          <UserMenu />
         </S.DashboardMainHeader>
         <S.DashboardMainViewsWrapper>
           <S.DashboardMainView>

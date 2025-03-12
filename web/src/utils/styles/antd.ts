@@ -30,7 +30,7 @@ export const StyledForm = styled(Form)<{ onFinish: any }>`
       padding-bottom: 5px !important;
 
       label {
-        ${font('caption')}
+        ${font('xxs')}
       }
     }
 
@@ -46,7 +46,7 @@ export const StyledForm = styled(Form)<{ onFinish: any }>`
     }
 
     .ant-input {
-      ${font('input')}
+      ${font('small')}
       height: 34px;
       padding: 0 11px 1px 11px;
 
@@ -66,16 +66,16 @@ export const StyledForm = styled(Form)<{ onFinish: any }>`
 
     .ant-form-item-explain-error {
       margin-top: 5px;
-      ${font('caption')}
+      ${font('xxs')}
     }
 
     .ant-picker-input input {
-      ${font('input')}
+      ${font('small')}
       padding: 3px 0px 3px 0px;
     }
 
     .ant-select-selection-placeholder {
-      ${font('input')}
+      ${font('small')}
     }
   }
 
@@ -84,7 +84,7 @@ export const StyledForm = styled(Form)<{ onFinish: any }>`
     padding-block: 2px !important;
 
     input {
-      ${font('input')}
+      ${font('small')}
     }
   }
 
@@ -121,7 +121,7 @@ export const StyledMenu = styled(Menu)<{ opened: number }>`
     .ant-menu-item-group-title {
       display: ${({ opened }) => (opened ? 'block' : 'none')} !important;
       padding: 10px 0px 2px 4px !important;
-      ${font('caption')}
+      ${font('xxs')}
       ${color('colorTextDescription')}
     }
 
@@ -131,12 +131,12 @@ export const StyledMenu = styled(Menu)<{ opened: number }>`
       border-radius: 6px !important;
 
       .anticon svg {
-        ${font('button')}
+        ${font('small')}
       }
 
       .ant-menu-title-content {
         display: ${({ opened }) => (opened ? 'inline' : 'none')} !important;
-        ${font('caption')}
+        ${font('xxs')}
       }
     }
   }
@@ -144,19 +144,19 @@ export const StyledMenu = styled(Menu)<{ opened: number }>`
 
 export const StyledCheckbox = styled(Checkbox)`
   .ant-checkbox + span {
-    ${font('caption')}
+    ${font('xxs')}
     color: ${color('colorTextBase')};
   }
 `
 
 export const StyledButton = styled(Button)`
-  ${font('button')}
+  ${font('small')}
   height: 40px;
   border-radius: 6px;
 `
 
 export const StyledInput = styled(Input)`
-  ${font('input')}
+  ${font('small')}
   height: 40px;
   padding: 0 12px;
   border-radius: 6px;
@@ -181,21 +181,21 @@ export const StyledSteps = styled(Steps)`
     }
   }
   .ant-steps-item-title {
-    ${font('caption')};
+    ${font('xxxs')};
     margin-top: -5px;
   }
 `
 
 export const StyledDescriptions = styled(Descriptions)`
   .ant-descriptions-item-label {
-    ${font('caption')};
+    ${font('xxs')};
 
     width: 150px !important;
     padding: 5px 10px !important;
   }
 
   .ant-descriptions-item-content {
-    ${font('caption')};
+    ${font('xxs')};
 
     padding: 8px 12px !important;
   }

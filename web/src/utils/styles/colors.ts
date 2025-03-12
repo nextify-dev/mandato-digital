@@ -22,6 +22,10 @@ type ColorTokenKeys =
 const { useToken } = theme
 
 export const color = (colorKey: ColorTokenKeys) => css`
+  ${() => useToken().token[colorKey]}
+`
+
+export const textColor = (colorKey: ColorTokenKeys) => css`
   color: ${() => useToken().token[colorKey]};
 `
 

@@ -15,6 +15,7 @@ import { removeMask } from '@/utils/functions/masks'
 
 export interface FirstAccessEligibility {
   isEligible: boolean
+  isAlreadyRegistered: boolean
   userData?: User
   tempId?: string
 }
@@ -176,21 +177,34 @@ export const authService = {
       )
 
       if (!userEntry) {
-        return { isEligible: false }
+        return { isEligible: false, isAlreadyRegistered: false }
       }
 
       const [tempId, userData] = userEntry as [string, User]
+
+      // Usuário já registrado (não é primeiro acesso)
+      if (!userData.access.isFirstAccess) {
+        return {
+          isEligible: false,
+          isAlreadyRegistered: true,
+          userData: undefined,
+          tempId: undefined
+        }
+      }
+
+      // Usuário com primeiro acesso pendente
       return {
-        isEligible: userData.access.isFirstAccess,
-        userData: userData.access.isFirstAccess ? userData : undefined,
-        tempId: userData.access.isFirstAccess ? tempId : undefined
+        isEligible: true,
+        isAlreadyRegistered: false,
+        userData,
+        tempId
       }
     } catch (error) {
       console.error(
         'Erro ao verificar elegibilidade para primeiro acesso:',
         error
       )
-      return { isEligible: false }
+      return { isEligible: false, isAlreadyRegistered: false }
     }
   },
 
