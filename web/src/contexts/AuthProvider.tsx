@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.tsx
+// src/contexts/AuthProvider.tsx
 
 import React, {
   createContext,
@@ -7,23 +7,45 @@ import React, {
   useEffect,
   useMemo
 } from 'react'
-
 import { auth } from '@/lib/firebase'
 import { authService } from '@/services/auth'
-import { User, InviteUserForm, CompleteRegistrationForm } from '@/@types/user'
+import { User, FirstAccessForm, UserType, UserRole } from '@/@types/user'
+
+// Função para converter User em UserType
+const convertToUserType = (user: User): UserType => {
+  switch (user.role) {
+    case UserRole.ADMINISTRADOR_GERAL:
+      return { ...user, role: UserRole.ADMINISTRADOR_GERAL } as UserType
+    case UserRole.ADMINISTRADOR_CIDADE:
+      return { ...user, role: UserRole.ADMINISTRADOR_CIDADE } as UserType
+    case UserRole.PREFEITO:
+      return { ...user, role: UserRole.PREFEITO } as UserType
+    case UserRole.VEREADOR:
+      return { ...user, role: UserRole.VEREADOR } as UserType
+    case UserRole.CABO_ELEITORAL:
+      return { ...user, role: UserRole.CABO_ELEITORAL } as UserType
+    case UserRole.ELEITOR:
+      return { ...user, role: UserRole.ELEITOR } as UserType
+    case UserRole.PENDENTE:
+      return { ...user, role: UserRole.PENDENTE, profile: null } as UserType
+    default:
+      throw new Error('Papel de usuário desconhecido')
+  }
+}
 
 interface IAuthContextData {
   isAuth: boolean
-  user: User | null
+  user: UserType | null
   isAuthLoading: boolean
   message: { type: 'success' | 'error'; text: string } | null
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
-  inviteUser: (data: InviteUserForm) => Promise<void>
-  completeRegistration: (
+  inviteUser: (
     email: string,
-    data: CompleteRegistrationForm
+    role: Exclude<UserRole, UserRole.PENDENTE | UserRole.ELEITOR>,
+    cityId: string
   ) => Promise<void>
+  completeRegistration: (email: string, data: FirstAccessForm) => Promise<void>
   resetPassword: (email: string) => Promise<void>
 }
 
@@ -33,7 +55,7 @@ export const AuthContext = createContext<IAuthContextData>(
 
 const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isAuth, setIsAuth] = useState<boolean>(false)
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<UserType | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [message, setMessage] = useState<{
     type: 'success' | 'error'
@@ -44,8 +66,8 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
         const userData = await authService.getUserData(firebaseUser.uid)
-        setUser(userData)
-        setIsAuth(true)
+        setUser(userData ? convertToUserType(userData) : null)
+        setIsAuth(!!userData && !userData?.access?.isFirstAccess)
       } else {
         setUser(null)
         setIsAuth(false)
@@ -59,7 +81,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setLoading(true)
     try {
       const userData = await authService.login(email, password)
-      setUser(userData)
+      setUser(convertToUserType(userData))
       setIsAuth(true)
       setMessage({ type: 'success', text: 'Login realizado com sucesso!' })
     } catch (error: any) {
@@ -81,10 +103,14 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }
 
-  const inviteUser = async (data: InviteUserForm) => {
+  const inviteUser = async (
+    email: string,
+    role: Exclude<UserRole, UserRole.PENDENTE | UserRole.ELEITOR>,
+    cityId: string
+  ) => {
     setLoading(true)
     try {
-      await authService.inviteUser(data)
+      await authService.inviteUser(email, role, cityId)
       setMessage({ type: 'success', text: 'Convite enviado com sucesso!' })
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message })
@@ -94,14 +120,11 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }
 
-  const completeRegistration = async (
-    email: string,
-    data: CompleteRegistrationForm
-  ) => {
+  const completeRegistration = async (email: string, data: FirstAccessForm) => {
     setLoading(true)
     try {
       const userData = await authService.completeRegistration(email, data)
-      setUser(userData)
+      setUser(convertToUserType(userData))
       setIsAuth(true)
       setMessage({ type: 'success', text: 'Cadastro concluído com sucesso!' })
     } catch (error: any) {

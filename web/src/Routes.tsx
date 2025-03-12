@@ -2,11 +2,11 @@
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Spin } from 'antd'
-
 import { useAuth } from '@/contexts/AuthProvider'
 import DashboardSignIn from '@/screens/DashboardSignIn'
 import DashboardV1 from '@/screens/DashboardV1'
 import ForgotPasswordScreen from '@/screens/ForgotPassword'
+import { ViewsProvider } from './contexts/ViewsProvider'
 
 interface RouteProps {
   isAuthenticated: boolean
@@ -61,10 +61,12 @@ const AppRoutes = () => {
           }
         />
         <Route
-          path="/dashboard"
+          path="/dashboard/:menuId?"
           element={
             <PrivateRoute isAuthenticated={isAuth}>
-              <DashboardV1 />
+              <ViewsProvider>
+                <DashboardV1 />
+              </ViewsProvider>
             </PrivateRoute>
           }
         />

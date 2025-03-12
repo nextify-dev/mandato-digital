@@ -17,6 +17,7 @@ type ColorTokenKeys =
   | 'colorBorderSecondary'
   | 'colorBgElevated'
   | 'colorTextBase'
+  | 'colorTextHeading'
 
 const { useToken } = theme
 

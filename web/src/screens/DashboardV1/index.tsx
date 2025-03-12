@@ -1,19 +1,65 @@
+import { useState } from 'react'
 import * as S from './styles'
-
+import { LuPanelRightClose, LuPanelRightOpen } from 'react-icons/lu'
+import { useViews } from '@/contexts/ViewsProvider'
+import { formatMenusForAntDesign } from '@/data/menus'
 import { Button } from 'antd'
-
 import { useAuth } from '@/contexts/AuthProvider'
+import { UserMenu } from '@/components'
 
-interface IDashboardV1Screen {}
+const DashboardV1 = () => {
+  const { activeMenu, setActiveMenu, loadingMenus } = useViews()
+  const { user, logout } = useAuth()
+  const [sideMenuOpened, setSideMenuOpened] = useState(true)
 
-const DashboardV1Screen = ({}: IDashboardV1Screen) => {
-  const { logout } = useAuth()
+  if (!user) return null
+  if (loadingMenus) return <div>Carregando dashboard...</div>
+
+  const toggleSideMenu = () => setSideMenuOpened(!sideMenuOpened)
+  const menuItems = formatMenusForAntDesign(user)
 
   return (
-    <S.DashboardV1Screen>
-      <Button onClick={logout}>Sair</Button>
-    </S.DashboardV1Screen>
+    <S.DashboardScreen>
+      <S.DashboardSideMenu opened={sideMenuOpened ? 1 : 0}>
+        <S.DashboardSideMenuHeader>
+          <S.DashboardLogo>
+            <S.DashboardLogoImg
+              opened={sideMenuOpened ? 1 : 0}
+              src="/logo.png"
+              alt="Logo"
+            />
+          </S.DashboardLogo>
+        </S.DashboardSideMenuHeader>
+        <S.DashboardSideMenuWrapper>
+          <S.DashboardMenu
+            mode="inline"
+            selectedKeys={activeMenu ? [activeMenu.menuId] : []}
+            items={menuItems}
+            onClick={({ key }) => setActiveMenu(key)}
+            opened={sideMenuOpened ? 1 : 0}
+          />
+        </S.DashboardSideMenuWrapper>
+      </S.DashboardSideMenu>
+      <S.DashboardMain opened={sideMenuOpened ? 1 : 0}>
+        <S.DashboardMainHeader>
+          <Button
+            icon={sideMenuOpened ? <LuPanelRightOpen /> : <LuPanelRightClose />}
+            onClick={toggleSideMenu}
+          />
+          <S.DashboardActiveViewLabel>
+            <h2>{activeMenu?.menuName}</h2>
+            <p>{activeMenu?.menuLegend}</p>
+          </S.DashboardActiveViewLabel>
+          <UserMenu logout={logout} />
+        </S.DashboardMainHeader>
+        <S.DashboardMainViewsWrapper>
+          <S.DashboardMainView>
+            {activeMenu ? activeMenu.menuView : <div>Selecione um menu</div>}
+          </S.DashboardMainView>
+        </S.DashboardMainViewsWrapper>
+      </S.DashboardMain>
+    </S.DashboardScreen>
   )
 }
 
-export default DashboardV1Screen
+export default DashboardV1

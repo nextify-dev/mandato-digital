@@ -184,7 +184,7 @@ export type UserType =
 import * as yup from 'yup'
 
 export const FirstAccessSchema = yup.object({
-  foto: yup.mixed().nullable().optional(),
+  foto: yup.string().nullable().optional(),
   nomeCompleto: yup.string().required('Nome completo é obrigatório'),
   cpf: yup
     .string()

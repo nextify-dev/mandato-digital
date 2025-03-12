@@ -2,77 +2,73 @@
 
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-
 import * as S from './styles'
-
 import { useForm, Controller } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
-import * as yup from 'yup'
-
+import { FirstAccessSchema, FirstAccessForm } from '@/@types/user'
 import { useAuth } from '@/contexts/AuthProvider'
 import {
   StyledForm,
-  StyledCheckbox,
   StyledButton,
   StyledInput,
-  StyledAlert
+  StyledAlert,
+  StyledCheckbox
 } from '@/utils/styles/antd'
 import { masks, applyMask } from '@/utils/functions/masks'
+import * as yup from 'yup'
 
-interface LoginForm {
+// Interface combinada para Login e FirstAccess
+interface SignInForm extends Partial<FirstAccessForm> {
   email: string
   password: string
-  firstName?: string
-  lastName?: string
-  phone?: string
 }
 
+// Schema base para login
 const loginSchema = yup.object().shape({
   email: yup.string().email('Email inválido').required('Email é obrigatório'),
   password: yup
     .string()
     .min(6, 'Mínimo de 6 caracteres')
-    .required('Senha é obrigatória'),
-  firstName: yup.string().when('$isFirstAccess', {
-    is: true,
-    then: (schema) => schema.required('Nome é obrigatório'),
-    otherwise: (schema) => schema.notRequired()
-  }),
-  lastName: yup.string().when('$isFirstAccess', {
-    is: true,
-    then: (schema) => schema.required('Sobrenome é obrigatório'),
-    otherwise: (schema) => schema.notRequired()
-  }),
-  phone: yup.string().when('$isFirstAccess', {
-    is: true,
-    then: (schema) =>
-      schema.min(14, 'Telefone inválido').required('Telefone é obrigatório'),
-    otherwise: (schema) => schema.notRequired()
-  })
+    .required('Senha é obrigatória')
 })
+
+// Schema dinâmico baseado em isFirstAccess
+const getSchema = (isFirstAccess: boolean) =>
+  isFirstAccess ? FirstAccessSchema : loginSchema
 
 const DashboardSignInScreen = () => {
   const [isFirstAccess, setIsFirstAccess] = useState(false)
   const { login, completeRegistration, message } = useAuth()
+
   const {
     control,
     handleSubmit,
     setValue,
-    formState: { errors }
-  } = useForm<LoginForm>({
-    resolver: yupResolver(loginSchema),
-    context: { isFirstAccess }
+    formState: { errors, isValid }
+  } = useForm<SignInForm>({
+    resolver: yupResolver(getSchema(isFirstAccess)),
+    defaultValues: {
+      email: '',
+      password: '',
+      nomeCompleto: '',
+      cpf: '',
+      dataNascimento: '',
+      genero: '',
+      whatsapp: '',
+      cep: '',
+      endereco: '',
+      numero: '',
+      bairro: '',
+      cidade: '',
+      estado: '',
+      confirmPassword: ''
+    }
   })
 
-  const onSubmit = async (data: LoginForm) => {
+  const onSubmit = async (data: SignInForm) => {
     try {
       if (isFirstAccess) {
-        await completeRegistration(data.email, {
-          firstName: data.firstName!,
-          lastName: data.lastName!,
-          phone: data.phone!,
-          password: data.password
-        })
+        await completeRegistration(data.email, data as FirstAccessForm)
       } else {
         await login(data.email, data.password)
       }
@@ -120,50 +116,181 @@ const DashboardSignInScreen = () => {
           {isFirstAccess && (
             <>
               <Controller
-                name="firstName"
+                name="nomeCompleto"
                 control={control}
                 render={({ field }) => (
                   <StyledForm.Item
-                    label="Nome"
-                    help={errors.firstName?.message}
-                    validateStatus={errors.firstName ? 'error' : ''}
-                  >
-                    <StyledInput {...field} placeholder="Digite seu nome" />
-                  </StyledForm.Item>
-                )}
-              />
-              <Controller
-                name="lastName"
-                control={control}
-                render={({ field }) => (
-                  <StyledForm.Item
-                    label="Sobrenome"
-                    help={errors.lastName?.message}
-                    validateStatus={errors.lastName ? 'error' : ''}
+                    label="Nome Completo"
+                    help={errors.nomeCompleto?.message}
+                    validateStatus={errors.nomeCompleto ? 'error' : ''}
                   >
                     <StyledInput
                       {...field}
-                      placeholder="Digite seu sobrenome"
+                      placeholder="Digite seu nome completo"
                     />
                   </StyledForm.Item>
                 )}
               />
               <Controller
-                name="phone"
+                name="cpf"
                 control={control}
                 render={({ field }) => (
                   <StyledForm.Item
-                    label="Telefone"
-                    help={errors.phone?.message}
-                    validateStatus={errors.phone ? 'error' : ''}
+                    label="CPF"
+                    help={errors.cpf?.message}
+                    validateStatus={errors.cpf ? 'error' : ''}
                   >
                     <StyledInput
                       {...field}
-                      placeholder="(99) 99999-9999"
-                      onChange={(e) => {
-                        const maskedValue = applyMask(e.target.value, 'phone')
-                        setValue('phone', maskedValue)
-                      }}
+                      placeholder="000.000.000-00"
+                      onChange={(e) =>
+                        setValue('cpf', applyMask(e.target.value, 'cpf'))
+                      }
+                    />
+                  </StyledForm.Item>
+                )}
+              />
+              <Controller
+                name="dataNascimento"
+                control={control}
+                render={({ field }) => (
+                  <StyledForm.Item
+                    label="Data de Nascimento"
+                    help={errors.dataNascimento?.message}
+                    validateStatus={errors.dataNascimento ? 'error' : ''}
+                  >
+                    <StyledInput {...field} placeholder="YYYY-MM-DD" />
+                  </StyledForm.Item>
+                )}
+              />
+              <Controller
+                name="genero"
+                control={control}
+                render={({ field }) => (
+                  <StyledForm.Item
+                    label="Gênero"
+                    help={errors.genero?.message}
+                    validateStatus={errors.genero ? 'error' : ''}
+                  >
+                    <StyledInput {...field} placeholder="Digite seu gênero" />
+                  </StyledForm.Item>
+                )}
+              />
+              <Controller
+                name="whatsapp"
+                control={control}
+                render={({ field }) => (
+                  <StyledForm.Item
+                    label="WhatsApp"
+                    help={errors.whatsapp?.message}
+                    validateStatus={errors.whatsapp ? 'error' : ''}
+                  >
+                    <StyledInput
+                      {...field}
+                      placeholder="(00) 0 0000 0000"
+                      onChange={(e) =>
+                        setValue('whatsapp', applyMask(e.target.value, 'phone'))
+                      }
+                    />
+                  </StyledForm.Item>
+                )}
+              />
+              <Controller
+                name="cep"
+                control={control}
+                render={({ field }) => (
+                  <StyledForm.Item
+                    label="CEP"
+                    help={errors.cep?.message}
+                    validateStatus={errors.cep ? 'error' : ''}
+                  >
+                    <StyledInput
+                      {...field}
+                      placeholder="00000-000"
+                      onChange={(e) =>
+                        setValue('cep', applyMask(e.target.value, 'cep'))
+                      }
+                    />
+                  </StyledForm.Item>
+                )}
+              />
+              <Controller
+                name="endereco"
+                control={control}
+                render={({ field }) => (
+                  <StyledForm.Item
+                    label="Endereço"
+                    help={errors.endereco?.message}
+                    validateStatus={errors.endereco ? 'error' : ''}
+                  >
+                    <StyledInput {...field} placeholder="Digite seu endereço" />
+                  </StyledForm.Item>
+                )}
+              />
+              <Controller
+                name="numero"
+                control={control}
+                render={({ field }) => (
+                  <StyledForm.Item
+                    label="Número"
+                    help={errors.numero?.message}
+                    validateStatus={errors.numero ? 'error' : ''}
+                  >
+                    <StyledInput {...field} placeholder="Digite o número" />
+                  </StyledForm.Item>
+                )}
+              />
+              <Controller
+                name="bairro"
+                control={control}
+                render={({ field }) => (
+                  <StyledForm.Item
+                    label="Bairro"
+                    help={errors.bairro?.message}
+                    validateStatus={errors.bairro ? 'error' : ''}
+                  >
+                    <StyledInput {...field} placeholder="Digite o bairro" />
+                  </StyledForm.Item>
+                )}
+              />
+              <Controller
+                name="cidade"
+                control={control}
+                render={({ field }) => (
+                  <StyledForm.Item
+                    label="Cidade"
+                    help={errors.cidade?.message}
+                    validateStatus={errors.cidade ? 'error' : ''}
+                  >
+                    <StyledInput {...field} placeholder="Digite a cidade" />
+                  </StyledForm.Item>
+                )}
+              />
+              <Controller
+                name="estado"
+                control={control}
+                render={({ field }) => (
+                  <StyledForm.Item
+                    label="Estado"
+                    help={errors.estado?.message}
+                    validateStatus={errors.estado ? 'error' : ''}
+                  >
+                    <StyledInput {...field} placeholder="Digite o estado" />
+                  </StyledForm.Item>
+                )}
+              />
+              <Controller
+                name="confirmPassword"
+                control={control}
+                render={({ field }) => (
+                  <StyledForm.Item
+                    label="Confirmar Senha"
+                    help={errors.confirmPassword?.message}
+                    validateStatus={errors.confirmPassword ? 'error' : ''}
+                  >
+                    <StyledInput.Password
+                      {...field}
+                      placeholder="Confirme sua senha"
                     />
                   </StyledForm.Item>
                 )}
@@ -176,7 +303,7 @@ const DashboardSignInScreen = () => {
           >
             Primeiro acesso?
           </StyledCheckbox>
-          <StyledButton type="primary" htmlType="submit" block>
+          <StyledButton type="primary" htmlType="submit" disabled={!isValid}>
             {isFirstAccess ? 'Completar Cadastro' : 'Entrar'}
           </StyledButton>
           <S.ForgotPasswordLink>

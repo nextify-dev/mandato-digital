@@ -1,3 +1,5 @@
+// src/data/menus.tsx
+
 import { ReactNode } from 'react'
 import { GetProp, MenuProps } from 'antd'
 import {
@@ -14,7 +16,6 @@ import {
   LuLogOut
 } from 'react-icons/lu'
 
-// Componentes das Views (placeholders por enquanto)
 import DashboardInicialView from '@/screens/DashboardV1/views/DashboardInicial'
 import GestaoUsuariosView from '@/screens/DashboardV1/views/GestaoUsuarios'
 import GestaoCidadesView from '@/screens/DashboardV1/views/GestaoCidades'
@@ -29,8 +30,6 @@ import PlanejamentoView from '@/screens/DashboardV1/views/Planejamento'
 import MonitoramentoRedesView from '@/screens/DashboardV1/views/MonitoramentoRedes'
 import MinhaContaView from '@/screens/DashboardV1/views/MinhaConta'
 
-// Providers (placeholders)
-import { AuthProvider } from '@/contexts/AuthProvider'
 import { UserType, Permissions } from '@/@types/user'
 
 // Interface do Menu
@@ -55,9 +54,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Visão geral do sistema',
     menuIcon: <LuHouse />,
     menuView: (
-      <AuthProvider>
+      <>
         <DashboardInicialView />
-      </AuthProvider>
+      </>
     ),
     menuCategory: 'Principal',
     requiredPermissions: {},
@@ -72,9 +71,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Gerenciar usuários do sistema',
     menuIcon: <LuUsers />,
     menuView: (
-      <AuthProvider>
+      <>
         <GestaoUsuariosView />
-      </AuthProvider>
+      </>
     ),
     menuCategory: 'Gestão',
     requiredPermissions: { canEditUsers: true },
@@ -87,9 +86,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Gerenciar cidades cadastradas',
     menuIcon: <LuMap />,
     menuView: (
-      <AuthProvider>
+      <>
         <GestaoCidadesView />
-      </AuthProvider>
+      </>
     ),
     menuCategory: 'Gestão',
     requiredPermissions: { canManageAllCities: true },
@@ -102,9 +101,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Gerenciar eleitores',
     menuIcon: <LuUsers />,
     menuView: (
-      <AuthProvider>
+      <>
         <CadastroEleitoresView />
-      </AuthProvider>
+      </>
     ),
     menuCategory: 'Gestão',
     requiredPermissions: { canRegisterVoters: true },
@@ -117,9 +116,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Registrar e visualizar visitas',
     menuIcon: <LuFileText />,
     menuView: (
-      <AuthProvider>
+      <>
         <RegistroVisitasView />
-      </AuthProvider>
+      </>
     ),
     menuCategory: 'Gestão',
     requiredPermissions: { canRegisterVoters: true },
@@ -132,9 +131,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Gerenciar demandas dos eleitores',
     menuIcon: <LuFileText />,
     menuView: (
-      <AuthProvider>
+      <>
         <DemandasEleitoraisView />
-      </AuthProvider>
+      </>
     ),
     menuCategory: 'Gestão',
     requiredPermissions: { canRegisterVoters: true },
@@ -149,9 +148,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Visualizar mapa eleitoral',
     menuIcon: <LuMap />,
     menuView: (
-      <AuthProvider>
+      <>
         <MapaEleitoralView />
-      </AuthProvider>
+      </>
     ),
     menuCategory: 'Análise',
     requiredPermissions: { canViewCityMap: true },
@@ -164,9 +163,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Estatísticas e relatórios',
     menuIcon: <LuChartColumnBig />,
     menuView: (
-      <AuthProvider>
+      <>
         <RelatoriosView />
-      </AuthProvider>
+      </>
     ),
     menuCategory: 'Análise',
     requiredPermissions: { canViewReports: true },
@@ -179,9 +178,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Portal de transparência',
     menuIcon: <LuShield />,
     menuView: (
-      <AuthProvider>
+      <>
         <TransparenciaView />
-      </AuthProvider>
+      </>
     ),
     menuCategory: 'Análise',
     requiredPermissions: { canViewReports: true },
@@ -196,9 +195,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Gerenciar campanhas informativas',
     menuIcon: <LuMegaphone />,
     menuView: (
-      <AuthProvider>
+      <>
         <ComunicacaoView />
-      </AuthProvider>
+      </>
     ),
     menuCategory: 'Comunicação',
     requiredPermissions: { canManageCampaigns: true },
@@ -211,9 +210,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Analisar menções em redes sociais',
     menuIcon: <LuMessageSquare />,
     menuView: (
-      <AuthProvider>
+      <>
         <MonitoramentoRedesView />
-      </AuthProvider>
+      </>
     ),
     menuCategory: 'Comunicação',
     requiredPermissions: { canManageCampaigns: true },
@@ -228,9 +227,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Gerenciar metas e planejamento',
     menuIcon: <LuCalendar />,
     menuView: (
-      <AuthProvider>
+      <>
         <PlanejamentoView />
-      </AuthProvider>
+      </>
     ),
     menuCategory: 'Planejamento',
     requiredPermissions: { canManageCampaigns: true },
@@ -245,9 +244,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Gerenciar dados da conta',
     menuIcon: <LuCircleUser />,
     menuView: (
-      <AuthProvider>
+      <>
         <MinhaContaView />
-      </AuthProvider>
+      </>
     ),
     menuCategory: 'Conta',
     requiredPermissions: {},
@@ -264,9 +263,9 @@ export const USER_MENU: IMenu[] = [
     menuLegend: 'Gerenciar dados da conta',
     menuIcon: <LuCircleUser />,
     menuView: (
-      <AuthProvider>
+      <>
         <MinhaContaView />
-      </AuthProvider>
+      </>
     ),
     menuCategory: 'Conta',
     requiredPermissions: {},

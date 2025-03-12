@@ -1,3 +1,3 @@
-import TemplateComponent from './TemplateComponent'
+import UserMenu from './UserMenu'
 
-export { TemplateComponent }
+export { UserMenu }
