@@ -1,5 +1,9 @@
 // src/@types/user.ts
 
+import { GENDER_OPTIONS, RELIGION_OPTIONS } from '@/data/options'
+import { convertToISODate } from '@/utils/functions/masks'
+import * as yup from 'yup'
+
 // Enums para papéis e status
 export enum UserRole {
   ADMINISTRADOR_GERAL = 'Administrador_Geral',
@@ -180,12 +184,9 @@ export type UserType =
   | Eleitor
   | Pendente
 
-import { convertToISODate } from '@/utils/functions/masks'
-// Formulário de primeiro acesso (usando Yup para validação)
-import * as yup from 'yup'
-
+// Esquema completo de validação (movido de src/@types/user.ts)
 export const FirstAccessSchema = yup.object({
-  foto: yup.string().nullable().optional(),
+  email: yup.string().email('E-mail inválido').required('E-mail é obrigatório'),
   nomeCompleto: yup.string().required('Nome completo é obrigatório'),
   cpf: yup
     .string()
@@ -202,22 +203,36 @@ export const FirstAccessSchema = yup.object({
   dataNascimento: yup
     .string()
     .required('Data de nascimento é obrigatória')
+    .matches(/^\d{2}\/\d{2}\/\d{4}$/, 'Data deve estar no formato DD/MM/AAAA')
     .test('idade-minima', 'Você deve ter pelo menos 18 anos', (value) => {
-      if (!value) return
+      if (!value) return false
       const isoDate = convertToISODate(value)
       const date = new Date(isoDate)
       const today = new Date()
       const age = today.getFullYear() - date.getFullYear()
       return age >= 18
     }),
-  genero: yup.string().required('Gênero é obrigatório'),
-  religiao: yup.string().nullable().optional(),
+  genero: yup
+    .string()
+    .required('Gênero é obrigatório')
+    .oneOf(
+      GENDER_OPTIONS.map((opt) => opt.value),
+      'Selecione um gênero válido'
+    ),
+  religiao: yup
+    .string()
+    .required('Religião é obrigatória')
+    .oneOf(
+      RELIGION_OPTIONS.map((opt) => opt.value).concat(null as any),
+      'Selecione uma religião válida'
+    ),
+  foto: yup.string().nullable().optional(),
   telefone: yup
     .string()
-    .matches(
-      /^\(\d{2}\) \d \d{4} \d{4}$/,
-      'Telefone deve estar no formato (00) 0 0000 0000'
-    )
+    .matches(/^\(\d{2}\) \d \d{4} \d{4}$/, {
+      message: 'Telefone deve estar no formato (00) 0 0000 0000',
+      excludeEmptyString: true
+    })
     .nullable()
     .optional(),
   whatsapp: yup
@@ -239,7 +254,6 @@ export const FirstAccessSchema = yup.object({
   bairro: yup.string().required('Bairro é obrigatório'),
   cidade: yup.string().required('Cidade é obrigatória'),
   estado: yup.string().required('Estado é obrigatório'),
-  email: yup.string().email('E-mail inválido').required('E-mail é obrigatório'),
   password: yup
     .string()
     .min(8, 'A senha deve ter no mínimo 8 caracteres')
@@ -250,4 +264,5 @@ export const FirstAccessSchema = yup.object({
     .oneOf([yup.ref('password')], 'As senhas devem coincidir')
 })
 
+// Inferindo o tipo FirstAccessForm a partir do esquema
 export type FirstAccessForm = yup.InferType<typeof FirstAccessSchema>

@@ -1,3 +1,4 @@
 import UserMenu from './UserMenu'
+import UserRegistrationForm from './forms/UserRegistration'
 
-export { UserMenu }
+export { UserMenu, UserRegistrationForm }

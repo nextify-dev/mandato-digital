@@ -1,7 +1,7 @@
 // src/utils/styles/antd.ts
 
 import styled from 'styled-components'
-import { Alert, Button, Checkbox, Form, Input, Menu } from 'antd'
+import { Alert, Button, Checkbox, Form, Input, Menu, Steps } from 'antd'
 
 import { font } from './fonts'
 import { color, backgroundColor } from './colors'
@@ -160,4 +160,9 @@ export const StyledInput = styled(Input)`
 export const StyledAlert = styled(Alert)`
   border-radius: 6px;
   margin-bottom: 16px;
+`
+
+export const StyledSteps = styled(Steps)`
+  /* border-radius: 6px;
+  margin-bottom: 16px; */
 `
