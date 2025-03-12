@@ -180,6 +180,7 @@ export type UserType =
   | Eleitor
   | Pendente
 
+import { convertToISODate } from '@/utils/functions/masks'
 // Formulário de primeiro acesso (usando Yup para validação)
 import * as yup from 'yup'
 
@@ -202,7 +203,9 @@ export const FirstAccessSchema = yup.object({
     .string()
     .required('Data de nascimento é obrigatória')
     .test('idade-minima', 'Você deve ter pelo menos 18 anos', (value) => {
-      const date = new Date(value)
+      if (!value) return
+      const isoDate = convertToISODate(value)
+      const date = new Date(isoDate)
       const today = new Date()
       const age = today.getFullYear() - date.getFullYear()
       return age >= 18

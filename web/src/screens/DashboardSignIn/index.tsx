@@ -1,31 +1,27 @@
 // src/screens/DashboardSignIn.tsx
 
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import * as S from './styles'
 import { useForm, Controller } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import { FirstAccessSchema, FirstAccessForm } from '@/@types/user'
 import { useAuth } from '@/contexts/AuthProvider'
-import { authService } from '@/services/auth'
 import {
   StyledForm,
   StyledButton,
   StyledInput,
-  StyledAlert,
   StyledCheckbox
 } from '@/utils/styles/antd'
 import { masks, applyMask } from '@/utils/functions/masks'
 import * as yup from 'yup'
 import { CheckboxChangeEvent } from 'antd/es/checkbox'
 
-// Interface combinada para Login e FirstAccess
 interface SignInForm extends Partial<FirstAccessForm> {
   email: string
   password: string
 }
 
-// Schema base para login
 const loginSchema = yup.object().shape({
   email: yup.string().email('Email inválido').required('Email é obrigatório'),
   password: yup
@@ -34,27 +30,31 @@ const loginSchema = yup.object().shape({
     .required('Senha é obrigatória')
 })
 
-// Schema dinâmico baseado em isFirstAccess
 const getSchema = (isFirstAccess: boolean) =>
   isFirstAccess ? FirstAccessSchema : loginSchema
 
 const DashboardSignInScreen = () => {
-  const [isFirstAccess, setIsFirstAccess] = useState(false)
-  const [emailLocked, setEmailLocked] = useState(false)
-  const [isFirstAccessEligible, setIsFirstAccessEligible] = useState(false) // Novo estado para elegibilidade
-  const { login, completeRegistration } = useAuth()
+  const {
+    login,
+    completeRegistration,
+    isFirstAccess,
+    isFirstAccessEligible,
+    emailLocked,
+    checkFirstAccess,
+    setFirstAccess
+  } = useAuth()
 
   const {
     control,
     handleSubmit,
     setValue,
-    getValues,
-    reset,
     watch,
-    formState: { errors, isValid, isDirty }
+    trigger, // Adicionado para revalidação manual
+    formState: { errors, isValid }
   } = useForm<SignInForm>({
     resolver: yupResolver(getSchema(isFirstAccess)),
-    mode: 'onBlur', // Validação ao sair do campo
+    mode: 'all',
+    reValidateMode: 'onChange',
     defaultValues: {
       email: '',
       password: '',
@@ -73,81 +73,36 @@ const DashboardSignInScreen = () => {
     }
   })
 
-  const emailValue = watch('email') // Monitora o valor do email em tempo real
+  const emailValue = watch('email')
 
-  // Função para buscar dados do usuário com base no email
-  const fetchUserData = async (email: string) => {
-    try {
-      const userData = await authService.getUserData(email.replace('.', '_'))
-      if (userData && userData.access.isFirstAccess) {
-        setIsFirstAccessEligible(true) // Email é elegível para primeiro acesso
-        const { profile } = userData
-        if (profile) {
-          reset({
-            ...getValues(),
-            nomeCompleto: profile.nomeCompleto || '',
-            cpf: profile.cpf || '',
-            dataNascimento: profile.dataNascimento || '',
-            genero: profile.genero || '',
-            whatsapp: profile.whatsapp || '',
-            cep: profile.cep || '',
-            endereco: profile.endereco || '',
-            numero: profile.numero || '',
-            bairro: profile.bairro || '',
-            cidade: profile.cidade || '',
-            estado: profile.estado || ''
-          })
-        }
-      } else {
-        setIsFirstAccessEligible(false) // Email não é elegível
-      }
-    } catch (error) {
-      console.error('Erro ao buscar dados do usuário:', error)
-      setIsFirstAccessEligible(false)
-    }
-  }
-
-  // Efeito para verificar o email e atualizar elegibilidade
+  // Verifica elegibilidade ao mudar o email
   useEffect(() => {
-    const email = emailValue
-    if (email && yup.string().email().isValidSync(email)) {
-      fetchUserData(email)
-      if (isFirstAccess) {
-        setEmailLocked(true) // Bloqueia o email se isFirstAccess estiver ativo
-      }
-    } else {
-      setIsFirstAccessEligible(false)
-      setEmailLocked(false)
-      setIsFirstAccess(false) // Reseta isFirstAccess se o email não for válido
+    if (emailValue && yup.string().email().isValidSync(emailValue)) {
+      checkFirstAccess(emailValue)
     }
-  }, [emailValue, isFirstAccess])
+  }, [emailValue])
+
+  // Revalida o formulário ao mudar isFirstAccess
+  useEffect(() => {
+    if (isFirstAccess) {
+      trigger('email')
+      return
+    }
+
+    emailValue !== '' && trigger('email')
+  }, [isFirstAccess])
 
   const onSubmit = async (data: SignInForm) => {
-    try {
-      if (isFirstAccess) {
-        await completeRegistration(data.email, data as FirstAccessForm)
-      } else {
-        await login(data.email, data.password)
-      }
-    } catch (error) {
-      console.error(error)
+    if (isFirstAccess) {
+      await completeRegistration(data.email, data as FirstAccessForm)
+    } else {
+      await login(data.email, data.password)
     }
   }
 
   const handleCheckboxChange = (e: CheckboxChangeEvent) => {
-    const checked = e.target.checked
-    const email = getValues('email')
-
-    if (checked && !isFirstAccessEligible) {
-      return // Não permite ativar se o email não for elegível
-    }
-
-    setIsFirstAccess(checked)
-    if (!checked) {
-      setEmailLocked(false) // Desbloqueia o email ao desmarcar
-    } else {
-      setEmailLocked(true) // Bloqueia o email ao marcar
-    }
+    setFirstAccess(e.target.checked)
+    setValue('email', emailValue)
   }
 
   return (
@@ -166,7 +121,7 @@ const DashboardSignInScreen = () => {
                 <StyledInput
                   {...field}
                   placeholder="Digite seu email"
-                  disabled={emailLocked && isFirstAccess}
+                  disabled={emailLocked}
                 />
               </StyledForm.Item>
             )}
@@ -233,7 +188,16 @@ const DashboardSignInScreen = () => {
                     help={errors.dataNascimento?.message}
                     validateStatus={errors.dataNascimento ? 'error' : ''}
                   >
-                    <StyledInput {...field} placeholder="YYYY-MM-DD" />
+                    <StyledInput
+                      {...field}
+                      placeholder="DD/MM/AAAA"
+                      onChange={(e) =>
+                        setValue(
+                          'dataNascimento',
+                          applyMask(e.target.value, 'birthDate')
+                        )
+                      }
+                    />
                   </StyledForm.Item>
                 )}
               />
@@ -374,9 +338,7 @@ const DashboardSignInScreen = () => {
           <StyledCheckbox
             checked={isFirstAccess}
             onChange={handleCheckboxChange}
-            disabled={
-              !isFirstAccessEligible || (!isValid && !isFirstAccess && !isDirty)
-            }
+            disabled={!isFirstAccessEligible}
           >
             Primeiro acesso?
           </StyledCheckbox>

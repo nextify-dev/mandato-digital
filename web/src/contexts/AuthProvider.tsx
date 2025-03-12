@@ -8,12 +8,35 @@ import React, {
   useMemo
 } from 'react'
 import { message } from 'antd'
-
 import { auth } from '@/lib/firebase'
-import { authService } from '@/services/auth'
+import { authService, FirstAccessEligibility } from '@/services/auth'
 import { User, FirstAccessForm, UserType, UserRole } from '@/@types/user'
 
-// Função para converter User em UserType
+interface IAuthContextData {
+  isAuth: boolean
+  user: UserType | null
+  isAuthLoading: boolean
+  isFirstAccess: boolean
+  isFirstAccessEligible: boolean
+  emailLocked: boolean
+  login: (email: string, password: string) => Promise<void>
+  logout: () => Promise<void>
+  inviteUser: (
+    email: string,
+    role: Exclude<UserRole, UserRole.PENDENTE | UserRole.ELEITOR>,
+    cityId: string
+  ) => Promise<void>
+  completeRegistration: (email: string, data: FirstAccessForm) => Promise<void>
+  resetPassword: (email: string) => Promise<void>
+  checkFirstAccess: (email: string) => Promise<void>
+  setFirstAccess: (value: boolean) => void
+  prefillFirstAccessData: (data?: User) => void
+}
+
+export const AuthContext = createContext<IAuthContextData>(
+  {} as IAuthContextData
+)
+
 const convertToUserType = (user: User): UserType => {
   switch (user.role) {
     case UserRole.ADMINISTRADOR_GERAL:
@@ -35,29 +58,18 @@ const convertToUserType = (user: User): UserType => {
   }
 }
 
-interface IAuthContextData {
-  isAuth: boolean
-  user: UserType | null
-  isAuthLoading: boolean
-  login: (email: string, password: string) => Promise<void>
-  logout: () => Promise<void>
-  inviteUser: (
-    email: string,
-    role: Exclude<UserRole, UserRole.PENDENTE | UserRole.ELEITOR>,
-    cityId: string
-  ) => Promise<void>
-  completeRegistration: (email: string, data: FirstAccessForm) => Promise<void>
-  resetPassword: (email: string) => Promise<void>
-}
-
-export const AuthContext = createContext<IAuthContextData>(
-  {} as IAuthContextData
-)
-
 const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [isAuth, setIsAuth] = useState<boolean>(false)
+  const [messageApi, contextHolder] = message.useMessage()
+
+  const [isAuth, setIsAuth] = useState(false)
   const [user, setUser] = useState<UserType | null>(null)
-  const [loading, setLoading] = useState<boolean>(true)
+  const [isAuthLoading, setIsAuthLoading] = useState(true)
+  const [isFirstAccess, setIsFirstAccess] = useState(false)
+  const [isFirstAccessEligible, setIsFirstAccessEligible] = useState(false)
+  const [emailLocked, setEmailLocked] = useState(false)
+  const [firstAccessData, setFirstAccessData] = useState<User | undefined>(
+    undefined
+  )
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
@@ -69,34 +81,34 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(null)
         setIsAuth(false)
       }
-      setLoading(false)
+      setIsAuthLoading(false)
     })
     return () => unsubscribe()
   }, [])
 
   const login = async (email: string, password: string) => {
-    setLoading(true)
+    setIsAuthLoading(true)
     try {
       const userData = await authService.login(email, password)
       setUser(convertToUserType(userData))
       setIsAuth(true)
-      message.success('Login realizado com sucesso!')
+      messageApi.success('Login realizado com sucesso!')
     } catch (error: any) {
-      message.error(error.message)
+      messageApi.error(error.message)
       throw error
     } finally {
-      setLoading(false)
+      setIsAuthLoading(false)
     }
   }
 
   const logout = async () => {
-    setLoading(true)
+    setIsAuthLoading(true)
     try {
       await authService.logout()
       setUser(null)
       setIsAuth(false)
     } finally {
-      setLoading(false)
+      setIsAuthLoading(false)
     }
   }
 
@@ -105,68 +117,117 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     role: Exclude<UserRole, UserRole.PENDENTE | UserRole.ELEITOR>,
     cityId: string
   ) => {
-    setLoading(true)
+    setIsAuthLoading(true)
     try {
       await authService.inviteUser(email, role, cityId)
-      message.success('Convite enviado com sucesso!')
+      messageApi.success('Convite enviado com sucesso!')
     } catch (error: any) {
-      message.error(error.message)
+      messageApi.error(error.message)
       throw error
     } finally {
-      setLoading(false)
+      setIsAuthLoading(false)
     }
   }
 
   const completeRegistration = async (email: string, data: FirstAccessForm) => {
-    setLoading(true)
+    setIsAuthLoading(true)
     try {
       const userData = await authService.completeRegistration(email, data)
       setUser(convertToUserType(userData))
       setIsAuth(true)
-      message.success('Cadastro concluído com sucesso!')
+      setIsFirstAccess(false)
+      setEmailLocked(false)
+      messageApi.success('Cadastro concluído com sucesso!')
     } catch (error: any) {
-      message.error(error.message)
+      messageApi.error(error.message)
       throw error
     } finally {
-      setLoading(false)
+      setIsAuthLoading(false)
     }
   }
 
   const resetPassword = async (email: string) => {
-    setLoading(true)
+    setIsAuthLoading(true)
     try {
       await authService.resetPassword(email)
-      message.success('Email de redefinição enviado com sucesso!')
+      messageApi.success('Email de redefinição enviado com sucesso!')
     } catch (error: any) {
-      message.error(error.message)
+      messageApi.error(error.message)
       throw error
     } finally {
-      setLoading(false)
+      setIsAuthLoading(false)
     }
   }
 
-  const authContextData: IAuthContextData = useMemo(
+  const checkFirstAccess = async (email: string) => {
+    const { isEligible, userData } =
+      await authService.checkFirstAccessEligibility(email)
+
+    if (!isEligible) {
+      messageApi.error('Seu e-mail não está autorizado')
+
+      return
+    }
+
+    setIsFirstAccessEligible(isEligible)
+    setFirstAccessData(isEligible ? userData : undefined)
+    if (isEligible && isFirstAccess) {
+      setEmailLocked(true)
+    } else {
+      setEmailLocked(false)
+      setIsFirstAccess(false)
+    }
+
+    messageApi.success('Seu e-mail está autorizado! Realize o primeiro acesso')
+  }
+
+  const prefillFirstAccessData = (data?: User) => {
+    setFirstAccessData(data)
+  }
+
+  const handleSetFirstAccess = (value: boolean) => {
+    if (value && !isFirstAccessEligible) return
+    setIsFirstAccess(value)
+    setEmailLocked(value && isFirstAccessEligible)
+  }
+
+  const authContextData = useMemo(
     () => ({
       isAuth,
       user,
-      isAuthLoading: loading,
+      isAuthLoading,
+      isFirstAccess,
+      isFirstAccessEligible,
+      emailLocked,
       login,
       logout,
       inviteUser,
       completeRegistration,
-      resetPassword
+      resetPassword,
+      checkFirstAccess,
+      setFirstAccess: handleSetFirstAccess,
+      prefillFirstAccessData
     }),
-    [isAuth, user, loading, message]
+    [
+      isAuth,
+      user,
+      isAuthLoading,
+      isFirstAccess,
+      isFirstAccessEligible,
+      emailLocked,
+      firstAccessData
+    ]
   )
 
   return (
     <AuthContext.Provider value={authContextData}>
+      {contextHolder}
       {children}
     </AuthContext.Provider>
   )
 }
 
-export function useAuth(): IAuthContextData {
+export const useAuth = (): IAuthContextData => {
   const context = useContext(AuthContext)
   if (!context) throw new Error('useAuth must be used within an AuthProvider')
   return context
