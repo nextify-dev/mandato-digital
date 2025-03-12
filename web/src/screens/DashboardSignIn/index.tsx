@@ -1,12 +1,13 @@
 // src/screens/DashboardSignIn.tsx
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import * as S from './styles'
 import { useForm, Controller } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import { FirstAccessSchema, FirstAccessForm } from '@/@types/user'
 import { useAuth } from '@/contexts/AuthProvider'
+import { authService } from '@/services/auth'
 import {
   StyledForm,
   StyledButton,
@@ -16,6 +17,7 @@ import {
 } from '@/utils/styles/antd'
 import { masks, applyMask } from '@/utils/functions/masks'
 import * as yup from 'yup'
+import { CheckboxChangeEvent } from 'antd/es/checkbox'
 
 // Interface combinada para Login e FirstAccess
 interface SignInForm extends Partial<FirstAccessForm> {
@@ -38,15 +40,21 @@ const getSchema = (isFirstAccess: boolean) =>
 
 const DashboardSignInScreen = () => {
   const [isFirstAccess, setIsFirstAccess] = useState(false)
-  const { login, completeRegistration, message } = useAuth()
+  const [emailLocked, setEmailLocked] = useState(false)
+  const [isFirstAccessEligible, setIsFirstAccessEligible] = useState(false) // Novo estado para elegibilidade
+  const { login, completeRegistration } = useAuth()
 
   const {
     control,
     handleSubmit,
     setValue,
-    formState: { errors, isValid }
+    getValues,
+    reset,
+    watch,
+    formState: { errors, isValid, isDirty }
   } = useForm<SignInForm>({
     resolver: yupResolver(getSchema(isFirstAccess)),
+    mode: 'onBlur', // Validação ao sair do campo
     defaultValues: {
       email: '',
       password: '',
@@ -65,6 +73,55 @@ const DashboardSignInScreen = () => {
     }
   })
 
+  const emailValue = watch('email') // Monitora o valor do email em tempo real
+
+  // Função para buscar dados do usuário com base no email
+  const fetchUserData = async (email: string) => {
+    try {
+      const userData = await authService.getUserData(email.replace('.', '_'))
+      if (userData && userData.access.isFirstAccess) {
+        setIsFirstAccessEligible(true) // Email é elegível para primeiro acesso
+        const { profile } = userData
+        if (profile) {
+          reset({
+            ...getValues(),
+            nomeCompleto: profile.nomeCompleto || '',
+            cpf: profile.cpf || '',
+            dataNascimento: profile.dataNascimento || '',
+            genero: profile.genero || '',
+            whatsapp: profile.whatsapp || '',
+            cep: profile.cep || '',
+            endereco: profile.endereco || '',
+            numero: profile.numero || '',
+            bairro: profile.bairro || '',
+            cidade: profile.cidade || '',
+            estado: profile.estado || ''
+          })
+        }
+      } else {
+        setIsFirstAccessEligible(false) // Email não é elegível
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados do usuário:', error)
+      setIsFirstAccessEligible(false)
+    }
+  }
+
+  // Efeito para verificar o email e atualizar elegibilidade
+  useEffect(() => {
+    const email = emailValue
+    if (email && yup.string().email().isValidSync(email)) {
+      fetchUserData(email)
+      if (isFirstAccess) {
+        setEmailLocked(true) // Bloqueia o email se isFirstAccess estiver ativo
+      }
+    } else {
+      setIsFirstAccessEligible(false)
+      setEmailLocked(false)
+      setIsFirstAccess(false) // Reseta isFirstAccess se o email não for válido
+    }
+  }, [emailValue, isFirstAccess])
+
   const onSubmit = async (data: SignInForm) => {
     try {
       if (isFirstAccess) {
@@ -77,12 +134,25 @@ const DashboardSignInScreen = () => {
     }
   }
 
+  const handleCheckboxChange = (e: CheckboxChangeEvent) => {
+    const checked = e.target.checked
+    const email = getValues('email')
+
+    if (checked && !isFirstAccessEligible) {
+      return // Não permite ativar se o email não for elegível
+    }
+
+    setIsFirstAccess(checked)
+    if (!checked) {
+      setEmailLocked(false) // Desbloqueia o email ao desmarcar
+    } else {
+      setEmailLocked(true) // Bloqueia o email ao marcar
+    }
+  }
+
   return (
     <S.DashboardSignInScreen>
       <S.SignInContainer>
-        {message && (
-          <StyledAlert message={message.text} type={message.type} showIcon />
-        )}
         <StyledForm onFinish={handleSubmit(onSubmit)} layout="vertical">
           <Controller
             name="email"
@@ -93,7 +163,11 @@ const DashboardSignInScreen = () => {
                 help={errors.email?.message}
                 validateStatus={errors.email ? 'error' : ''}
               >
-                <StyledInput {...field} placeholder="Digite seu email" />
+                <StyledInput
+                  {...field}
+                  placeholder="Digite seu email"
+                  disabled={emailLocked && isFirstAccess}
+                />
               </StyledForm.Item>
             )}
           />
@@ -299,11 +373,19 @@ const DashboardSignInScreen = () => {
           )}
           <StyledCheckbox
             checked={isFirstAccess}
-            onChange={(e) => setIsFirstAccess(e.target.checked)}
+            onChange={handleCheckboxChange}
+            disabled={
+              !isFirstAccessEligible || (!isValid && !isFirstAccess && !isDirty)
+            }
           >
             Primeiro acesso?
           </StyledCheckbox>
-          <StyledButton type="primary" htmlType="submit" disabled={!isValid}>
+          <StyledButton
+            type="primary"
+            htmlType="submit"
+            disabled={!isValid}
+            block
+          >
             {isFirstAccess ? 'Completar Cadastro' : 'Entrar'}
           </StyledButton>
           <S.ForgotPasswordLink>

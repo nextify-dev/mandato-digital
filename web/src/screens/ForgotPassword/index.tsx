@@ -5,12 +5,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import { useAuth } from '@/contexts/AuthProvider'
-import {
-  StyledForm,
-  StyledButton,
-  StyledInput,
-  StyledAlert
-} from '@/utils/styles/antd'
+import { StyledForm, StyledButton, StyledInput } from '@/utils/styles/antd'
 
 interface ForgotPasswordForm {
   email: string
@@ -21,7 +16,7 @@ const forgotPasswordSchema = yup.object().shape({
 })
 
 const ForgotPasswordScreen = () => {
-  const { resetPassword, message } = useAuth()
+  const { resetPassword } = useAuth()
   const {
     control,
     handleSubmit,
@@ -41,9 +36,6 @@ const ForgotPasswordScreen = () => {
   return (
     <S.ForgotPasswordScreen>
       <S.ForgotPasswordContainer>
-        {message && (
-          <StyledAlert message={message.text} type={message.type} showIcon />
-        )}
         <StyledForm onFinish={handleSubmit(onSubmit)} layout="vertical">
           <Controller
             name="email"
