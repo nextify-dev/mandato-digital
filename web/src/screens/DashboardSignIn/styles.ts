@@ -12,9 +12,9 @@ export const DashboardSignInScreen = styled(Screen)`
   padding: 20px;
 `
 
-export const SignInContainer = styled.div`
+export const SignInContainer = styled.div<{ active: number }>`
   width: 100%;
-  max-width: 400px;
+  max-width: ${({ active }) => (active ? '520px' : '400px')};
   padding: 24px;
   border-radius: 8px;
   border: 1px solid ${color('colorBorderSecondary')};

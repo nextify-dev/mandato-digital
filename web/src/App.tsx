@@ -1,7 +1,7 @@
 // src/App.tsx
 
 import AppRoutes from '@/Routes'
-import { ConfigProvider, App as AntdApp, theme } from 'antd'
+import { ConfigProvider, theme } from 'antd'
 
 import dayjs from 'dayjs'
 dayjs.locale('pt-br')
@@ -14,19 +14,21 @@ function App() {
 export default App
 
 const AppThemed = () => {
+  const envVariables = {
+    colorPrimary: import.meta.env.VITE_DASHBOARD_MAIN_COLOR || ''
+  }
+
   return (
     <ConfigProvider
       locale={localeProvider}
       theme={{
         algorithm: theme.defaultAlgorithm,
         token: {
-          colorPrimary: import.meta.env.VITE_DASHBOARD_MAIN_COLOR
+          colorPrimary: envVariables.colorPrimary
         }
       }}
     >
-      <AntdApp>
-        <AppRoutes />
-      </AntdApp>
+      <AppRoutes />
     </ConfigProvider>
   )
 }

@@ -229,8 +229,8 @@ export const FirstAccessSchema = yup.object({
   foto: yup.string().nullable().optional(),
   telefone: yup
     .string()
-    .matches(/^\(\d{2}\) \d \d{4} \d{4}$/, {
-      message: 'Telefone deve estar no formato (00) 0 0000 0000',
+    .matches(/^\(\d{2}\) \d{5}-\d{4}$/, {
+      message: 'Telefone deve estar no formato (00) 12345-6789',
       excludeEmptyString: true
     })
     .nullable()
@@ -239,7 +239,7 @@ export const FirstAccessSchema = yup.object({
     .string()
     .required('WhatsApp é obrigatório')
     .matches(
-      /^\(\d{2}\) \d \d{4} \d{4}$/,
+      /^\(\d{2}\) \d{5}-\d{4}$/,
       'WhatsApp deve estar no formato (00) 0 0000 0000'
     ),
   instagram: yup.string().nullable().optional(),

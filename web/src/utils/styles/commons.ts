@@ -44,3 +44,17 @@ export const ViewContent = styled.div`
   ${backgroundColor('colorBgBase')}
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.04);
 `
+
+export const FormStep = styled.div<{ visible: number }>`
+  display: ${({ visible }) => (visible ? 'flex' : 'none')};
+  flex-direction: column;
+  row-gap: 12px;
+  width: 100%;
+`
+
+export const FormInputsWrapper = styled.div`
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  height: fit-content;
+`

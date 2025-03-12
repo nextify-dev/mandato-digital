@@ -1,7 +1,16 @@
 // src/utils/styles/antd.ts
 
 import styled from 'styled-components'
-import { Alert, Button, Checkbox, Form, Input, Menu, Steps } from 'antd'
+import {
+  Alert,
+  Button,
+  Checkbox,
+  Descriptions,
+  Form,
+  Input,
+  Menu,
+  Steps
+} from 'antd'
 
 import { font } from './fonts'
 import { color, backgroundColor } from './colors'
@@ -163,6 +172,31 @@ export const StyledAlert = styled(Alert)`
 `
 
 export const StyledSteps = styled(Steps)`
-  /* border-radius: 6px;
-  margin-bottom: 16px; */
+  width: 100%;
+
+  .ant-steps-item {
+    .ant-steps-item-container {
+      .ant-steps-item-content {
+      }
+    }
+  }
+  .ant-steps-item-title {
+    ${font('caption')};
+    margin-top: -5px;
+  }
+`
+
+export const StyledDescriptions = styled(Descriptions)`
+  .ant-descriptions-item-label {
+    ${font('caption')};
+
+    width: 150px !important;
+    padding: 5px 10px !important;
+  }
+
+  .ant-descriptions-item-content {
+    ${font('caption')};
+
+    padding: 8px 12px !important;
+  }
 `

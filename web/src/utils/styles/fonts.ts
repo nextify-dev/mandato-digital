@@ -65,7 +65,7 @@ export const Fonts: FontVariants = {
 } as const
 
 export const font = (variant: FontVariantKeys) => css`
-  font-size: ${Fonts[variant]?.size || Fonts.paragraph.size};
-  line-height: ${Fonts[variant]?.height || Fonts.paragraph.height};
-  font-weight: ${Fonts[variant]?.weight || Fonts.paragraph.weight};
+  font-size: ${Fonts[variant]?.size} !important;
+  line-height: ${Fonts[variant]?.height} !important;
+  font-weight: ${Fonts[variant]?.weight} !important;
 `

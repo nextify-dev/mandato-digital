@@ -53,7 +53,7 @@ const DashboardSignInScreen = () => {
     formState: { errors, isValid }
   } = useForm<SignInForm>({
     resolver: yupResolver(loginSchema),
-    mode: 'all',
+    mode: 'onBlur',
     reValidateMode: 'onChange',
     defaultValues: {
       email: '',
@@ -62,20 +62,6 @@ const DashboardSignInScreen = () => {
   })
 
   const emailValue = watch('email')
-
-  // Verifica elegibilidade ao mudar o email
-  useEffect(() => {
-    if (emailValue && yup.string().email().isValidSync(emailValue)) {
-      checkFirstAccess(emailValue)
-    }
-  }, [emailValue])
-
-  // Revalida o formulário ao mudar isFirstAccess
-  useEffect(() => {
-    if (emailValue !== '') {
-      trigger('email')
-    }
-  }, [isFirstAccess, emailValue, trigger])
 
   const onLoginSubmit = async (data: SignInForm) => {
     await login(data.email, data.password)
@@ -92,7 +78,7 @@ const DashboardSignInScreen = () => {
 
   return (
     <S.DashboardSignInScreen>
-      <S.SignInContainer>
+      <S.SignInContainer active={isFirstAccess ? 1 : 0}>
         {isFirstAccess ? (
           <UserRegistrationForm
             onSubmit={onFirstAccessSubmit}
@@ -111,6 +97,14 @@ const DashboardSignInScreen = () => {
                 >
                   <StyledInput
                     {...field}
+                    onBlur={() => {
+                      if (
+                        emailValue &&
+                        yup.string().email().isValidSync(emailValue)
+                      ) {
+                        checkFirstAccess(emailValue)
+                      }
+                    }}
                     placeholder="Digite seu email"
                     disabled={emailLocked}
                   />
