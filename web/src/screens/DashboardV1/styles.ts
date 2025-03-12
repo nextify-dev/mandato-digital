@@ -28,6 +28,7 @@ export const DashboardSideMenu = styled.div<{ opened: number }>`
 export const DashboardSideMenuHeader = styled.div`
   position: relative;
   height: ${Globals.layout.header.height};
+
   border-bottom: 1px solid ${color('colorBorderSecondary')};
 `
 
@@ -53,7 +54,7 @@ export const DashboardSideMenuWrapper = styled.div`
   width: 100%;
   height: calc(100% - ${Globals.layout.header.height});
   padding: 10px;
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.04);
 `
 
 export const DashboardMenu = styled(StyledMenu)`
@@ -79,7 +80,7 @@ export const DashboardMainHeader = styled.header`
   height: ${Globals.layout.content.headerHeight};
   padding: 0 ${Globals.layout.padding};
   border-bottom: 1px solid ${color('colorBorderSecondary')};
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.04);
 `
 
 export const DashboardActiveViewLabel = styled.div`
@@ -108,7 +109,6 @@ export const DashboardMainViewsWrapper = styled.div`
   height: calc(100% - ${Globals.layout.content.headerHeight});
   overflow: auto;
   padding: ${Globals.layout.padding};
-  ${backgroundColor('colorBgBase')}
 `
 
 export const DashboardMainView = styled.div`

@@ -1,5 +1,5 @@
 import styled from 'styled-components'
 
-export const GestaoUsuariosView = styled.div`
-  display: flex;
-`
+// export const GestaoUsuariosView = styled.div`
+//   display: flex;
+// `

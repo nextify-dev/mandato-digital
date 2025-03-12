@@ -1,9 +1,24 @@
 import * as S from './styles'
 
+import { Button } from 'antd'
+
+import { View } from '@/components'
+
 interface IComunicacaoView {}
 
 const ComunicacaoView = ({}: IComunicacaoView) => {
-  return <S.ComunicacaoView></S.ComunicacaoView>
+  return (
+    <View
+      header={
+        <>
+          <div></div>
+          <Button type="primary">Teste</Button>
+        </>
+      }
+    >
+      ComunicacaoView
+    </View>
+  )
 }
 
 export default ComunicacaoView

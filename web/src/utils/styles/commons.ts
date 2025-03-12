@@ -21,28 +21,29 @@ export const View = styled.div`
   row-gap: 10px;
   width: 100%;
   height: 100%;
-`
-
-export const ViewHeader = styled.header`
-  width: 100%;
-  height: ${Globals.layout.content.headerHeight};
-  padding: 0 ${Globals.layout.padding};
-  border-radius: 8px;
-
-  border: 1px solid ${color('colorBorderSecondary')};
-  ${backgroundColor('colorBgBase')}
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.04);
-`
-
-export const ViewContent = styled.div`
-  width: 100%;
-  height: fit-content;
   padding: ${Globals.layout.padding};
   border-radius: 8px;
 
   border: 1px solid ${color('colorBorderSecondary')};
   ${backgroundColor('colorBgBase')}
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.04);
+`
+
+export const ViewHeader = styled.header`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  height: ${Globals.layout.content.headerHeight};
+  padding: 0 ${Globals.layout.padding};
+  border-radius: 6px;
+
+  border: 1px solid ${color('colorBorderSecondary')};
+`
+
+export const ViewContent = styled.div`
+  width: 100%;
+  height: fit-content;
 `
 
 export const FormStep = styled.div<{ visible: number }>`

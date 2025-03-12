@@ -1,9 +1,24 @@
 import * as S from './styles'
 
+import { Button } from 'antd'
+
+import { View } from '@/components'
+
 interface IGestaoUsuariosView {}
 
 const GestaoUsuariosView = ({}: IGestaoUsuariosView) => {
-  return <S.GestaoUsuariosView></S.GestaoUsuariosView>
+  return (
+    <View
+      header={
+        <>
+          <div></div>
+          <Button type="primary">Teste</Button>
+        </>
+      }
+    >
+      GestaoUsuariosView
+    </View>
+  )
 }
 
 export default GestaoUsuariosView

@@ -1,5 +1,5 @@
 import styled from 'styled-components'
 
-export const MapaEleitoralView = styled.div`
-  display: flex;
-`
+// export const MapaEleitoralView = styled.div`
+//   display: flex;
+// `

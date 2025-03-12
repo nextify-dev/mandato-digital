@@ -2,6 +2,7 @@
 
 import { textColor } from '@/utils/styles/colors'
 import { font } from '@/utils/styles/fonts'
+import { Tag } from 'antd'
 import styled from 'styled-components'
 
 export const UserMenu = styled.div`
@@ -14,8 +15,13 @@ export const UserMenuInfos = styled.div`
   flex-direction: column;
   justify-content: center;
   align-items: flex-end;
-  row-gap: 5px;
-  margin-right: 10px;
+  row-gap: 3px;
+  margin-right: 8px;
+`
+
+export const UserMenuLoading = styled.p`
+  ${font('xs')}
+  ${textColor('colorTextHeading')}
 `
 
 export const UserWelcome = styled.p`
@@ -25,6 +31,15 @@ export const UserWelcome = styled.p`
     font-weight: 500;
   }
 
-  ${font('xs')}
+  ${font('xxs')}
   ${textColor('colorTextHeading')}
+`
+
+export const UserRoleTag = styled(Tag)`
+  display: flex;
+  margin: 0;
+  padding: 2px 5px;
+  cursor: pointer;
+
+  ${font('xxxs')}
 `

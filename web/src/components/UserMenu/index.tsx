@@ -5,13 +5,13 @@ import { useNavigate } from 'react-router-dom'
 import * as S from './styles'
 
 import { Dropdown, Avatar, theme } from 'antd'
-import { LuUserRound } from 'react-icons/lu'
 
 import { MenuProps } from 'antd/lib'
 
 import { USER_MENU } from '@/data/menus'
 import { formatUsername } from '@/utils/functions/formatUsername'
 import { useAuth } from '@/contexts/AuthProvider'
+import { getRoleData } from '@/@types/user'
 
 interface UserMenuProps {}
 
@@ -44,15 +44,18 @@ const UserMenu = ({}: UserMenuProps) => {
     >
       <S.UserMenu>
         <S.UserMenuInfos>
-          <S.UserWelcome>
-            {isAuth ? (
-              <>
+          {!isAuth || !user ? (
+            <S.UserMenuLoading>Carregando...</S.UserMenuLoading>
+          ) : (
+            <>
+              <S.UserWelcome>
                 Olá, <b>{user?.profile?.nomeCompleto}</b>
-              </>
-            ) : (
-              <>Carregando...</>
-            )}
-          </S.UserWelcome>
+              </S.UserWelcome>
+              <S.UserRoleTag color={getRoleData(user?.role).color}>
+                {getRoleData(user?.role).label}
+              </S.UserRoleTag>
+            </>
+          )}
         </S.UserMenuInfos>
 
         <Avatar

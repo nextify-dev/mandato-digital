@@ -1,5 +1,5 @@
 import styled from 'styled-components'
 
-export const ComunicacaoView = styled.div`
-  display: flex;
-`
+// export const ComunicacaoView = styled.div`
+//   display: flex;
+// `

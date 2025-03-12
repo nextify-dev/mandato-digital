@@ -1,9 +1,24 @@
 import * as S from './styles'
 
+import { Button } from 'antd'
+
+import { View } from '@/components'
+
 interface ITransparenciaView {}
 
 const TransparenciaView = ({}: ITransparenciaView) => {
-  return <S.TransparenciaView></S.TransparenciaView>
+  return (
+    <View
+      header={
+        <>
+          <div></div>
+          <Button type="primary">Teste</Button>
+        </>
+      }
+    >
+      TransparenciaView
+    </View>
+  )
 }
 
 export default TransparenciaView

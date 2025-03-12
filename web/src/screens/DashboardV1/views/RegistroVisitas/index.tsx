@@ -1,9 +1,24 @@
 import * as S from './styles'
 
+import { Button } from 'antd'
+
+import { View } from '@/components'
+
 interface IRegistroVisitasView {}
 
 const RegistroVisitasView = ({}: IRegistroVisitasView) => {
-  return <S.RegistroVisitasView></S.RegistroVisitasView>
+  return (
+    <View
+      header={
+        <>
+          <div></div>
+          <Button type="primary">Teste</Button>
+        </>
+      }
+    >
+      RegistroVisitasView
+    </View>
+  )
 }
 
 export default RegistroVisitasView

@@ -1,5 +1,5 @@
 import styled from 'styled-components'
 
-export const DemandasEleitoraisView = styled.div`
-  display: flex;
-`
+// export const DemandasEleitoraisView = styled.div`
+//   display: flex;
+// `

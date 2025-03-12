@@ -166,7 +166,6 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Se o usuário já está registrado, não exibe erro e permite login normal
     if (isAlreadyRegistered) {
-      messageApi.success('Seu e-mail está autorizado! Realize o login')
       setIsFirstAccessEligible(false)
       setIsFirstAccess(false)
       setEmailLocked(false)

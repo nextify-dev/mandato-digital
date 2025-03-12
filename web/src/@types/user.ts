@@ -15,6 +15,57 @@ export enum UserRole {
   PENDENTE = 'Pendente'
 }
 
+export interface UserRoleData {
+  label: string
+  color: string
+}
+
+// Função para converter UserRole em uma label amigável
+export const getRoleData = (role?: UserRole): UserRoleData => {
+  switch (role) {
+    case UserRole.ADMINISTRADOR_GERAL:
+      return {
+        label: 'Administrador Geral',
+        color: '#1E90FF'
+      }
+    case UserRole.ADMINISTRADOR_CIDADE:
+      return {
+        label: 'Administrador da Cidade',
+        color: '#4682B4'
+      }
+    case UserRole.PREFEITO:
+      return {
+        label: 'Prefeito',
+        color: '#2E8B57'
+      }
+    case UserRole.VEREADOR:
+      return {
+        label: 'Vereador',
+        color: '#228B22'
+      }
+    case UserRole.CABO_ELEITORAL:
+      return {
+        label: 'Cabo Eleitoral',
+        color: '#DAA520'
+      }
+    case UserRole.ELEITOR:
+      return {
+        label: 'Eleitor',
+        color: '#696969'
+      }
+    case UserRole.PENDENTE:
+      return {
+        label: 'Pendente',
+        color: '#FF4500'
+      }
+    default:
+      return {
+        label: 'Desconhecido',
+        color: '#808080'
+      }
+  }
+}
+
 export enum UserStatus {
   ATIVO = 'ativo',
   INATIVO = 'inativo',
