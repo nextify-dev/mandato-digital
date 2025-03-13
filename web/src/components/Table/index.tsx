@@ -3,12 +3,11 @@
 import * as S from './styles'
 
 import { TableProps as AntTableProps } from 'antd'
-
 import { StyledTable, TableEmptyResult } from '@/utils/styles/antd'
 
 export interface TableColumn<T> {
   title: string
-  dataIndex?: keyof T | string
+  dataIndex?: keyof T | string | string[]
   key: string
   render?: (value: any, record: T, index: number) => React.ReactNode
   sorter?: (a: T, b: T) => number

@@ -7,6 +7,8 @@ import { font } from './fonts'
 import { color, backgroundColor } from './colors'
 import { Globals } from './globals'
 
+// ===================================================== SCREEN
+
 export const Screen = styled.div`
   display: flex;
   flex-direction: column;
@@ -14,6 +16,8 @@ export const Screen = styled.div`
   height: fit-content;
   min-height: 100vh;
 `
+
+// ===================================================== VIEW
 
 export const View = styled.div`
   display: flex;
@@ -46,6 +50,8 @@ export const ViewContent = styled.div`
   height: fit-content;
 `
 
+// ===================================================== FORM
+
 export const FormStep = styled.div<{ visible: number }>`
   display: ${({ visible }) => (visible ? 'flex' : 'none')};
   flex-direction: column;
@@ -58,4 +64,16 @@ export const FormInputsWrapper = styled.div`
   gap: 10px;
   width: 100%;
   height: fit-content;
+`
+
+// ===================================================== TABLE
+
+export const TableExtrasWrapper = styled.div`
+  display: flex;
+  gap: 6px;
+
+  button.ant-btn {
+    width: fit-content !important;
+    padding: 0 4px;
+  }
 `

@@ -1,3 +1,5 @@
+// src/screens/DashboardV1/views/CadastroEleitores/styles.ts
+
 import styled from 'styled-components'
 
 export const HeaderWrapper = styled.div`

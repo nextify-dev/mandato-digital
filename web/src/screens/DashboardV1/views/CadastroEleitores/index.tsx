@@ -1,13 +1,18 @@
+// src/screens/DashboardV1/views/CadastroEleitores/index.tsx
+
 import { useState } from 'react'
+
 import * as S from './styles'
+
 import { Button, Input, Select, Tag, Avatar, Space } from 'antd'
 import { LuPenTool, LuTrash2, LuLock, LuLockOpen, LuEye } from 'react-icons/lu'
+
 import { View, Table, Modal, UserRegistrationForm } from '@/components'
 import { VotersProvider, useVoters } from '@/contexts/VotersProvider'
-import { User } from '@/@types/user'
+import { getStatusData, User, UserRegistrationFormType } from '@/@types/user'
 import { GENDER_OPTIONS, getGenderLabel } from '@/data/options'
 import { applyMask, convertToISODate } from '@/utils/functions/masks'
-import dayjs from 'dayjs'
+import { TableExtrasWrapper } from '@/utils/styles/commons'
 
 const { Search } = Input
 
@@ -23,11 +28,6 @@ const CadastroEleitoresViewContent = () => {
   } = useVoters()
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const calculateAge = (birthDate: string) => {
-    const date = dayjs(convertToISODate(birthDate))
-    return `${dayjs().diff(date, 'year')} anos`
-  }
-
   const columns = [
     {
       title: 'Foto',
@@ -37,11 +37,11 @@ const CadastroEleitoresViewContent = () => {
           {record.profile?.nomeCompleto?.charAt(0) || 'E'}
         </Avatar>
       ),
-      width: 50
+      width: 65
     },
     {
       title: 'Nome',
-      dataIndex: 'profile.nomeCompleto',
+      dataIndex: ['profile', 'nomeCompleto'],
       key: 'nomeCompleto',
       sorter: (a: User, b: User) =>
         (a.profile?.nomeCompleto || '').localeCompare(
@@ -49,20 +49,21 @@ const CadastroEleitoresViewContent = () => {
         )
     },
     {
-      title: 'Telefone',
-      dataIndex: 'profile.telefone',
-      key: 'telefone',
-      render: (telefone: string) =>
-        telefone ? applyMask(telefone, 'phone') : 'N/A'
+      title: 'WhatsApp',
+      dataIndex: ['profile', 'whatsapp'],
+      key: 'whatsapp',
+      render: (whatsapp: string) =>
+        whatsapp ? applyMask(whatsapp, 'phone') : 'N/A',
+      width: 130
     },
     {
       title: 'Cidade',
-      dataIndex: 'profile.cidade',
+      dataIndex: ['profile', 'cidade'],
       key: 'cidade'
     },
     {
       title: 'Gênero',
-      dataIndex: 'profile.genero',
+      dataIndex: ['profile', 'genero'],
       key: 'genero',
       render: (genero: string) => (
         <Tag color="blue">{getGenderLabel(genero)}</Tag>
@@ -70,16 +71,26 @@ const CadastroEleitoresViewContent = () => {
     },
     {
       title: 'Idade',
-      dataIndex: 'profile.dataNascimento',
+      dataIndex: ['profile', 'dataNascimento'],
       key: 'idade',
       render: (dataNascimento: string) =>
-        dataNascimento ? calculateAge(dataNascimento) : 'N/A'
+        dataNascimento ? applyMask(dataNascimento, 'ageFromISO') : 'N/A'
+    },
+    {
+      title: 'Status',
+      dataIndex: ['profile', 'status'],
+      key: 'idade',
+      render: (_: any, record: User) => (
+        <Tag color={getStatusData(record.status).color}>
+          {getStatusData(record.status).label}
+        </Tag>
+      )
     },
     {
       title: 'Ações',
       key: 'actions',
       render: (_: any, record: User) => (
-        <Space>
+        <TableExtrasWrapper>
           <Button
             type="link"
             icon={<LuPenTool />}
@@ -90,33 +101,38 @@ const CadastroEleitoresViewContent = () => {
             icon={<LuTrash2 />}
             danger
             onClick={() => deleteVoter(record.id)}
+            disabled
           />
           <Button
             type="link"
             icon={record.status === 'ativo' ? <LuLock /> : <LuLockOpen />}
-            onClick={() => toggleVoterStatus(record.id, record.status)}
+            onClick={() => toggleVoterStatus(record.id)}
           />
           <Button
             type="link"
             icon={<LuEye />}
             onClick={() => console.log('Visualizar', record.id)}
           />
-        </Space>
+        </TableExtrasWrapper>
       ),
       width: 150
     }
   ]
 
   const handleSearch = (value: string) => {
-    setFilters({ ...filters, search: value })
+    setFilters({
+      ...filters,
+      name: value,
+      cpf: value
+    })
   }
 
   const handleGenderFilter = (value: string) => {
-    setFilters({ ...filters, gender: value })
+    setFilters({ ...filters, genero: value || undefined })
   }
 
-  const handleCreateVoter = async (data: any) => {
-    await createVoter({ profile: data, cityId: 'default_city' }) // Ajuste cityId conforme necessário
+  const handleCreateVoter = async (data: UserRegistrationFormType) => {
+    await createVoter(data, 'default_city') // Substitua 'default_city' por um valor dinâmico, se necessário
     setIsModalOpen(false)
   }
 
@@ -126,7 +142,7 @@ const CadastroEleitoresViewContent = () => {
         <S.HeaderWrapper>
           <S.SearchWrapper>
             <Search
-              placeholder="Pesquisar por nome, CPF ou telefone"
+              placeholder="Pesquisar por nome ou CPF"
               onSearch={handleSearch}
               style={{ width: 300 }}
             />

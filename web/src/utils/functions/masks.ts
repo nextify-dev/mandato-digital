@@ -1,3 +1,7 @@
+// src/utils/functions/masks.ts
+
+import dayjs from 'dayjs'
+
 // Máscaras para campos de texto
 const maskFunctions = {
   phone: (value: string) => {
@@ -36,6 +40,15 @@ const maskFunctions = {
       .replace(/(\d{2})(\d)/, '$1/$2')
       .replace(/(\d{2})(\d)/, '$1/$2')
       .replace(/(\d{4})\d+?$/, '$1')
+  },
+  ageFromISO: (isoDate: string) => {
+    const date = dayjs(isoDate)
+    if (!date.isValid()) {
+      console.error('Data ISO inválida:', isoDate)
+      return 'N/A'
+    }
+    const age = dayjs().diff(date, 'year')
+    return `${age} anos`
   },
   // Formatação de nome de usuário
   username: (value: string) => {
@@ -127,8 +140,8 @@ export const sanitizeEmail = (email: string): string => {
 // Converte data no formato DD/MM/AAAA para ISO
 export const convertToISODate = (date: string): string => {
   const [day, month, year] = date.split('/').map(Number)
-  return `${year}-${month.toString().padStart(2, '0')}-${day
-    .toString()
+  return `${year}-${month?.toString().padStart(2, '0')}-${day
+    ?.toString()
     .padStart(2, '0')}`
 }
 

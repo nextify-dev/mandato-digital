@@ -76,7 +76,7 @@ const UserRegistrationForm: React.FC<UserRegistrationFormProps> = ({
       estado: initialData?.estado || '',
       password: mode === 'firstAccess' ? '' : undefined,
       confirmPassword: mode === 'firstAccess' ? '' : undefined,
-      observacoes: mode !== 'firstAccess' ? '' : undefined,
+      observacoes: initialData?.observacoes || undefined,
       role: mode === 'userCreation' ? undefined : undefined,
       creationMode: mode === 'userCreation' ? 'fromScratch' : undefined
     }
@@ -151,11 +151,15 @@ const UserRegistrationForm: React.FC<UserRegistrationFormProps> = ({
       fields:
         mode === 'firstAccess'
           ? ['password', 'confirmPassword']
-          : ['observacoes'],
+          : [
+              // 'observacoes'
+            ],
       requiredFields:
         mode === 'firstAccess'
           ? ['password', 'confirmPassword']
-          : ['observacoes']
+          : [
+              // 'observacoes'
+            ]
     }
   ]
 
@@ -820,7 +824,7 @@ const ReviewStep = ({
           control={control}
           render={({ field }) => (
             <StyledForm.Item
-              label="Observações"
+              label="Observações (opcional)"
               help={errors.observacoes?.message}
               validateStatus={errors.observacoes ? 'error' : ''}
             >

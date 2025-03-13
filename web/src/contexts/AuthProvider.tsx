@@ -34,7 +34,9 @@ interface IAuthContextData {
   ) => Promise<void>
   completeRegistration: (
     email: string,
-    data: UserRegistrationFormType
+    data: UserRegistrationFormType,
+    mode: 'firstAccess' | 'voterCreation' | 'userCreation',
+    cityId: string
   ) => Promise<void>
   resetPassword: (email: string) => Promise<void>
   checkFirstAccess: (email: string) => Promise<void>
@@ -140,11 +142,18 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const completeRegistration = async (
     email: string,
-    data: UserRegistrationFormType
+    data: UserRegistrationFormType,
+    mode: 'firstAccess' | 'voterCreation' | 'userCreation',
+    cityId: string
   ) => {
     setIsAuthLoading(true)
     try {
-      const userData = await authService.completeRegistration(email, data)
+      const userData = await authService.completeRegistration(
+        email,
+        data,
+        mode,
+        cityId
+      )
       setUser(convertToUserType(userData))
       setIsAuth(true)
       setIsFirstAccess(false)
@@ -175,7 +184,6 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { isEligible, isAlreadyRegistered, userData } =
       await authService.checkFirstAccessEligibility(email)
 
-    // Se o usuário já está registrado, não exibe erro e permite login normal
     if (isAlreadyRegistered) {
       setIsFirstAccessEligible(false)
       setIsFirstAccess(false)
@@ -184,7 +192,6 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return
     }
 
-    // Se não é elegível e não está registrado, exibe erro
     if (!isEligible) {
       messageApi.error('Seu e-mail não está autorizado')
       setIsFirstAccessEligible(false)
@@ -194,7 +201,6 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return
     }
 
-    // Se é elegível (primeiro acesso pendente), configura o estado para primeiro acesso
     setIsFirstAccessEligible(true)
     setFirstAccessData(userData)
     if (isFirstAccess) {

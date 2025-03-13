@@ -3,6 +3,11 @@ import { GENDER_OPTIONS, RELIGION_OPTIONS } from '@/data/options'
 import { convertToISODate } from '@/utils/functions/masks'
 import * as yup from 'yup'
 
+export interface FormattedUserTag {
+  label: string
+  color: string
+}
+
 // Enums para papéis e status
 export enum UserRole {
   ADMINISTRADOR_GERAL = 'Administrador_Geral',
@@ -14,13 +19,8 @@ export enum UserRole {
   PENDENTE = 'Pendente'
 }
 
-export interface UserRoleData {
-  label: string
-  color: string
-}
-
 // Função para converter UserRole em uma label amigável
-export const getRoleData = (role?: UserRole): UserRoleData => {
+export const getRoleData = (role?: UserRole): FormattedUserTag => {
   switch (role) {
     case UserRole.ADMINISTRADOR_GERAL:
       return { label: 'Administrador Geral', color: '#1E90FF' }
@@ -45,6 +45,20 @@ export enum UserStatus {
   ATIVO = 'ativo',
   INATIVO = 'inativo',
   SUSPENSO = 'suspenso'
+}
+
+// Função para converter UserStatus em uma label amigável
+export const getStatusData = (status?: UserStatus): FormattedUserTag => {
+  switch (status) {
+    case UserStatus.ATIVO:
+      return { label: 'Ativo', color: '#2E8B57' }
+    case UserStatus.INATIVO:
+      return { label: 'Inativo', color: '#808080' }
+    case UserStatus.SUSPENSO:
+      return { label: 'Bloqueado', color: '#FF4500' }
+    default:
+      return { label: 'Desconhecido', color: '#808080' }
+  }
 }
 
 // Interface base para dados comuns a todos os usuários
@@ -328,10 +342,7 @@ export const getUserRegistrationSchema = (
             .required('Confirmação de senha é obrigatória')
             .oneOf([yup.ref('password')], 'As senhas devem coincidir')
         : yup.string().notRequired(),
-    observacoes:
-      mode !== 'firstAccess'
-        ? yup.string().required('Observações são obrigatórias')
-        : yup.string().notRequired(),
+    observacoes: yup.string().nullable().optional(),
     role:
       mode === 'userCreation'
         ? yup
