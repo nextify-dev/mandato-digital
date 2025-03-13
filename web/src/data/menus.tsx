@@ -66,21 +66,6 @@ export const DASHBOARD_MENUS: IMenu[] = [
 
   // Categoria: Gestão
   {
-    menuId: 'gestao-usuarios',
-    menuName: 'Gestão de Usuários',
-    menuLegend: 'Gerenciar usuários do sistema',
-    menuIcon: <LuUsers />,
-    menuView: (
-      <>
-        <GestaoUsuariosView />
-      </>
-    ),
-    menuCategory: 'Gestão',
-    requiredPermissions: { canEditUsers: true },
-    menuDisabled: false,
-    menuHidden: false
-  },
-  {
     menuId: 'gestao-cidades',
     menuName: 'Gestão de Cidades',
     menuLegend: 'Gerenciar cidades cadastradas',
@@ -237,6 +222,23 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuHidden: false
   },
 
+  // Categoria: Administração
+  {
+    menuId: 'gestao-usuarios',
+    menuName: 'Gestão de Usuários',
+    menuLegend: 'Gerenciar usuários do sistema',
+    menuIcon: <LuUsers />,
+    menuView: (
+      <>
+        <GestaoUsuariosView />
+      </>
+    ),
+    menuCategory: 'Administração',
+    requiredPermissions: { canEditUsers: true },
+    menuDisabled: false,
+    menuHidden: false
+  },
+
   // Categoria: Conta
   {
     menuId: 'minha-conta',
@@ -328,7 +330,7 @@ export const formatMenusForAntDesign = (
           icon: menu.menuIcon,
           label: menu.menuName,
           disabled: menu.menuDisabled,
-          title: menu.menuLegend
+          title: menu.menuName
         }))
       }
     })
