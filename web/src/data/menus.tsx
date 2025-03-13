@@ -31,6 +31,7 @@ import MonitoramentoRedesView from '@/screens/DashboardV1/views/MonitoramentoRed
 import MinhaContaView from '@/screens/DashboardV1/views/MinhaConta'
 
 import { UserType, Permissions } from '@/@types/user'
+import { VotersProvider } from '@/contexts/VotersProvider'
 
 // Interface do Menu
 export interface IMenu {
@@ -86,9 +87,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Gerenciar eleitores',
     menuIcon: <LuUsers />,
     menuView: (
-      <>
+      <VotersProvider>
         <CadastroEleitoresView />
-      </>
+      </VotersProvider>
     ),
     menuCategory: 'Gestão',
     requiredPermissions: { canRegisterVoters: true },

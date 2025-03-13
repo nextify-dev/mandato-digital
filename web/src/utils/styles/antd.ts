@@ -9,6 +9,7 @@ import {
   Form,
   Input,
   Menu,
+  Modal,
   Result,
   Steps,
   Table,
@@ -342,5 +343,22 @@ export const TableEmptyResult = styled(Result)`
     font-weight: 400;
 
     ${font('xxs')}
+  }
+`
+
+export const StyledModal = styled(Modal)`
+  .ant-modal-content {
+    ${backgroundColor('colorBgBase')}
+    border: 1px solid ${color('colorBorderSecondary')};
+    border-radius: 8px;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.04);
+  }
+
+  .ant-modal-header {
+    border-bottom: 1px solid ${color('colorBorderSecondary')};
+  }
+
+  .ant-modal-footer {
+    border-top: 1px solid ${color('colorBorderSecondary')};
   }
 `

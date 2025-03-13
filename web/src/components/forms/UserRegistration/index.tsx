@@ -245,7 +245,7 @@ const DadosPessoaisStep = ({
             help={errors.email?.message}
             validateStatus={errors.email ? 'error' : ''}
           >
-            <StyledInput {...field} placeholder="Digite seu email" disabled />
+            <StyledInput {...field} placeholder="Digite seu email" />
           </StyledForm.Item>
         )}
       />
