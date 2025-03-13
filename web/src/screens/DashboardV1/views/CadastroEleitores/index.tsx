@@ -1,32 +1,32 @@
 // src/screens/DashboardV1/views/CadastroEleitores/index.tsx
 
-import { useState } from 'react'
-
+import { useState, useRef } from 'react'
 import * as S from './styles'
-
-import { Button, Input, Select, Tag, Avatar, Space } from 'antd'
-import { LuPenTool, LuTrash2, LuLock, LuLockOpen, LuEye } from 'react-icons/lu'
-
+import { Button, Input, Select, Tag, Avatar } from 'antd'
+import { LuUserPen, LuTrash2, LuLock, LuLockOpen, LuEye } from 'react-icons/lu'
 import { View, Table, Modal, UserRegistrationForm } from '@/components'
-import { VotersProvider, useVoters } from '@/contexts/VotersProvider'
 import { getStatusData, User, UserRegistrationFormType } from '@/@types/user'
 import { GENDER_OPTIONS, getGenderLabel } from '@/data/options'
-import { applyMask, convertToISODate } from '@/utils/functions/masks'
+import { applyMask } from '@/utils/functions/masks'
 import { TableExtrasWrapper } from '@/utils/styles/commons'
+import { useUsers } from '@/contexts/UsersProvider'
+import { UseFormReturn } from 'react-hook-form'
 
 const { Search } = Input
 
-const CadastroEleitoresViewContent = () => {
+const CadastroEleitoresView = () => {
   const {
     voters,
     loading,
     filters,
     setFilters,
-    createVoter,
-    toggleVoterStatus,
-    deleteVoter
-  } = useVoters()
+    createUser,
+    toggleUserStatus,
+    deleteUser
+  } = useUsers()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [currentStep, setCurrentStep] = useState(0) // Estado para controlar a etapa do formulário
+  const formRef = useRef<UseFormReturn<UserRegistrationFormType> | null>(null)
 
   const columns = [
     {
@@ -79,7 +79,7 @@ const CadastroEleitoresViewContent = () => {
     {
       title: 'Status',
       dataIndex: ['profile', 'status'],
-      key: 'idade',
+      key: 'status', // Corrigido de 'idade' para 'status'
       render: (_: any, record: User) => (
         <Tag color={getStatusData(record.status).color}>
           {getStatusData(record.status).label}
@@ -93,20 +93,20 @@ const CadastroEleitoresViewContent = () => {
         <TableExtrasWrapper>
           <Button
             type="link"
-            icon={<LuPenTool />}
+            icon={<LuUserPen />}
             onClick={() => console.log('Editar', record.id)}
           />
           <Button
             type="link"
             icon={<LuTrash2 />}
             danger
-            onClick={() => deleteVoter(record.id)}
+            onClick={() => deleteUser(record.id)}
             disabled
           />
           <Button
             type="link"
             icon={record.status === 'ativo' ? <LuLock /> : <LuLockOpen />}
-            onClick={() => toggleVoterStatus(record.id)}
+            onClick={() => toggleUserStatus(record.id)}
           />
           <Button
             type="link"
@@ -132,8 +132,16 @@ const CadastroEleitoresViewContent = () => {
   }
 
   const handleCreateVoter = async (data: UserRegistrationFormType) => {
-    await createVoter(data, 'default_city') // Substitua 'default_city' por um valor dinâmico, se necessário
+    await createUser(data, 'default_city', 'voterCreation')
     setIsModalOpen(false)
+  }
+
+  const handleModalClose = () => {
+    setIsModalOpen(false)
+    if (formRef.current) {
+      formRef.current.reset() // Resetar o formulário
+      setCurrentStep(0) // Voltar para a primeira etapa
+    }
   }
 
   return (
@@ -169,23 +177,22 @@ const CadastroEleitoresViewContent = () => {
       <Modal
         title="Novo Cadastro de Eleitor"
         open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
+        onCancel={handleModalClose}
         footer={null}
         width={600}
       >
-        <UserRegistrationForm
-          onSubmit={handleCreateVoter}
-          mode="voterCreation"
-        />
+        {isModalOpen && (
+          <UserRegistrationForm
+            onSubmit={handleCreateVoter}
+            mode="voterCreation"
+            ref={formRef}
+            currentStep={currentStep} // Passar o estado da etapa
+            setCurrentStep={setCurrentStep} // Passar a função para atualizar a etapa
+          />
+        )}
       </Modal>
     </View>
   )
 }
-
-const CadastroEleitoresView = () => (
-  <VotersProvider>
-    <CadastroEleitoresViewContent />
-  </VotersProvider>
-)
 
 export default CadastroEleitoresView

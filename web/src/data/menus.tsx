@@ -30,9 +30,6 @@ import PlanejamentoView from '@/screens/DashboardV1/views/Planejamento'
 import MonitoramentoRedesView from '@/screens/DashboardV1/views/MonitoramentoRedes'
 import MinhaContaView from '@/screens/DashboardV1/views/MinhaConta'
 
-import { VotersProvider } from '@/contexts/VotersProvider'
-import { UsersProvider } from '@/contexts/UsersProvider'
-
 import { UserType, Permissions } from '@/@types/user'
 
 // Interface do Menu
@@ -89,9 +86,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Gerenciar eleitores',
     menuIcon: <LuUsers />,
     menuView: (
-      <VotersProvider>
+      <>
         <CadastroEleitoresView />
-      </VotersProvider>
+      </>
     ),
     menuCategory: 'Gestão',
     requiredPermissions: { canRegisterVoters: true },
@@ -232,9 +229,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Gerenciar usuários do sistema',
     menuIcon: <LuUsers />,
     menuView: (
-      <UsersProvider>
+      <>
         <GestaoUsuariosView />
-      </UsersProvider>
+      </>
     ),
     menuCategory: 'Administração',
     requiredPermissions: { canEditUsers: true },

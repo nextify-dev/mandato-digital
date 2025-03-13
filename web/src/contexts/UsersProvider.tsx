@@ -18,16 +18,20 @@ interface UserFilter {
   name?: string
   email?: string
   role?: UserRole
+  genero?: string
+  cpf?: string
 }
 
 interface UsersContextData {
-  users: User[]
+  users: User[] // Usuários exceto ELEITOR
+  voters: User[] // Apenas ELEITOR
   loading: boolean
   filters: UserFilter
   setFilters: (filters: UserFilter) => void
   createUser: (
     userData: UserRegistrationFormType,
-    cityId: string
+    cityId: string,
+    mode: 'userCreation' | 'voterCreation'
   ) => Promise<void>
   updateUser: (
     userId: string,
@@ -41,18 +45,19 @@ const UsersContext = createContext<UsersContextData>({} as UsersContextData)
 
 export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
   const [messageApi, contextHolder] = message.useMessage()
-  const [users, setUsers] = useState<User[]>([])
+  const [users, setUsers] = useState<User[]>([]) // Usuários exceto ELEITOR
+  const [voters, setVoters] = useState<User[]>([]) // Apenas ELEITOR
   const [loading, setLoading] = useState(false)
   const [filters, setFilters] = useState<UserFilter>({})
 
-  const fetchUsers = async () => {
+  const fetchUsersAndVoters = async () => {
     setLoading(true)
     try {
       const snapshot = await get(ref(db, 'users'))
       const usersData = snapshot.val() || {}
       const allUsers = Object.values(usersData) as User[]
 
-      // Filtra usuários excluindo ELEITOR e aplica filtros adicionais
+      // Filtra usuários exceto ELEITOR
       const filteredUsers = allUsers.filter((user) => {
         return (
           user.role !== UserRole.ELEITOR &&
@@ -62,38 +67,61 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
           (!filters.name ||
             user.profile?.nomeCompleto
               ?.toLowerCase()
-              .includes(filters.name.toLowerCase())) &&
+              .includes(filters.name?.toLowerCase() || '')) &&
           (!filters.email ||
-            user.email.toLowerCase().includes(filters.email.toLowerCase()))
+            user.email
+              .toLowerCase()
+              .includes(filters.email?.toLowerCase() || ''))
+        )
+      })
+
+      // Filtra apenas ELEITOR
+      const filteredVoters = allUsers.filter((user) => {
+        return (
+          user.role === UserRole.ELEITOR &&
+          (!filters.cityId || user.cityId === filters.cityId) &&
+          (!filters.status || user.status === filters.status) &&
+          (!filters.genero || user.profile?.genero === filters.genero) &&
+          (!filters.name ||
+            user.profile?.nomeCompleto
+              ?.toLowerCase()
+              .includes(filters.name?.toLowerCase() || '')) &&
+          (!filters.cpf || user.profile?.cpf.includes(filters.cpf || ''))
         )
       })
 
       setUsers(filteredUsers)
+      setVoters(filteredVoters)
     } catch (error: any) {
-      messageApi.error('Erro ao buscar usuários: ' + error.message)
+      messageApi.error('Erro ao buscar usuários/eleitores: ' + error.message)
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchUsers()
+    fetchUsersAndVoters()
   }, [filters])
 
   const createUser = async (
     userData: UserRegistrationFormType,
-    cityId: string
+    cityId: string,
+    mode: 'userCreation' | 'voterCreation'
   ) => {
     setLoading(true)
     try {
       await authService.completeRegistration(
         userData.email,
         userData,
-        'userCreation',
+        mode,
         cityId
       )
-      messageApi.success('Usuário cadastrado com sucesso!')
-      await fetchUsers()
+      messageApi.success(
+        mode === 'userCreation'
+          ? 'Usuário cadastrado com sucesso!'
+          : 'Eleitor cadastrado com sucesso!'
+      )
+      await fetchUsersAndVoters()
     } catch (error: any) {
       messageApi.error(error.message)
       throw error
@@ -109,8 +137,8 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
     setLoading(true)
     try {
       await authService.editUser(userId, updates)
-      messageApi.success('Usuário atualizado com sucesso!')
-      await fetchUsers()
+      messageApi.success('Usuário/Eleitor atualizado com sucesso!')
+      await fetchUsersAndVoters()
     } catch (error: any) {
       messageApi.error(error.message)
       throw error
@@ -123,8 +151,8 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
     setLoading(true)
     try {
       await authService.deleteUser(userId)
-      messageApi.success('Usuário excluído com sucesso!')
-      await fetchUsers()
+      messageApi.success('Usuário/Eleitor excluído com sucesso!')
+      await fetchUsersAndVoters()
     } catch (error: any) {
       messageApi.error(error.message)
       throw error
@@ -137,7 +165,7 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
     setLoading(true)
     try {
       const user = await authService.getUserData(userId)
-      if (!user) throw new Error('Usuário não encontrado')
+      if (!user) throw new Error('Usuário/Eleitor não encontrado')
 
       const newStatus =
         user.status === UserStatus.ATIVO
@@ -145,8 +173,8 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
           : UserStatus.ATIVO
 
       await authService.editUser(userId, { status: newStatus })
-      messageApi.success('Status do usuário alterado com sucesso!')
-      await fetchUsers()
+      messageApi.success('Status do usuário/eleitor alterado com sucesso!')
+      await fetchUsersAndVoters()
     } catch (error: any) {
       messageApi.error(error.message)
       throw error
@@ -159,6 +187,7 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
     <UsersContext.Provider
       value={{
         users,
+        voters,
         loading,
         filters,
         setFilters,

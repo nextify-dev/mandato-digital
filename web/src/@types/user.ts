@@ -1,4 +1,5 @@
 // src/@types/user.ts
+
 import { GENDER_OPTIONS, RELIGION_OPTIONS } from '@/data/options'
 import { convertToISODate } from '@/utils/functions/masks'
 import * as yup from 'yup'
@@ -249,6 +250,7 @@ export interface UserRegistrationForm {
   observacoes?: string
   role?: UserRole
   creationMode?: 'fromScratch' | 'fromVoter'
+  voterId?: string
 }
 
 // Esquema dinâmico de validação baseado no modo
@@ -361,6 +363,16 @@ export const getUserRegistrationSchema = (
             .string()
             .required('Modo de criação é obrigatório')
             .oneOf(['fromScratch', 'fromVoter'], 'Modo de criação inválido')
+        : yup.string().notRequired(),
+    voterId:
+      mode === 'userCreation'
+        ? yup
+            .string()
+            .when('creationMode', ([creationMode], schema) =>
+              creationMode === 'fromVoter'
+                ? schema.required('Seleção de eleitor é obrigatória')
+                : schema.nullable().notRequired()
+            )
         : yup.string().notRequired()
   })
 }

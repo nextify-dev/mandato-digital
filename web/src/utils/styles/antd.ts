@@ -18,7 +18,7 @@ import {
 
 import { font } from './fonts'
 import { color, backgroundColor } from './colors'
-import { Globals } from './globals'
+import { ModalSize } from '@/components/Modal'
 
 const { useToken } = theme
 
@@ -179,6 +179,7 @@ export const StyledAlert = styled(Alert)`
 
 export const StyledSteps = styled(Steps)`
   width: 100%;
+  margin-left: -8px;
 
   .ant-steps-item {
     .ant-steps-item-container {
@@ -346,11 +347,20 @@ export const TableEmptyResult = styled(Result)`
   }
 `
 
-export const StyledModal = styled(Modal)`
+const modalSizes = {
+  small: '400px',
+  default: '500px',
+  large: '620px'
+}
+
+export const StyledModal = styled(Modal)<{ size?: ModalSize }>`
+  width: ${({ size }) => modalSizes[size || 'default']} !important;
+
   .ant-modal-content {
+    border-radius: 8px;
+
     ${backgroundColor('colorBgBase')}
     border: 1px solid ${color('colorBorderSecondary')};
-    border-radius: 8px;
     box-shadow: 0 0 8px rgba(0, 0, 0, 0.04);
   }
 
@@ -372,4 +382,11 @@ export const StyledModal = styled(Modal)`
   .ant-modal-footer {
     border-top: 1px solid ${color('colorBorderSecondary')};
   }
+
+  /* @media (max-width: 768px) {
+    .ant-modal-content {
+      width: ${({ size }) =>
+    size === 'large' ? '90vw' : size === 'small' ? '80vw' : '85vw'};
+    }
+  } */
 `

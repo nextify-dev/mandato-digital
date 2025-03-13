@@ -38,7 +38,7 @@ export const UserWelcome = styled.p`
 export const UserRoleTag = styled(Tag)`
   display: flex;
   margin: 0;
-  padding: 2px 5px;
+  padding: 3px 6px;
   cursor: pointer;
 
   ${font('xxxs')}

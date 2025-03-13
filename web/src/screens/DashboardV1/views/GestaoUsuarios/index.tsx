@@ -1,9 +1,9 @@
 // src/screens/DashboardV1/views/GestaoUsuarios/index.tsx
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import * as S from './styles'
-import { Button, Input, Select, Tag, Avatar, Space } from 'antd'
-import { LuPenTool, LuTrash2, LuLock, LuLockOpen, LuEye } from 'react-icons/lu'
+import { LuUserPen, LuTrash2, LuLock, LuLockOpen, LuEye } from 'react-icons/lu'
+import { Button, Input, Select, Tag, Avatar } from 'antd'
 import { View, Table, Modal, UserRegistrationForm } from '@/components'
 import { UsersProvider, useUsers } from '@/contexts/UsersProvider'
 import {
@@ -16,6 +16,7 @@ import {
 } from '@/@types/user'
 import { applyMask } from '@/utils/functions/masks'
 import { TableExtrasWrapper } from '@/utils/styles/commons'
+import { UseFormReturn } from 'react-hook-form'
 
 const { Search } = Input
 
@@ -30,6 +31,8 @@ const GestaoUsuariosViewContent = () => {
     deleteUser
   } = useUsers()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [currentStep, setCurrentStep] = useState(0) // Estado para controlar a etapa do formulário
+  const formRef = useRef<UseFormReturn<UserRegistrationFormType> | null>(null)
 
   const columns = [
     {
@@ -55,7 +58,8 @@ const GestaoUsuariosViewContent = () => {
       title: 'WhatsApp',
       dataIndex: ['profile', 'whatsapp'],
       key: 'whatsapp',
-      render: (whatsapp: string) => applyMask(whatsapp, 'phone'),
+      render: (whatsapp: string) =>
+        whatsapp ? applyMask(whatsapp, 'phone') : 'N/A', // Adicionado fallback
       width: 130
     },
     {
@@ -88,7 +92,7 @@ const GestaoUsuariosViewContent = () => {
         <TableExtrasWrapper>
           <Button
             type="link"
-            icon={<LuPenTool />}
+            icon={<LuUserPen />}
             onClick={() => console.log('Editar', record.id)}
           />
           <Button
@@ -126,8 +130,16 @@ const GestaoUsuariosViewContent = () => {
   }
 
   const handleCreateUser = async (data: UserRegistrationFormType) => {
-    await createUser(data, 'default_city') // Substitua 'default_city' por um valor dinâmico, se necessário
+    await createUser(data, 'default_city', 'userCreation')
     setIsModalOpen(false)
+  }
+
+  const handleModalClose = () => {
+    setIsModalOpen(false)
+    if (formRef.current) {
+      formRef.current.reset() // Resetar o formulário
+      setCurrentStep(0) // Voltar para a primeira etapa
+    }
   }
 
   const ROLE_FILTER_OPTIONS = Object.values(UserRole)
@@ -170,11 +182,20 @@ const GestaoUsuariosViewContent = () => {
       <Modal
         title="Novo Cadastro de Usuário"
         open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
+        onCancel={handleModalClose}
         footer={null}
         width={600}
+        size="large"
       >
-        <UserRegistrationForm onSubmit={handleCreateUser} mode="userCreation" />
+        {isModalOpen && (
+          <UserRegistrationForm
+            onSubmit={handleCreateUser}
+            mode="userCreation"
+            ref={formRef}
+            currentStep={currentStep} // Passar o estado da etapa
+            setCurrentStep={setCurrentStep} // Passar a função para atualizar a etapa
+          />
+        )}
       </Modal>
     </View>
   )

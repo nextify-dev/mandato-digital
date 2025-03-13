@@ -10,7 +10,7 @@ const ActiveCity = ({ cityId }: IActiveCityProps) => {
   return (
     <S.ActiveCity>
       <S.ActiveCityLabel>Minha Cidade:</S.ActiveCityLabel>
-      <S.ActiveCityTag>São José do Mipibu - RN</S.ActiveCityTag>
+      <S.ActiveCityTag color="#fec107">Porto Alegre - RS</S.ActiveCityTag>
     </S.ActiveCity>
   )
 }
