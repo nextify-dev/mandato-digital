@@ -1,4 +1,4 @@
-// src/components/UserMenu/styles.ts
+// src/components/ActiveCity/styles.ts
 
 import styled from 'styled-components'
 import { Tag, theme } from 'antd'

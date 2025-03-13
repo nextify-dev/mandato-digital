@@ -34,7 +34,8 @@ import { DefaultValues } from 'react-hook-form'
 
 const { TextArea } = Input
 
-type FormMode = 'firstAccess' | 'voterCreation' | 'userCreation'
+// Atualizar o tipo FormMode para incluir 'viewOnly'
+type FormMode = 'firstAccess' | 'voterCreation' | 'userCreation' | 'viewOnly'
 
 interface UserRegistrationFormProps {
   onSubmit: (data: UserRegistrationFormType) => Promise<void>
@@ -77,13 +78,15 @@ const UserRegistrationForm = forwardRef<
       password: mode === 'firstAccess' ? '' : undefined,
       confirmPassword: mode === 'firstAccess' ? '' : undefined,
       observacoes: initialData?.observacoes || undefined,
-      role: mode === 'userCreation' ? undefined : undefined,
+      role: mode === 'userCreation' ? undefined : initialData?.role,
       creationMode: mode === 'userCreation' ? 'fromScratch' : undefined,
       voterId: undefined
     }
 
     const formMethods = useModalForm<UserRegistrationFormType>({
-      schema: getUserRegistrationSchema(mode),
+      schema: getUserRegistrationSchema(
+        mode === 'viewOnly' ? 'voterCreation' : mode
+      ), // Usar um schema básico para validação mínima em viewOnly
       defaultValues,
       onSubmit
     })
@@ -184,7 +187,7 @@ const UserRegistrationForm = forwardRef<
       },
       {
         title:
-          mode === 'firstAccess' ? 'Revisão e Senha' : 'Revisão e Observações',
+          mode === 'firstAccess' ? 'Revisão e Senha' : 'Revisão e Orientação',
         fields: mode === 'firstAccess' ? ['password', 'confirmPassword'] : [],
         requiredFields:
           mode === 'firstAccess' ? ['password', 'confirmPassword'] : []
@@ -220,6 +223,104 @@ const UserRegistrationForm = forwardRef<
 
     const handleSubmitClick = () => {
       handleFormSubmit()
+    }
+
+    // Função para renderizar o modo de visualização
+    const renderViewOnlyMode = () => {
+      return (
+        <StyledDescriptions title="Visualização dos Dados" bordered column={1}>
+          {mode === 'userCreation' && (
+            <>
+              <Descriptions.Item label="Modo de Criação">
+                {initialData?.creationMode === 'fromScratch'
+                  ? 'Do Zero'
+                  : 'A partir de Eleitor'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Cargo">
+                {getRoleData(initialData?.role as UserRole).label}
+              </Descriptions.Item>
+            </>
+          )}
+          <Descriptions.Item label="Email">
+            {initialData?.email || 'Não informado'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Nome Completo">
+            {initialData?.nomeCompleto || 'Não informado'}
+          </Descriptions.Item>
+          <Descriptions.Item label="CPF">
+            {initialData?.cpf
+              ? applyMask(initialData.cpf, 'cpf')
+              : 'Não informado'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Data de Nascimento">
+            {initialData?.dataNascimento
+              ? applyMask(initialData.dataNascimento, 'birthDate')
+              : 'Não informado'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Gênero">
+            {initialData?.genero
+              ? getGenderLabel(initialData.genero)
+              : 'Não informado'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Religião">
+            {initialData?.religiao
+              ? getReligionLabel(initialData.religiao)
+              : 'Não informado'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Foto">
+            {initialData?.foto || 'Não informado'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Telefone">
+            {initialData?.telefone
+              ? applyMask(initialData.telefone, 'phone')
+              : 'Não informado'}
+          </Descriptions.Item>
+          <Descriptions.Item label="WhatsApp">
+            {initialData?.whatsapp
+              ? applyMask(initialData.whatsapp, 'phone')
+              : 'Não informado'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Instagram">
+            {initialData?.instagram || 'Não informado'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Facebook">
+            {initialData?.facebook || 'Não informado'}
+          </Descriptions.Item>
+          <Descriptions.Item label="CEP">
+            {initialData?.cep
+              ? applyMask(initialData.cep, 'cep')
+              : 'Não informado'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Endereço">
+            {initialData?.endereco || 'Não informado'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Número">
+            {initialData?.numero || 'Não informado'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Complemento">
+            {initialData?.complemento || 'Não informado'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Bairro">
+            {initialData?.bairro || 'Não informado'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Cidade">
+            {initialData?.cidade || 'Não informado'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Estado">
+            {initialData?.estado || 'Não informado'}
+          </Descriptions.Item>
+          {initialData?.observacoes && (
+            <Descriptions.Item label="Observações">
+              {initialData.observacoes}
+            </Descriptions.Item>
+          )}
+        </StyledDescriptions>
+      )
+    }
+
+    // Renderização condicional para o modo viewOnly
+    if (mode === 'viewOnly') {
+      return renderViewOnlyMode()
     }
 
     return (
@@ -291,7 +392,7 @@ const UserRegistrationForm = forwardRef<
           {currentStep === steps.length - 1 && (
             <StyledButton
               type="primary"
-              onClick={handleSubmitClick} // Submissão vinculada ao clique
+              onClick={handleSubmitClick}
               disabled={!isValid}
             >
               Completar Cadastro

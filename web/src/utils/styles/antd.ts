@@ -390,3 +390,4 @@ export const StyledModal = styled(Modal)<{ size?: ModalSize }>`
     }
   } */
 `
+
