@@ -9,9 +9,9 @@ import { Dropdown, Avatar, theme } from 'antd'
 import { MenuProps } from 'antd/lib'
 
 import { USER_MENU } from '@/data/menus'
-import { formatUsername } from '@/utils/functions/formatUsername'
 import { useAuth } from '@/contexts/AuthProvider'
 import { getRoleData } from '@/@types/user'
+import { applyMask } from '@/utils/functions/masks'
 
 interface UserMenuProps {}
 
@@ -66,7 +66,7 @@ const UserMenu = ({}: UserMenuProps) => {
             backgroundColor: token.colorPrimary
           }}
         >
-          {formatUsername(user?.profile?.nomeCompleto || '')}
+          {applyMask(user?.profile?.nomeCompleto || '', 'username')}
         </Avatar>
       </S.UserMenu>
     </Dropdown>
