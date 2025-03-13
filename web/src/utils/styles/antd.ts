@@ -355,7 +355,18 @@ export const StyledModal = styled(Modal)`
   }
 
   .ant-modal-header {
-    border-bottom: 1px solid ${color('colorBorderSecondary')};
+    padding: 10px 0;
+    margin-bottom: 20px;
+
+    .ant-modal-title {
+      font-weight: 500 !important;
+
+      ${font('regular')}
+    }
+  }
+
+  .ant-modal-close {
+    top: 22px;
   }
 
   .ant-modal-footer {

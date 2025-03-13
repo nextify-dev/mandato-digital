@@ -157,7 +157,10 @@ const CadastroEleitoresViewContent = () => {
         footer={null}
         width={600}
       >
-        <UserRegistrationForm onSubmit={handleCreateVoter} />
+        <UserRegistrationForm
+          onSubmit={handleCreateVoter}
+          mode="voterCreation"
+        />
       </Modal>
     </View>
   )

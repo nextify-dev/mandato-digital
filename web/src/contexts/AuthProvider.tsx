@@ -9,8 +9,13 @@ import React, {
 } from 'react'
 import { message } from 'antd'
 import { auth } from '@/lib/firebase'
-import { authService, FirstAccessEligibility } from '@/services/auth'
-import { User, FirstAccessForm, UserType, UserRole } from '@/@types/user'
+import { authService } from '@/services/auth'
+import {
+  User,
+  UserRegistrationFormType,
+  UserType,
+  UserRole
+} from '@/@types/user'
 import { handleTranslateFbError } from '@/utils/functions/firebaseTranslateErrors'
 
 interface IAuthContextData {
@@ -27,7 +32,10 @@ interface IAuthContextData {
     role: Exclude<UserRole, UserRole.PENDENTE | UserRole.ELEITOR>,
     cityId: string
   ) => Promise<void>
-  completeRegistration: (email: string, data: FirstAccessForm) => Promise<void>
+  completeRegistration: (
+    email: string,
+    data: UserRegistrationFormType
+  ) => Promise<void>
   resetPassword: (email: string) => Promise<void>
   checkFirstAccess: (email: string) => Promise<void>
   setFirstAccess: (value: boolean) => void
@@ -130,7 +138,10 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }
 
-  const completeRegistration = async (email: string, data: FirstAccessForm) => {
+  const completeRegistration = async (
+    email: string,
+    data: UserRegistrationFormType
+  ) => {
     setIsAuthLoading(true)
     try {
       const userData = await authService.completeRegistration(email, data)

@@ -9,7 +9,12 @@ import {
 import { ref, set, get, remove } from 'firebase/database'
 import { auth, db } from '@/lib/firebase'
 
-import { User, UserRole, UserStatus, FirstAccessForm } from '@/@types/user'
+import {
+  User,
+  UserRole,
+  UserStatus,
+  UserRegistrationFormType
+} from '@/@types/user'
 import { handleTranslateFbError } from '@/utils/functions/firebaseTranslateErrors'
 import { removeMask } from '@/utils/functions/masks'
 
@@ -93,7 +98,7 @@ export const authService = {
 
   async completeRegistration(
     email: string,
-    data: FirstAccessForm
+    data: UserRegistrationFormType
   ): Promise<User> {
     const snapshot = await get(ref(db, 'users'))
     const users = snapshot.val() || {}

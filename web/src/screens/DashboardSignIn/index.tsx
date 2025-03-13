@@ -18,7 +18,7 @@ import {
   StyledInput,
   StyledCheckbox
 } from '@/utils/styles/antd'
-import { FirstAccessForm } from '@/@types/user'
+import { UserRegistrationFormType } from '@/@types/user'
 
 interface SignInForm {
   email: string
@@ -67,7 +67,7 @@ const DashboardSignInScreen = () => {
     await login(data.email, data.password)
   }
 
-  const onFirstAccessSubmit = async (data: FirstAccessForm) => {
+  const onFirstAccessSubmit = async (data: UserRegistrationFormType) => {
     await completeRegistration(data.email, data)
   }
 
@@ -83,6 +83,7 @@ const DashboardSignInScreen = () => {
           <UserRegistrationForm
             onSubmit={onFirstAccessSubmit}
             initialData={{ email: emailValue }}
+            mode="firstAccess"
           />
         ) : (
           <StyledForm onFinish={handleSubmit(onLoginSubmit)} layout="vertical">
