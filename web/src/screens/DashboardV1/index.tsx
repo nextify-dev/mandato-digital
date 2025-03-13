@@ -5,7 +5,7 @@ import { useViews } from '@/contexts/ViewsProvider'
 import { formatMenusForAntDesign } from '@/data/menus'
 import { Button } from 'antd'
 import { useAuth } from '@/contexts/AuthProvider'
-import { UserMenu } from '@/components'
+import { ActiveCity, UserMenu } from '@/components'
 
 const DashboardV1 = () => {
   const { activeMenu, setActiveMenu, loadingMenus } = useViews()
@@ -36,6 +36,7 @@ const DashboardV1 = () => {
           </S.DashboardLogo>
         </S.DashboardSideMenuHeader>
         <S.DashboardSideMenuWrapper>
+          <ActiveCity cityId={user?.cityId} />
           <S.DashboardMenu
             mode="inline"
             selectedKeys={activeMenu ? [activeMenu.menuId] : []}

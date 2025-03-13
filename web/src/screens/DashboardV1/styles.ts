@@ -51,6 +51,8 @@ export const DashboardLogoImg = styled.img<{ opened: number }>`
 
 export const DashboardSideMenuWrapper = styled.div`
   display: flex;
+  flex-direction: column;
+  row-gap: 10px;
   width: 100%;
   height: calc(100% - ${Globals.layout.header.height});
   padding: 10px;
