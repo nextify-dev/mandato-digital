@@ -15,7 +15,8 @@ import {
   getStatusData,
   User,
   UserRegistrationFormType,
-  UserProfile
+  UserProfile,
+  UserStatus
 } from '@/@types/user'
 import { GENDER_OPTIONS, getGenderLabel } from '@/data/options'
 import { applyMask } from '@/utils/functions/masks'
@@ -28,6 +29,8 @@ import { useAuth } from '@/contexts/AuthProvider'
 const { Search } = Input
 
 const CadastroEleitoresView = () => {
+  // ============================================= STATES | REFS | CONTEXTS | HOOK
+
   const { user } = useAuth()
   const {
     voters,
@@ -47,6 +50,8 @@ const CadastroEleitoresView = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [currentStep, setCurrentStep] = useState(0)
   const formRef = useRef<UseFormReturn<UserRegistrationFormType> | null>(null)
+
+  // ============================================= TABELA
 
   const columns = [
     {
@@ -155,6 +160,8 @@ const CadastroEleitoresView = () => {
     }
   ]
 
+  // =========================================================== FILTROS
+
   const handleSearch = (value: string) => {
     setFilters({
       ...filters,
@@ -166,6 +173,30 @@ const CadastroEleitoresView = () => {
   const handleGenderFilter = (value: string) => {
     setFilters({ ...filters, genero: value || undefined })
   }
+
+  const handleStatusFilter = (value: string) => {
+    setFilters({
+      ...filters,
+      status: value ? (value as UserStatus) : undefined
+    })
+  }
+
+  const handleCityFilter = (value: string) => {
+    setFilters({ ...filters, cityId: value || undefined })
+  }
+
+  const STATUS_FILTERED_OPTIONS = Object.values(UserStatus).map((status) => ({
+    label: getStatusData(status).label,
+    value: status
+  }))
+
+  const CITY_FILTERED_OPTIONS = [
+    { label: 'Todas', value: '' },
+    { label: 'Cidade A', value: 'cityA' },
+    { label: 'Cidade B', value: 'cityB' }
+  ]
+
+  // =========================================================== FUNÇÕES
 
   const handleCreateVoter = async (data: UserRegistrationFormType) => {
     await createUser(data, 'default_city', 'voterCreation')
@@ -231,6 +262,21 @@ const CadastroEleitoresView = () => {
               placeholder="Filtrar por gênero"
               options={[{ label: 'Todos', value: '' }, ...GENDER_OPTIONS]}
               onChange={handleGenderFilter}
+              style={{ width: 150 }}
+            />
+            <Select
+              placeholder="Filtrar por status"
+              options={[
+                { label: 'Todos', value: '' },
+                ...STATUS_FILTERED_OPTIONS
+              ]}
+              onChange={handleStatusFilter}
+              style={{ width: 150 }}
+            />
+            <Select
+              placeholder="Filtrar por cidade"
+              options={CITY_FILTERED_OPTIONS}
+              onChange={handleCityFilter}
               style={{ width: 150 }}
             />
           </S.SearchWrapper>

@@ -20,7 +20,7 @@ export const Globals = {
       }
     },
     content: {
-      maxWidth: '1000px',
+      maxWidth: '1180px',
       headerHeight: '60px'
     }
   }

@@ -14,7 +14,8 @@ import {
   User,
   UserRegistrationFormType,
   UserType,
-  UserRole
+  UserRole,
+  UserStatus
 } from '@/@types/user'
 import { handleTranslateFbError } from '@/utils/functions/firebaseTranslateErrors'
 
@@ -87,7 +88,11 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (firebaseUser) {
         const userData = await authService.getUserData(firebaseUser.uid)
         setUser(userData ? convertToUserType(userData) : null)
-        setIsAuth(!!userData && !userData?.access?.isFirstAccess)
+        setIsAuth(
+          !!userData &&
+            !userData.access.isFirstAccess &&
+            userData.status !== UserStatus.PENDENTE
+        )
       } else {
         setUser(null)
         setIsAuth(false)
@@ -102,11 +107,11 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const userData = await authService.login(email, password)
       setUser(convertToUserType(userData))
-      setIsAuth(true)
+      setIsAuth(userData.status !== UserStatus.PENDENTE)
       messageApi.success('Login realizado com sucesso!')
     } catch (error: any) {
-      messageApi.error(handleTranslateFbError(error.code))
-      throw handleTranslateFbError(error)
+      messageApi.error(handleTranslateFbError(error.code) || error.message)
+      throw error
     } finally {
       setIsAuthLoading(false)
     }

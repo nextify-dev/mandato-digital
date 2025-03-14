@@ -88,12 +88,11 @@ export const authService: AuthService = {
       password
     )
     const userData = await this.getUserData(userCredential.user.uid)
-    if (!userData) {
-      throw new Error('Usuário não encontrado no banco de dados.')
-    }
-    if (userData.access.isFirstAccess) {
+    if (!userData) throw new Error('Usuário não encontrado no banco de dados.')
+    if (userData.status === UserStatus.PENDENTE)
+      throw new Error('Este usuário ainda não completou o primeiro acesso.')
+    if (userData.access.isFirstAccess)
       throw new Error('Primeiro acesso detectado. Complete seu cadastro.')
-    }
     return userData
   },
 
@@ -116,7 +115,7 @@ export const authService: AuthService = {
       id: tempId,
       email,
       role: UserRole.PENDENTE,
-      status: UserStatus.INATIVO,
+      status: UserStatus.PENDENTE,
       cityId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -157,7 +156,6 @@ export const authService: AuthService = {
     let tempId: string | undefined
     let existingUser: User | undefined
 
-    // Verifica duplicatas de email e CPF
     const emailExists = Object.values(users).some(
       (user: any) => user.email === email && user.id !== tempId
     )
@@ -166,12 +164,8 @@ export const authService: AuthService = {
         user.profile?.cpf === removeMask(data.cpf) && user.id !== tempId
     )
 
-    if (emailExists) {
-      throw new Error('Este email já está registrado')
-    }
-    if (cpfExists) {
-      throw new Error('Este CPF já está registrado')
-    }
+    if (emailExists) throw new Error('Este email já está registrado')
+    if (cpfExists) throw new Error('Este CPF já está registrado')
 
     if (mode === 'firstAccess') {
       const tempUserEntry = Object.entries(users).find(
@@ -179,40 +173,38 @@ export const authService: AuthService = {
           user.email === email && user.access.isFirstAccess
       )
 
-      if (!tempUserEntry) {
-        throw new Error('Convite não encontrado')
-      }
-
+      if (!tempUserEntry) throw new Error('Convite não encontrado')
       ;[tempId, existingUser] = tempUserEntry as [string, User]
-      if (existingUser.role !== UserRole.PENDENTE) {
+      if (existingUser.role !== UserRole.PENDENTE)
         throw new Error('Este email já foi registrado')
-      }
     }
 
     let role: UserRole
+    let status: UserStatus
     if (mode === 'firstAccess') {
-      role = UserRole.ELEITOR
+      role = data.role || UserRole.ELEITOR
+      status = UserStatus.ATIVO
     } else if (mode === 'voterCreation') {
       role = UserRole.ELEITOR
+      status = UserStatus.PENDENTE
     } else if (mode === 'userCreation') {
       if (
         !data.role ||
         !Object.values(UserRole).includes(data.role as UserRole)
-      ) {
+      )
         throw new Error(
           'Cargo inválido ou não especificado para criação de usuário'
         )
-      }
       role = data.role as UserRole
+      status = UserStatus.PENDENTE
     } else {
       throw new Error('Modo de registro inválido')
     }
 
     let uid: string
     if (mode === 'firstAccess') {
-      if (!data.password) {
+      if (!data.password)
         throw new Error('Senha é obrigatória para primeiro acesso')
-      }
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
@@ -234,7 +226,7 @@ export const authService: AuthService = {
       whatsapp: removeMask(data.whatsapp),
       instagram: data.instagram || null,
       facebook: data.facebook || null,
-      cep: removeMask(data.cpf),
+      cep: removeMask(data.cep),
       endereco: data.endereco,
       numero: data.numero,
       complemento: data.complemento || null,
@@ -249,7 +241,7 @@ export const authService: AuthService = {
       id: uid,
       email,
       role,
-      status: UserStatus.ATIVO,
+      status,
       cityId,
       createdAt: new Date().toISOString(),
       updatedAt:
@@ -265,9 +257,11 @@ export const authService: AuthService = {
         invitationDate:
           mode === 'firstAccess' && existingUser
             ? existingUser.access.invitationDate
+            : mode !== 'firstAccess'
+            ? new Date().toISOString()
             : null,
         lastLogin: mode === 'firstAccess' ? new Date().toISOString() : null,
-        isFirstAccess: false
+        isFirstAccess: mode !== 'firstAccess'
       },
       permissions,
       ...(mode === 'userCreation' &&

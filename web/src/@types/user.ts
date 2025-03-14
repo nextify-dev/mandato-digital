@@ -46,7 +46,8 @@ export const getRoleData = (role?: UserRole): FormattedUserTag => {
 export enum UserStatus {
   ATIVO = 'ativo',
   INATIVO = 'inativo',
-  SUSPENSO = 'suspenso'
+  SUSPENSO = 'suspenso',
+  PENDENTE = 'pendente'
 }
 
 // Função para converter UserStatus em uma label amigável
@@ -58,6 +59,8 @@ export const getStatusData = (status?: UserStatus): FormattedUserTag => {
       return { label: 'Inativo', color: '#808080' }
     case UserStatus.SUSPENSO:
       return { label: 'Bloqueado', color: '#FF4500' }
+    case UserStatus.PENDENTE:
+      return { label: 'Pendente', color: '#FFA500' }
     default:
       return { label: 'Desconhecido', color: '#808080' }
   }
@@ -348,14 +351,20 @@ export const getUserRegistrationSchema = (
             .string()
             .min(8, 'A senha deve ter no mínimo 8 caracteres')
             .required('Senha é obrigatória')
-        : yup.string().notRequired(),
+        : yup
+            .string()
+            .notRequired()
+            .min(8, 'A senha deve ter no mínimo 8 caracteres'),
     confirmPassword:
       mode === 'firstAccess'
         ? yup
             .string()
             .required('Confirmação de senha é obrigatória')
             .oneOf([yup.ref('password')], 'As senhas devem coincidir')
-        : yup.string().notRequired(),
+        : yup
+            .string()
+            .notRequired()
+            .oneOf([yup.ref('password')], 'As senhas devem coincidir'),
     observacoes: yup.string().nullable().optional(),
     role:
       mode === 'userCreation'
@@ -368,14 +377,20 @@ export const getUserRegistrationSchema = (
               ),
               'Selecione um cargo válido'
             )
-        : yup.string().notRequired(),
+        : yup
+            .string()
+            .notRequired()
+            .oneOf(Object.values(UserRole), 'Selecione um cargo válido'),
     creationMode:
       mode === 'userCreation'
         ? yup
             .string()
             .required('Modo de criação é obrigatório')
             .oneOf(['fromScratch', 'fromVoter'], 'Modo de criação inválido')
-        : yup.string().notRequired(),
+        : yup
+            .string()
+            .notRequired()
+            .oneOf(['fromScratch', 'fromVoter'], 'Modo de criação inválido'),
     voterId:
       mode === 'userCreation'
         ? yup

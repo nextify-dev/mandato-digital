@@ -29,6 +29,8 @@ import { useAuth } from '@/contexts/AuthProvider'
 const { Search } = Input
 
 const GestaoUsuariosViewContent = () => {
+  // ============================================= STATES | REFS | CONTEXTS | HOOK
+
   const { user } = useAuth()
   const {
     users,
@@ -48,6 +50,8 @@ const GestaoUsuariosViewContent = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [currentStep, setCurrentStep] = useState(0)
   const formRef = useRef<UseFormReturn<UserRegistrationFormType> | null>(null)
+
+  // ============================================= TABELA
 
   const columns = [
     {
@@ -149,6 +153,8 @@ const GestaoUsuariosViewContent = () => {
     }
   ]
 
+  // ============================================= FILTROS
+
   const handleSearch = (value: string) => {
     setFilters({
       ...filters,
@@ -160,6 +166,37 @@ const GestaoUsuariosViewContent = () => {
   const handleRoleFilter = (value: string) => {
     setFilters({ ...filters, role: value ? (value as UserRole) : undefined })
   }
+
+  const handleStatusFilter = (value: string) => {
+    setFilters({
+      ...filters,
+      status: value ? (value as UserStatus) : undefined
+    })
+  }
+
+  const handleCityFilter = (value: string) => {
+    setFilters({ ...filters, cityId: value || undefined })
+  }
+
+  const ROLE_FILTERED_OPTIONS = Object.values(UserRole)
+    .filter((role) => role !== UserRole.ELEITOR)
+    .map((role) => ({
+      label: getRoleData(role).label,
+      value: role
+    }))
+
+  const STATUS_FILTERED_OPTIONS = Object.values(UserStatus).map((status) => ({
+    label: getStatusData(status).label,
+    value: status
+  }))
+
+  const CITY_FILTERED_OPTIONS = [
+    { label: 'Todas', value: '' },
+    { label: 'Cidade A', value: 'cityA' },
+    { label: 'Cidade B', value: 'cityB' }
+  ]
+
+  // ============================================= FUNÇÕES
 
   const handleCreateUser = async (data: UserRegistrationFormType) => {
     await createUser(data, 'default_city', 'userCreation')
@@ -194,7 +231,7 @@ const GestaoUsuariosViewContent = () => {
     setSelectedUser(null)
   }
 
-  const ROLE_FILTER_OPTIONS = Object.values(UserRole)
+  const ROLE_FILTER_OPTIONS_DATA = Object.values(UserRole)
     .filter((role) => role !== UserRole.ELEITOR)
     .map((role) => ({
       label: getRoleData(role).label,
@@ -213,9 +250,27 @@ const GestaoUsuariosViewContent = () => {
             />
             <Select
               placeholder="Filtrar por cargo"
-              options={[{ label: 'Todos', value: '' }, ...ROLE_FILTER_OPTIONS]}
+              options={[
+                { label: 'Todos', value: '' },
+                ...ROLE_FILTERED_OPTIONS
+              ]}
               onChange={handleRoleFilter}
               style={{ width: 200 }}
+            />
+            <Select
+              placeholder="Filtrar por status"
+              options={[
+                { label: 'Todos', value: '' },
+                ...STATUS_FILTERED_OPTIONS
+              ]}
+              onChange={handleStatusFilter}
+              style={{ width: 150 }}
+            />
+            <Select
+              placeholder="Filtrar por cidade"
+              options={CITY_FILTERED_OPTIONS}
+              onChange={handleCityFilter}
+              style={{ width: 150 }}
             />
           </S.SearchWrapper>
           <Button type="primary" onClick={() => setIsCreateModalOpen(true)}>

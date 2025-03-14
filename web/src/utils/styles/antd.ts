@@ -215,6 +215,7 @@ export const StyledTable = styled(Table)<{ empty: number }>`
   }
 
   .ant-table-row-disabled {
+    pointer-events: none;
     background-color: rgba(0, 0, 0, 0.05);
   }
 
