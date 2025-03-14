@@ -38,7 +38,7 @@ const { TextArea } = Input
 type FormMode = 'firstAccess' | 'voterCreation' | 'userCreation' | 'viewOnly'
 
 interface UserRegistrationFormProps {
-  onSubmit: (data: UserRegistrationFormType) => Promise<void>
+  onSubmit?: (data: UserRegistrationFormType) => Promise<void>
   initialData?: Partial<UserRegistrationFormType>
   mode: FormMode
   currentStep: number
@@ -59,16 +59,23 @@ const UserRegistrationForm = forwardRef<
     const defaultValues: DefaultValues<UserRegistrationFormType> = {
       email: initialData?.email || '',
       nomeCompleto: initialData?.nomeCompleto || '',
-      cpf: initialData?.cpf || '',
-      dataNascimento: initialData?.dataNascimento || '',
+      cpf: (initialData?.cpf && applyMask(initialData?.cpf, 'cpf')) || '',
+      dataNascimento:
+        (initialData?.dataNascimento &&
+          applyMask(initialData?.dataNascimento, 'birthDate')) ||
+        '',
       genero: initialData?.genero || undefined,
       religiao: initialData?.religiao || undefined,
       foto: initialData?.foto || null,
-      telefone: initialData?.telefone || null,
-      whatsapp: initialData?.whatsapp || '',
+      telefone:
+        (initialData?.telefone && applyMask(initialData?.telefone, 'phone')) ||
+        null,
+      whatsapp:
+        (initialData?.whatsapp && applyMask(initialData?.whatsapp, 'phone')) ||
+        '',
       instagram: initialData?.instagram || null,
       facebook: initialData?.facebook || null,
-      cep: initialData?.cep || '',
+      cep: (initialData?.cep && applyMask(initialData?.cep, 'cep')) || '',
       endereco: initialData?.endereco || '',
       numero: initialData?.numero || '',
       complemento: initialData?.complemento || null,
@@ -228,7 +235,7 @@ const UserRegistrationForm = forwardRef<
     // Função para renderizar o modo de visualização
     const renderViewOnlyMode = () => {
       return (
-        <StyledDescriptions title="Visualização dos Dados" bordered column={1}>
+        <StyledDescriptions bordered column={1}>
           {mode === 'userCreation' && (
             <>
               <Descriptions.Item label="Modo de Criação">

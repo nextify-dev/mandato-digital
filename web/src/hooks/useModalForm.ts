@@ -9,9 +9,9 @@ import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 
 interface UseModalFormOptions<T extends FieldValues> {
-  schema: yup.ObjectSchema<any> // Esquema de validação do Yup
-  defaultValues: DefaultValues<T> // Valores padrão usando DefaultValues<T>
-  onSubmit: (data: T) => Promise<void> // Função de submissão
+  schema: yup.ObjectSchema<any>
+  defaultValues: DefaultValues<T>
+  onSubmit?: (data: T) => Promise<void>
 }
 
 /**
@@ -34,6 +34,7 @@ export function useModalForm<T extends FieldValues>({
 
   // Função para lidar com a submissão do formulário
   const handleFormSubmit = handleSubmit(async (data) => {
+    if (!onSubmit) return
     await onSubmit(data)
   })
 

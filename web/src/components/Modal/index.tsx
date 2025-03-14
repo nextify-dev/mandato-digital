@@ -14,7 +14,7 @@ interface IModalProps extends ModalProps {
 
 const Modal = ({ children, size = 'default', ...props }: IModalProps) => {
   return (
-    <StyledModal size={size} {...props}>
+    <StyledModal size={size} {...props} centered>
       {children}
     </StyledModal>
   )

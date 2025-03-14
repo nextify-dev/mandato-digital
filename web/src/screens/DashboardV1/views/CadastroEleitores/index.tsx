@@ -4,8 +4,19 @@ import { useState, useRef } from 'react'
 import * as S from './styles'
 import { Button, Input, Select, Tag, Avatar } from 'antd'
 import { LuUserPen, LuTrash2, LuLock, LuLockOpen, LuEye } from 'react-icons/lu'
-import { View, Table, Modal, UserRegistrationForm } from '@/components'
-import { getStatusData, User, UserRegistrationFormType } from '@/@types/user'
+import {
+  View,
+  Table,
+  Modal,
+  UserRegistrationForm,
+  ConfirmModal
+} from '@/components'
+import {
+  getStatusData,
+  User,
+  UserRegistrationFormType,
+  UserProfile
+} from '@/@types/user'
 import { GENDER_OPTIONS, getGenderLabel } from '@/data/options'
 import { applyMask } from '@/utils/functions/masks'
 import { TableExtrasWrapper } from '@/utils/styles/commons'
@@ -22,10 +33,15 @@ const CadastroEleitoresView = () => {
     setFilters,
     createUser,
     toggleUserStatus,
-    deleteUser
+    deleteUser,
+    updateUser
   } = useUsers()
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [currentStep, setCurrentStep] = useState(0) // Estado para controlar a etapa do formulário
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false)
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [currentStep, setCurrentStep] = useState(0)
   const formRef = useRef<UseFormReturn<UserRegistrationFormType> | null>(null)
 
   const columns = [
@@ -78,8 +94,8 @@ const CadastroEleitoresView = () => {
     },
     {
       title: 'Status',
-      dataIndex: ['profile', 'status'],
-      key: 'status', // Corrigido de 'idade' para 'status'
+      dataIndex: 'status',
+      key: 'status',
       render: (_: any, record: User) => (
         <Tag color={getStatusData(record.status).color}>
           {getStatusData(record.status).label}
@@ -94,7 +110,11 @@ const CadastroEleitoresView = () => {
           <Button
             type="link"
             icon={<LuUserPen />}
-            onClick={() => console.log('Editar', record.id)}
+            onClick={() => {
+              setSelectedUser(record)
+              setIsEditModalOpen(true)
+              setCurrentStep(0)
+            }}
           />
           <Button
             type="link"
@@ -105,13 +125,19 @@ const CadastroEleitoresView = () => {
           />
           <Button
             type="link"
-            icon={record.status === 'ativo' ? <LuLock /> : <LuLockOpen />}
-            onClick={() => toggleUserStatus(record.id)}
+            icon={record.status === 'ativo' ? <LuLockOpen /> : <LuLock />}
+            onClick={() => {
+              setSelectedUser(record)
+              setIsConfirmModalOpen(true)
+            }}
           />
           <Button
             type="link"
             icon={<LuEye />}
-            onClick={() => console.log('Visualizar', record.id)}
+            onClick={() => {
+              setSelectedUser(record)
+              setIsViewModalOpen(true)
+            }}
           />
         </TableExtrasWrapper>
       ),
@@ -133,14 +159,77 @@ const CadastroEleitoresView = () => {
 
   const handleCreateVoter = async (data: UserRegistrationFormType) => {
     await createUser(data, 'default_city', 'voterCreation')
-    setIsModalOpen(false)
+    setIsCreateModalOpen(false)
   }
 
-  const handleModalClose = () => {
-    setIsModalOpen(false)
+  const handleEditVoter = async (data: UserRegistrationFormType) => {
+    if (selectedUser) {
+      // Filtra apenas os campos válidos para UserProfile
+      const profileUpdates: Partial<UserProfile> = {
+        nomeCompleto: data.nomeCompleto,
+        cpf: data.cpf,
+        dataNascimento: data.dataNascimento,
+        genero: data.genero,
+        religiao: data.religiao,
+        foto: data.foto,
+        telefone: data.telefone,
+        whatsapp: data.whatsapp,
+        instagram: data.instagram,
+        facebook: data.facebook,
+        cep: data.cep,
+        endereco: data.endereco,
+        numero: data.numero,
+        complemento: data.complemento,
+        bairro: data.bairro,
+        cidade: data.cidade,
+        estado: data.estado
+      }
+      await updateUser(selectedUser.id, profileUpdates)
+      setIsEditModalOpen(false)
+    }
+  }
+
+  const handleToggleStatus = async () => {
+    if (selectedUser) {
+      await toggleUserStatus(selectedUser.id)
+      setIsConfirmModalOpen(false)
+    }
+  }
+
+  const handleModalClose = (type: 'create' | 'edit' | 'view') => {
+    if (type === 'create') setIsCreateModalOpen(false)
+    if (type === 'edit') setIsEditModalOpen(false)
+    if (type === 'view') setIsViewModalOpen(false)
     if (formRef.current) {
-      formRef.current.reset() // Resetar o formulário
-      setCurrentStep(0) // Voltar para a primeira etapa
+      formRef.current.reset()
+      setCurrentStep(0)
+    }
+    setSelectedUser(null)
+  }
+
+  // Função auxiliar para converter UserProfile | null | undefined em Partial<UserRegistrationFormType> | undefined
+  const getInitialData = (
+    profile: UserProfile | null | undefined
+  ): Partial<UserRegistrationFormType> | undefined => {
+    if (!profile) return undefined
+    return {
+      nomeCompleto: profile.nomeCompleto,
+      cpf: profile.cpf,
+      dataNascimento: profile.dataNascimento,
+      genero: profile.genero,
+      religiao: profile.religiao,
+      foto: profile.foto,
+      telefone: profile.telefone,
+      whatsapp: profile.whatsapp,
+      instagram: profile.instagram,
+      facebook: profile.facebook,
+      cep: profile.cep,
+      endereco: profile.endereco,
+      numero: profile.numero,
+      complemento: profile.complemento,
+      bairro: profile.bairro,
+      cidade: profile.cidade,
+      estado: profile.estado
     }
   }
 
@@ -161,7 +250,7 @@ const CadastroEleitoresView = () => {
               style={{ width: 150 }}
             />
           </S.SearchWrapper>
-          <Button type="primary" onClick={() => setIsModalOpen(true)}>
+          <Button type="primary" onClick={() => setIsCreateModalOpen(true)}>
             Novo Cadastro
           </Button>
         </S.HeaderWrapper>
@@ -174,23 +263,77 @@ const CadastroEleitoresView = () => {
         loading={loading}
         pagination={{ pageSize: 10 }}
       />
+
+      {/* Modal de Criação */}
       <Modal
-        title="Novo Cadastro de Eleitor"
-        open={isModalOpen}
-        onCancel={handleModalClose}
+        title="Criação de Novo Eleitor"
+        open={isCreateModalOpen}
+        onCancel={() => handleModalClose('create')}
         footer={null}
-        width={600}
+        size="default"
       >
-        {isModalOpen && (
+        {isCreateModalOpen && (
           <UserRegistrationForm
             onSubmit={handleCreateVoter}
             mode="voterCreation"
             ref={formRef}
-            currentStep={currentStep} // Passar o estado da etapa
-            setCurrentStep={setCurrentStep} // Passar a função para atualizar a etapa
+            currentStep={currentStep}
+            setCurrentStep={setCurrentStep}
           />
         )}
       </Modal>
+
+      {/* Modal de Edição */}
+      <Modal
+        title="Edição de Eleitor"
+        open={isEditModalOpen}
+        onCancel={() => handleModalClose('edit')}
+        footer={null}
+        size="default"
+      >
+        {isEditModalOpen && selectedUser && (
+          <UserRegistrationForm
+            onSubmit={handleEditVoter}
+            mode="voterCreation"
+            initialData={getInitialData(selectedUser.profile)}
+            ref={formRef}
+            currentStep={currentStep}
+            setCurrentStep={setCurrentStep}
+          />
+        )}
+      </Modal>
+
+      {/* Modal de Visualização */}
+      <Modal
+        title="Visualização de Eleitor"
+        open={isViewModalOpen}
+        onCancel={() => handleModalClose('view')}
+        footer={null}
+        size="default"
+      >
+        {isViewModalOpen && selectedUser && (
+          <UserRegistrationForm
+            mode="viewOnly"
+            initialData={getInitialData(selectedUser.profile)}
+            currentStep={0}
+            setCurrentStep={() => {}}
+          />
+        )}
+      </Modal>
+
+      {/* Modal de Confirmação */}
+      <ConfirmModal
+        type="warning"
+        title="Confirmação de Alteração de Status"
+        content={`Deseja ${
+          selectedUser?.status === 'ativo' ? 'bloquear' : 'desbloquear'
+        } o eleitor ${selectedUser?.profile?.nomeCompleto || 'selecionado'}?`}
+        visible={isConfirmModalOpen}
+        onConfirm={handleToggleStatus}
+        onCancel={() => setIsConfirmModalOpen(false)}
+        confirmText="Sim"
+        cancelText="Não"
+      />
     </View>
   )
 }
