@@ -55,7 +55,7 @@ export const ViewContent = styled.div`
 export const FormStep = styled.div<{ visible: number }>`
   display: ${({ visible }) => (visible ? 'flex' : 'none')};
   flex-direction: column;
-  row-gap: 12px;
+  row-gap: 10px;
   width: 100%;
 `
 

@@ -22,6 +22,7 @@ import { applyMask } from '@/utils/functions/masks'
 import { TableExtrasWrapper } from '@/utils/styles/commons'
 import { useUsers } from '@/contexts/UsersProvider'
 import { UseFormReturn } from 'react-hook-form'
+import { StyledAvatar } from '@/utils/styles/antd'
 
 const { Search } = Input
 
@@ -34,7 +35,8 @@ const CadastroEleitoresView = () => {
     createUser,
     toggleUserStatus,
     deleteUser,
-    updateUser
+    updateUser,
+    getInitialData
   } = useUsers()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -49,9 +51,9 @@ const CadastroEleitoresView = () => {
       title: 'Foto',
       key: 'foto',
       render: (_: any, record: User) => (
-        <Avatar src={record.profile?.foto} size={32}>
+        <StyledAvatar src={record.profile?.foto} size={32}>
           {record.profile?.nomeCompleto?.charAt(0) || 'E'}
-        </Avatar>
+        </StyledAvatar>
       ),
       width: 65
     },
@@ -207,32 +209,6 @@ const CadastroEleitoresView = () => {
     setSelectedUser(null)
   }
 
-  // Função auxiliar para converter UserProfile | null | undefined em Partial<UserRegistrationFormType> | undefined
-  const getInitialData = (
-    profile: UserProfile | null | undefined
-  ): Partial<UserRegistrationFormType> | undefined => {
-    if (!profile) return undefined
-    return {
-      nomeCompleto: profile.nomeCompleto,
-      cpf: profile.cpf,
-      dataNascimento: profile.dataNascimento,
-      genero: profile.genero,
-      religiao: profile.religiao,
-      foto: profile.foto,
-      telefone: profile.telefone,
-      whatsapp: profile.whatsapp,
-      instagram: profile.instagram,
-      facebook: profile.facebook,
-      cep: profile.cep,
-      endereco: profile.endereco,
-      numero: profile.numero,
-      complemento: profile.complemento,
-      bairro: profile.bairro,
-      cidade: profile.cidade,
-      estado: profile.estado
-    }
-  }
-
   return (
     <View
       header={
@@ -295,7 +271,7 @@ const CadastroEleitoresView = () => {
           <UserRegistrationForm
             onSubmit={handleEditVoter}
             mode="voterCreation"
-            initialData={getInitialData(selectedUser.profile)}
+            initialData={getInitialData(selectedUser)}
             ref={formRef}
             currentStep={currentStep}
             setCurrentStep={setCurrentStep}
@@ -314,7 +290,7 @@ const CadastroEleitoresView = () => {
         {isViewModalOpen && selectedUser && (
           <UserRegistrationForm
             mode="viewOnly"
-            initialData={getInitialData(selectedUser.profile)}
+            initialData={getInitialData(selectedUser)}
             currentStep={0}
             setCurrentStep={() => {}}
           />

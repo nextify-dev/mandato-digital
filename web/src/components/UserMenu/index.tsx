@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 
 import * as S from './styles'
 
-import { Dropdown, Avatar, theme } from 'antd'
+import { Dropdown, theme } from 'antd'
 
 import { MenuProps } from 'antd/lib'
 
@@ -12,6 +12,7 @@ import { USER_MENU } from '@/data/menus'
 import { useAuth } from '@/contexts/AuthProvider'
 import { getRoleData } from '@/@types/user'
 import { applyMask } from '@/utils/functions/masks'
+import { StyledAvatar } from '@/utils/styles/antd'
 
 interface UserMenuProps {}
 
@@ -58,16 +59,9 @@ const UserMenu = ({}: UserMenuProps) => {
           )}
         </S.UserMenuInfos>
 
-        <Avatar
-          size={34}
-          style={{
-            paddingTop: 2,
-            fontSize: 15,
-            backgroundColor: token.colorPrimary
-          }}
-        >
+        <StyledAvatar size={34}>
           {applyMask(user?.profile?.nomeCompleto || '', 'username')}
-        </Avatar>
+        </StyledAvatar>
       </S.UserMenu>
     </Dropdown>
   )

@@ -3,6 +3,7 @@
 import styled from 'styled-components'
 import {
   Alert,
+  Avatar,
   Button,
   Checkbox,
   Descriptions,
@@ -25,7 +26,7 @@ const { useToken } = theme
 export const StyledForm = styled(Form)<{ onFinish: any }>`
   display: flex;
   flex-direction: column;
-  row-gap: 12px;
+  row-gap: 25px;
   width: 100%;
 
   .ant-form-item {
@@ -155,11 +156,7 @@ export const StyledCheckbox = styled(Checkbox)`
   }
 `
 
-export const StyledButton = styled(Button)`
-  ${font('small')}
-  height: 40px;
-  border-radius: 6px;
-`
+export const StyledButton = styled(Button)``
 
 export const StyledInput = styled(Input)`
   ${font('small')}
@@ -391,3 +388,9 @@ export const StyledModal = styled(Modal)<{ size?: ModalSize }>`
   } */
 `
 
+export const StyledAvatar = styled(Avatar)`
+  padding-top: 2px;
+
+  ${font('regular')}
+  ${backgroundColor('colorPrimary')}
+`

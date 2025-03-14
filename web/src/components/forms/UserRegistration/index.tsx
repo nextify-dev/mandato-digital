@@ -240,8 +240,8 @@ const UserRegistrationForm = forwardRef<
             <>
               <Descriptions.Item label="Modo de Criação">
                 {initialData?.creationMode === 'fromScratch'
-                  ? 'Do Zero'
-                  : 'A partir de Eleitor'}
+                  ? 'Do zero'
+                  : 'A partir de eleitor'}
               </Descriptions.Item>
               <Descriptions.Item label="Cargo">
                 {getRoleData(initialData?.role as UserRole).label}
@@ -337,7 +337,7 @@ const UserRegistrationForm = forwardRef<
           items={steps.map((step) => ({ title: step.title }))}
           labelPlacement="vertical"
         />
-        <div style={{ marginTop: 24 }}>
+        <S.UserRegistrationFormContent>
           {mode === 'userCreation' && (
             <CreationModeStep
               control={control}
@@ -358,6 +358,7 @@ const UserRegistrationForm = forwardRef<
             setValue={setValue}
             mode={mode}
             visible={currentStep === (mode === 'userCreation' ? 1 : 0)}
+            initialData={initialData}
           />
           <ContatoStep
             control={control}
@@ -380,12 +381,10 @@ const UserRegistrationForm = forwardRef<
             mode={mode}
             visible={currentStep === (mode === 'userCreation' ? 4 : 3)}
           />
-        </div>
-        <StyledForm.Item style={{ marginTop: 24 }}>
+        </S.UserRegistrationFormContent>
+        <S.UserRegistrationFormFooter>
           {currentStep > 0 && (
-            <StyledButton style={{ marginRight: 8 }} onClick={prevStep}>
-              Voltar
-            </StyledButton>
+            <StyledButton onClick={prevStep}>Voltar</StyledButton>
           )}
           {currentStep < steps.length - 1 && (
             <StyledButton
@@ -402,10 +401,10 @@ const UserRegistrationForm = forwardRef<
               onClick={handleSubmitClick}
               disabled={!isValid}
             >
-              Completar Cadastro
+              {!!initialData ? 'Atualizar Cadastro' : 'Completar Cadastro'}
             </StyledButton>
           )}
-        </StyledForm.Item>
+        </S.UserRegistrationFormFooter>
       </StyledForm>
     )
   }
@@ -430,6 +429,7 @@ interface IUserRegistrationStep {
   voters?: User[]
   creationMode?: 'fromScratch' | 'fromVoter' | undefined
   loadingVoters?: boolean
+  initialData?: Partial<UserRegistrationFormType>
 }
 
 const CreationModeStep = ({
@@ -492,8 +492,8 @@ const CreationModeStep = ({
               {...field}
               placeholder="Selecione o modo de criação"
               options={[
-                { label: 'Do Zero', value: 'fromScratch' },
-                { label: 'A partir de Eleitor', value: 'fromVoter' }
+                { label: 'Do zero', value: 'fromScratch' },
+                { label: 'A partir de eleitor', value: 'fromVoter' }
               ]}
               onChange={(value) => {
                 setValue('creationMode', value)
@@ -584,7 +584,8 @@ const DadosPessoaisStep = ({
   errors,
   setValue,
   visible,
-  mode
+  mode,
+  initialData
 }: IUserRegistrationStep) => {
   return (
     <FormStep visible={visible ? 1 : 0}>
@@ -600,7 +601,7 @@ const DadosPessoaisStep = ({
             <StyledInput
               {...field}
               placeholder="Digite seu email"
-              disabled={mode === 'firstAccess'}
+              disabled={mode !== 'firstAccess' && !!initialData}
             />
           </StyledForm.Item>
         )}
@@ -981,8 +982,8 @@ const ReviewStep = ({
           <>
             <Descriptions.Item label="Modo de Criação">
               {formData.creationMode === 'fromScratch'
-                ? 'Do Zero'
-                : 'A partir de Eleitor'}
+                ? 'Do zero'
+                : 'A partir de eleitor'}
             </Descriptions.Item>
             <Descriptions.Item label="Cargo">
               {getRoleData(formData.role as UserRole).label}

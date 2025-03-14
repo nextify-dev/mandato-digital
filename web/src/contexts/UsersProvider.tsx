@@ -39,6 +39,7 @@ interface UsersContextData {
   ) => Promise<void>
   deleteUser: (userId: string) => Promise<void>
   toggleUserStatus: (userId: string) => Promise<void>
+  getInitialData: (user: User) => Partial<UserRegistrationFormType>
 }
 
 const UsersContext = createContext<UsersContextData>({} as UsersContextData)
@@ -183,6 +184,30 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }
 
+  const getInitialData = (user: User): Partial<UserRegistrationFormType> => {
+    return {
+      email: user.email,
+      nomeCompleto: user.profile?.nomeCompleto || '',
+      cpf: user.profile?.cpf || '',
+      dataNascimento: user.profile?.dataNascimento || '',
+      genero: user.profile?.genero || undefined,
+      religiao: user.profile?.religiao || undefined,
+      foto: user.profile?.foto || null,
+      telefone: user.profile?.telefone || null,
+      whatsapp: user.profile?.whatsapp || '',
+      instagram: user.profile?.instagram || null,
+      facebook: user.profile?.facebook || null,
+      cep: user.profile?.cep || '',
+      endereco: user.profile?.endereco || '',
+      numero: user.profile?.numero || '',
+      complemento: user.profile?.complemento || null,
+      bairro: user.profile?.bairro || '',
+      cidade: user.profile?.cidade || '',
+      estado: user.profile?.estado || '',
+      role: user.role
+    }
+  }
+
   return (
     <UsersContext.Provider
       value={{
@@ -194,7 +219,8 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
         createUser,
         updateUser,
         deleteUser,
-        toggleUserStatus
+        toggleUserStatus,
+        getInitialData
       }}
     >
       {contextHolder}

@@ -23,6 +23,7 @@ import {
 import { applyMask } from '@/utils/functions/masks'
 import { TableExtrasWrapper } from '@/utils/styles/commons'
 import { UseFormReturn } from 'react-hook-form'
+import { StyledAvatar } from '@/utils/styles/antd'
 
 const { Search } = Input
 
@@ -35,7 +36,8 @@ const GestaoUsuariosViewContent = () => {
     createUser,
     toggleUserStatus,
     deleteUser,
-    updateUser
+    updateUser,
+    getInitialData
   } = useUsers()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -50,9 +52,9 @@ const GestaoUsuariosViewContent = () => {
       title: 'Foto',
       key: 'foto',
       render: (_: any, record: User) => (
-        <Avatar src={record.profile?.foto} size={32}>
+        <StyledAvatar src={record.profile?.foto} size={32}>
           {record.profile?.nomeCompleto?.charAt(0) || 'U'}
-        </Avatar>
+        </StyledAvatar>
       ),
       width: 65
     },
@@ -115,6 +117,7 @@ const GestaoUsuariosViewContent = () => {
             icon={<LuTrash2 />}
             danger
             onClick={() => deleteUser(record.id)}
+            disabled
           />
           <Button
             type="link"
@@ -246,13 +249,13 @@ const GestaoUsuariosViewContent = () => {
         open={isEditModalOpen}
         onCancel={() => handleModalClose('edit')}
         footer={null}
-        size="large"
+        size="default"
       >
         {isEditModalOpen && selectedUser && (
           <UserRegistrationForm
             onSubmit={handleEditUser}
-            mode="userCreation"
-            initialData={{ ...selectedUser.profile, role: selectedUser.role }}
+            mode="voterCreation"
+            initialData={getInitialData(selectedUser)}
             ref={formRef}
             currentStep={currentStep}
             setCurrentStep={setCurrentStep}
@@ -271,7 +274,7 @@ const GestaoUsuariosViewContent = () => {
         {isViewModalOpen && selectedUser && (
           <UserRegistrationForm
             mode="viewOnly"
-            initialData={{ ...selectedUser.profile, role: selectedUser.role }}
+            initialData={getInitialData(selectedUser)}
             currentStep={0}
             setCurrentStep={() => {}}
           />
