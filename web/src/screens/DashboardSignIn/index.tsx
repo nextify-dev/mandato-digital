@@ -1,16 +1,13 @@
 // src/screens/DashboardSignIn/index.tsx
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-
 import * as S from './styles'
-
 import { useForm, Controller } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import { CheckboxChangeEvent } from 'antd/es/checkbox'
-
-import { UserRegistrationForm } from '@/components'
+import UserRegistrationForm from '@/components/forms/UserRegistration'
 import { useAuth } from '@/contexts/AuthProvider'
 import {
   StyledForm,
@@ -44,6 +41,8 @@ const DashboardSignInScreen = () => {
     setFirstAccess
   } = useAuth()
 
+  const [currentStep, setCurrentStep] = useState(0)
+
   const {
     control,
     handleSubmit,
@@ -68,12 +67,26 @@ const DashboardSignInScreen = () => {
   }
 
   const onFirstAccessSubmit = async (data: UserRegistrationFormType) => {
-    await completeRegistration(data.email, data)
+    await completeRegistration(
+      data.email,
+      data,
+      'firstAccess',
+      'default-city-id'
+    )
   }
 
   const handleCheckboxChange = (e: CheckboxChangeEvent) => {
     setFirstAccess(e.target.checked)
     setValue('email', emailValue)
+    if (e.target.checked) {
+      setCurrentStep(0)
+    }
+  }
+
+  const handleEmailBlur = async () => {
+    if (emailValue && yup.string().email().isValidSync(emailValue)) {
+      await checkFirstAccess(emailValue)
+    }
   }
 
   return (
@@ -84,6 +97,8 @@ const DashboardSignInScreen = () => {
             onSubmit={onFirstAccessSubmit}
             initialData={{ email: emailValue }}
             mode="firstAccess"
+            currentStep={currentStep}
+            setCurrentStep={setCurrentStep}
           />
         ) : (
           <StyledForm onFinish={handleSubmit(onLoginSubmit)} layout="vertical">
@@ -98,14 +113,7 @@ const DashboardSignInScreen = () => {
                 >
                   <StyledInput
                     {...field}
-                    onBlur={() => {
-                      if (
-                        emailValue &&
-                        yup.string().email().isValidSync(emailValue)
-                      ) {
-                        checkFirstAccess(emailValue)
-                      }
-                    }}
+                    onBlur={handleEmailBlur}
                     placeholder="Digite seu email"
                     disabled={emailLocked}
                   />
