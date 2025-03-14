@@ -31,6 +31,7 @@ export interface TableProps<T> extends Omit<AntTableProps<T>, 'columns'> {
       }
   onRowClick?: (record: T) => void
   empty?: number
+  disabledRowKey?: string
 }
 
 const Table = <T extends object>({
@@ -40,6 +41,7 @@ const Table = <T extends object>({
   loading = false,
   pagination = { pageSize: 10 },
   onRowClick,
+  disabledRowKey,
   ...rest
 }: TableProps<T>) => {
   let locale = {
@@ -64,6 +66,11 @@ const Table = <T extends object>({
         onClick: () => onRowClick?.(record),
         style: { cursor: onRowClick ? 'pointer' : 'default' }
       })}
+      rowClassName={(record) => {
+        const key =
+          typeof rowKey === 'function' ? rowKey(record) : record[rowKey]
+        return key === disabledRowKey ? 'ant-table-row-disabled' : ''
+      }}
       size="small"
       empty={dataSource.length === 0 ? 1 : 0}
       {...rest}

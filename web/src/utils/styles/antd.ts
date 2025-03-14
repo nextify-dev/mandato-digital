@@ -210,6 +210,14 @@ export const StyledTable = styled(Table)<{ empty: number }>`
   max-width: 100%;
   table-layout: fixed;
 
+  table {
+    overflow: hidden;
+  }
+
+  .ant-table-row-disabled {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
   .ant-table-thead {
     th.ant-table-cell {
       align-items: center;

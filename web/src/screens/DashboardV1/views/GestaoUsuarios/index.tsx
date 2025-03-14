@@ -24,10 +24,12 @@ import { applyMask } from '@/utils/functions/masks'
 import { TableExtrasWrapper } from '@/utils/styles/commons'
 import { UseFormReturn } from 'react-hook-form'
 import { StyledAvatar } from '@/utils/styles/antd'
+import { useAuth } from '@/contexts/AuthProvider'
 
 const { Search } = Input
 
 const GestaoUsuariosViewContent = () => {
+  const { user } = useAuth()
   const {
     users,
     loading,
@@ -101,42 +103,48 @@ const GestaoUsuariosViewContent = () => {
     {
       title: 'Ações',
       key: 'actions',
-      render: (_: any, record: User) => (
-        <TableExtrasWrapper>
-          <Button
-            type="link"
-            icon={<LuUserPen />}
-            onClick={() => {
-              setSelectedUser(record)
-              setIsEditModalOpen(true)
-              setCurrentStep(0)
-            }}
-          />
-          <Button
-            type="link"
-            icon={<LuTrash2 />}
-            danger
-            onClick={() => deleteUser(record.id)}
-            disabled
-          />
-          <Button
-            type="link"
-            icon={record.status === 'ativo' ? <LuLockOpen /> : <LuLock />}
-            onClick={() => {
-              setSelectedUser(record)
-              setIsConfirmModalOpen(true)
-            }}
-          />
-          <Button
-            type="link"
-            icon={<LuEye />}
-            onClick={() => {
-              setSelectedUser(record)
-              setIsViewModalOpen(true)
-            }}
-          />
-        </TableExtrasWrapper>
-      ),
+      render: (_: any, record: User) => {
+        const isCurrentUser = record.id === user?.id
+        return (
+          <TableExtrasWrapper>
+            <Button
+              type="link"
+              icon={<LuUserPen />}
+              onClick={() => {
+                setSelectedUser(record)
+                setIsEditModalOpen(true)
+                setCurrentStep(0)
+              }}
+              disabled={isCurrentUser}
+            />
+            <Button
+              type="link"
+              icon={<LuTrash2 />}
+              danger
+              onClick={() => deleteUser(record.id)}
+              disabled={isCurrentUser}
+            />
+            <Button
+              type="link"
+              icon={record.status === 'ativo' ? <LuLockOpen /> : <LuLock />}
+              onClick={() => {
+                setSelectedUser(record)
+                setIsConfirmModalOpen(true)
+              }}
+              disabled={isCurrentUser}
+            />
+            <Button
+              type="link"
+              icon={<LuEye />}
+              onClick={() => {
+                setSelectedUser(record)
+                setIsViewModalOpen(true)
+              }}
+              disabled={isCurrentUser}
+            />
+          </TableExtrasWrapper>
+        )
+      },
       width: 150
     }
   ]
@@ -222,6 +230,7 @@ const GestaoUsuariosViewContent = () => {
         rowKey="id"
         loading={loading}
         pagination={{ pageSize: 10 }}
+        disabledRowKey={user?.id}
       />
 
       {/* Modal de Criação */}

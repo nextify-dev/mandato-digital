@@ -91,6 +91,8 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
         )
       })
 
+      console.log(filteredVoters)
+
       setUsers(filteredUsers)
       setVoters(filteredVoters)
     } catch (error: any) {
