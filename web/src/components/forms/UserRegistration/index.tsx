@@ -2,14 +2,13 @@
 
 import React, { useEffect, forwardRef, Ref } from 'react'
 import * as S from './styles'
-import { Steps, Descriptions, Select, Input } from 'antd'
+import { Steps, Select, Input } from 'antd'
 import { Controller, UseFormReturn } from 'react-hook-form'
 import {
   StyledForm,
   StyledInput,
   StyledButton,
-  StyledSteps,
-  StyledDescriptions
+  StyledSteps
 } from '@/utils/styles/antd'
 import { applyMask } from '@/utils/functions/masks'
 import {
@@ -31,10 +30,13 @@ import { auth } from '@/lib/firebase'
 import { useUsers } from '@/contexts/UsersProvider'
 import { useModalForm } from '@/hooks/useModalForm'
 import { DefaultValues } from 'react-hook-form'
+import DynamicDescriptions, {
+  DynamicDescriptionsField
+} from '@/components/DynamicDescriptions'
+import { authService } from '@/services/auth'
 
 const { TextArea } = Input
 
-// Atualizar o tipo FormMode para incluir 'viewOnly'
 type FormMode = 'firstAccess' | 'voterCreation' | 'userCreation' | 'viewOnly'
 
 interface UserRegistrationFormProps {
@@ -93,7 +95,7 @@ const UserRegistrationForm = forwardRef<
     const formMethods = useModalForm<UserRegistrationFormType>({
       schema: getUserRegistrationSchema(
         mode === 'viewOnly' ? 'voterCreation' : mode
-      ), // Usar um schema básico para validação mínima em viewOnly
+      ),
       defaultValues,
       onSubmit
     })
@@ -105,8 +107,9 @@ const UserRegistrationForm = forwardRef<
       setValue,
       trigger,
       watch,
-      formState: { errors, isValid },
-      handleFormSubmit
+      setError,
+      clearErrors,
+      formState: { errors, isValid }
     } = formMethods
 
     const formData = watch()
@@ -228,104 +231,131 @@ const UserRegistrationForm = forwardRef<
 
     const prevStep = () => setCurrentStep((prev) => prev - 1)
 
-    const handleSubmitClick = () => {
-      handleFormSubmit()
+    const handleSubmitClick = async () => {
+      if (await validateStep()) {
+        formMethods.handleSubmit(onSubmit!)()
+      }
     }
 
-    // Função para renderizar o modo de visualização
+    // Funções de validação no onBlur
+    const validateEmailUniqueness = async (email: string) => {
+      const isUnique = await authService.checkEmailUniqueness(
+        email,
+        initialData?.email ? undefined : undefined
+      )
+      if (!isUnique) {
+        setError('email', {
+          type: 'manual',
+          message: 'Este email já está registrado'
+        })
+      } else {
+        clearErrors('email')
+        await trigger('email') // Revalida o campo com o schema
+      }
+    }
+
+    const validateCpfUniqueness = async (cpf: string) => {
+      const isUnique = await authService.checkCpfUniqueness(
+        cpf,
+        initialData?.cpf ? undefined : undefined
+      )
+      if (!isUnique) {
+        setError('cpf', {
+          type: 'manual',
+          message: 'Este CPF já está registrado'
+        })
+      } else {
+        clearErrors('cpf')
+        await trigger('cpf') // Revalida o campo com o schema
+      }
+    }
+
+    // Campos comuns para Descriptions
+    const descriptionFields: DynamicDescriptionsField<UserRegistrationFormType>[] =
+      [
+        { key: 'email', label: 'Email' },
+        { key: 'nomeCompleto', label: 'Nome Completo' },
+        {
+          key: 'cpf',
+          label: 'CPF',
+          render: (value) => (value ? applyMask(value, 'cpf') : '-')
+        },
+        {
+          key: 'dataNascimento',
+          label: 'Data de Nascimento',
+          render: (value) => (value ? applyMask(value, 'birthDate') : '-')
+        },
+        {
+          key: 'genero',
+          label: 'Gênero',
+          render: (value) => (value ? getGenderLabel(value) : '-')
+        },
+        {
+          key: 'religiao',
+          label: 'Religião',
+          render: (value) => (value ? getReligionLabel(value) : '-')
+        },
+        { key: 'foto', label: 'Foto' },
+        {
+          key: 'telefone',
+          label: 'Telefone',
+          render: (value) => (value ? applyMask(value, 'phone') : '-')
+        },
+        {
+          key: 'whatsapp',
+          label: 'WhatsApp',
+          render: (value) => (value ? applyMask(value, 'phone') : '-')
+        },
+        { key: 'instagram', label: 'Instagram' },
+        { key: 'facebook', label: 'Facebook' },
+        {
+          key: 'cep',
+          label: 'CEP',
+          render: (value) => (value ? applyMask(value, 'cep') : '-')
+        },
+        { key: 'endereco', label: 'Endereço' },
+        { key: 'numero', label: 'Número' },
+        { key: 'complemento', label: 'Complemento' },
+        { key: 'bairro', label: 'Bairro' },
+        { key: 'cidade', label: 'Cidade' },
+        { key: 'estado', label: 'Estado' },
+        { key: 'observacoes', label: 'Observações' }
+      ]
+
+    // Renderização para modo viewOnly
     const renderViewOnlyMode = () => {
+      const viewFields = [
+        ...(mode === 'userCreation'
+          ? [
+              {
+                key: 'creationMode',
+                label: 'Modo de Criação',
+                render: (value: string) =>
+                  value === 'fromScratch' ? 'Do zero' : 'A partir de eleitor'
+              },
+              {
+                key: 'role',
+                label: 'Cargo',
+                render: (value: UserRole) => getRoleData(value).label
+              }
+            ]
+          : []),
+        ...descriptionFields.filter(
+          (field) =>
+            initialData?.[field.key as keyof UserRegistrationFormType] !==
+            undefined
+        )
+      ]
+
       return (
-        <StyledDescriptions bordered column={1}>
-          {mode === 'userCreation' && (
-            <>
-              <Descriptions.Item label="Modo de Criação">
-                {initialData?.creationMode === 'fromScratch'
-                  ? 'Do zero'
-                  : 'A partir de eleitor'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Cargo">
-                {getRoleData(initialData?.role as UserRole).label}
-              </Descriptions.Item>
-            </>
-          )}
-          <Descriptions.Item label="Email">
-            {initialData?.email || 'Não informado'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Nome Completo">
-            {initialData?.nomeCompleto || 'Não informado'}
-          </Descriptions.Item>
-          <Descriptions.Item label="CPF">
-            {initialData?.cpf
-              ? applyMask(initialData.cpf, 'cpf')
-              : 'Não informado'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Data de Nascimento">
-            {initialData?.dataNascimento
-              ? applyMask(initialData.dataNascimento, 'birthDate')
-              : 'Não informado'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Gênero">
-            {initialData?.genero
-              ? getGenderLabel(initialData.genero)
-              : 'Não informado'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Religião">
-            {initialData?.religiao
-              ? getReligionLabel(initialData.religiao)
-              : 'Não informado'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Foto">
-            {initialData?.foto || 'Não informado'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Telefone">
-            {initialData?.telefone
-              ? applyMask(initialData.telefone, 'phone')
-              : 'Não informado'}
-          </Descriptions.Item>
-          <Descriptions.Item label="WhatsApp">
-            {initialData?.whatsapp
-              ? applyMask(initialData.whatsapp, 'phone')
-              : 'Não informado'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Instagram">
-            {initialData?.instagram || 'Não informado'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Facebook">
-            {initialData?.facebook || 'Não informado'}
-          </Descriptions.Item>
-          <Descriptions.Item label="CEP">
-            {initialData?.cep
-              ? applyMask(initialData.cep, 'cep')
-              : 'Não informado'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Endereço">
-            {initialData?.endereco || 'Não informado'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Número">
-            {initialData?.numero || 'Não informado'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Complemento">
-            {initialData?.complemento || 'Não informado'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Bairro">
-            {initialData?.bairro || 'Não informado'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Cidade">
-            {initialData?.cidade || 'Não informado'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Estado">
-            {initialData?.estado || 'Não informado'}
-          </Descriptions.Item>
-          {initialData?.observacoes && (
-            <Descriptions.Item label="Observações">
-              {initialData.observacoes}
-            </Descriptions.Item>
-          )}
-        </StyledDescriptions>
+        <DynamicDescriptions
+          data={initialData ?? {}}
+          fields={viewFields}
+          title="Detalhes do Usuário/Eleitor"
+        />
       )
     }
 
-    // Renderização condicional para o modo viewOnly
     if (mode === 'viewOnly') {
       return renderViewOnlyMode()
     }
@@ -359,6 +389,8 @@ const UserRegistrationForm = forwardRef<
             mode={mode}
             visible={currentStep === (mode === 'userCreation' ? 1 : 0)}
             initialData={initialData}
+            validateEmailUniqueness={validateEmailUniqueness}
+            validateCpfUniqueness={validateCpfUniqueness}
           />
           <ContatoStep
             control={control}
@@ -380,6 +412,7 @@ const UserRegistrationForm = forwardRef<
             formData={formData}
             mode={mode}
             visible={currentStep === (mode === 'userCreation' ? 4 : 3)}
+            descriptionFields={descriptionFields}
           />
         </S.UserRegistrationFormContent>
         <S.UserRegistrationFormFooter>
@@ -430,6 +463,9 @@ interface IUserRegistrationStep {
   creationMode?: 'fromScratch' | 'fromVoter' | undefined
   loadingVoters?: boolean
   initialData?: Partial<UserRegistrationFormType>
+  descriptionFields?: DynamicDescriptionsField<UserRegistrationFormType>[]
+  validateEmailUniqueness?: (email: string) => Promise<void>
+  validateCpfUniqueness?: (cpf: string) => Promise<void>
 }
 
 const CreationModeStep = ({
@@ -585,7 +621,9 @@ const DadosPessoaisStep = ({
   setValue,
   visible,
   mode,
-  initialData
+  initialData,
+  validateEmailUniqueness,
+  validateCpfUniqueness
 }: IUserRegistrationStep) => {
   return (
     <FormStep visible={visible ? 1 : 0}>
@@ -602,6 +640,7 @@ const DadosPessoaisStep = ({
               {...field}
               placeholder="Digite seu email"
               disabled={mode !== 'firstAccess' && !!initialData}
+              onBlur={(e) => validateEmailUniqueness!(e.target.value)}
             />
           </StyledForm.Item>
         )}
@@ -635,6 +674,7 @@ const DadosPessoaisStep = ({
                 onChange={(e) =>
                   setValue('cpf', applyMask(e.target.value, 'cpf'))
                 }
+                onBlur={(e) => validateCpfUniqueness!(e.target.value)}
               />
             </StyledForm.Item>
           )}
@@ -966,71 +1006,62 @@ const EnderecoStep = ({
     </FormStep>
   )
 }
-
 const ReviewStep = ({
   control,
   errors,
   formData,
   setValue,
   visible,
-  mode
+  mode,
+  descriptionFields
 }: IUserRegistrationStep) => {
+  const reviewFields = [
+    ...(mode === 'userCreation'
+      ? [
+          {
+            key: 'creationMode',
+            label: 'Modo de Criação',
+            render: (value: string) =>
+              value === 'fromScratch' ? 'Do zero' : 'A partir de eleitor'
+          },
+          {
+            key: 'role',
+            label: 'Cargo',
+            render: (value: UserRole) => getRoleData(value).label
+          }
+        ]
+      : []),
+    ...(descriptionFields || []).filter((field) =>
+      [
+        'email',
+        'nomeCompleto',
+        'cpf',
+        'dataNascimento',
+        'genero',
+        'religiao',
+        'foto',
+        'telefone',
+        'whatsapp',
+        'instagram',
+        'facebook',
+        'cep',
+        'endereco',
+        'numero',
+        'complemento',
+        'bairro',
+        'cidade',
+        'estado'
+      ].includes(field.key as string)
+    )
+  ]
+
   return (
     <FormStep visible={visible ? 1 : 0}>
-      <StyledDescriptions title="Resumo dos Dados" bordered column={1}>
-        {mode === 'userCreation' && (
-          <>
-            <Descriptions.Item label="Modo de Criação">
-              {formData.creationMode === 'fromScratch'
-                ? 'Do zero'
-                : 'A partir de eleitor'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Cargo">
-              {getRoleData(formData.role as UserRole).label}
-            </Descriptions.Item>
-          </>
-        )}
-        <Descriptions.Item label="Email">{formData.email}</Descriptions.Item>
-        <Descriptions.Item label="Nome Completo">
-          {formData.nomeCompleto}
-        </Descriptions.Item>
-        <Descriptions.Item label="CPF">{formData.cpf}</Descriptions.Item>
-        <Descriptions.Item label="Data de Nascimento">
-          {formData.dataNascimento}
-        </Descriptions.Item>
-        <Descriptions.Item label="Gênero">
-          {getGenderLabel(formData.genero)}
-        </Descriptions.Item>
-        <Descriptions.Item label="Religião">
-          {getReligionLabel(formData.religiao)}
-        </Descriptions.Item>
-        <Descriptions.Item label="Foto">
-          {formData.foto || 'Não informado'}
-        </Descriptions.Item>
-        <Descriptions.Item label="Telefone">
-          {formData.telefone || 'Não informado'}
-        </Descriptions.Item>
-        <Descriptions.Item label="WhatsApp">
-          {formData.whatsapp}
-        </Descriptions.Item>
-        <Descriptions.Item label="Instagram">
-          {formData.instagram || 'Não informado'}
-        </Descriptions.Item>
-        <Descriptions.Item label="Facebook">
-          {formData.facebook || 'Não informado'}
-        </Descriptions.Item>
-        <Descriptions.Item label="CEP">{formData.cep}</Descriptions.Item>
-        <Descriptions.Item label="Endereço">
-          {formData.endereco}
-        </Descriptions.Item>
-        <Descriptions.Item label="Número">{formData.numero}</Descriptions.Item>
-        <Descriptions.Item label="Complemento">
-          {formData.complemento || 'Não informado'}
-        </Descriptions.Item>
-        <Descriptions.Item label="Bairro">{formData.bairro}</Descriptions.Item>
-        <Descriptions.Item label="Cidade">{formData.cidade}</Descriptions.Item>
-        <Descriptions.Item label="Estado">{formData.estado}</Descriptions.Item>
-      </StyledDescriptions>
+      <DynamicDescriptions
+        data={formData}
+        fields={reviewFields}
+        title="Resumo dos Dados"
+      />
       {mode === 'firstAccess' ? (
         <>
           <Controller

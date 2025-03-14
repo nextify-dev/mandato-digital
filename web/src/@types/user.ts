@@ -1,7 +1,8 @@
 // src/@types/user.ts
 
 import { GENDER_OPTIONS, RELIGION_OPTIONS } from '@/data/options'
-import { convertToISODate } from '@/utils/functions/masks'
+import { authService } from '@/services/auth'
+import { convertToISODate, isValidCpf } from '@/utils/functions/masks'
 import * as yup from 'yup'
 
 export interface FormattedUserTag {
@@ -261,7 +262,15 @@ export const getUserRegistrationSchema = (
     email: yup
       .string()
       .email('E-mail inválido')
-      .required('E-mail é obrigatório'),
+      .required('E-mail é obrigatório')
+      .test(
+        'unique-email',
+        'Este email já está registrado',
+        async (value: string): Promise<boolean> => {
+          if (!value) return false
+          return await authService.checkEmailUniqueness(value)
+        }
+      ),
     nomeCompleto: yup.string().required('Nome completo é obrigatório'),
     cpf: yup
       .string()
@@ -272,8 +281,11 @@ export const getUserRegistrationSchema = (
       )
       .test('cpf-valido', 'CPF inválido', (value) => {
         if (!value) return false
-        const cpfNumerico = value.replace(/\D/g, '')
-        return cpfNumerico.length === 11
+        return isValidCpf(value)
+      })
+      .test('unique-cpf', 'Este CPF já está registrado', async (value) => {
+        if (!value) return false
+        return await authService.checkCpfUniqueness(value)
       }),
     dataNascimento: yup
       .string()

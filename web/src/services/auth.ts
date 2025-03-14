@@ -30,7 +30,57 @@ const generateTempId = (): string => {
   return `temp_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
 }
 
-export const authService = {
+interface AuthService {
+  checkEmailUniqueness(email: string, excludeId?: string): Promise<boolean>
+  checkCpfUniqueness(cpf: string, excludeId?: string): Promise<boolean>
+  login(email: string, password: string): Promise<User>
+  logout(): Promise<void>
+  inviteUser(
+    email: string,
+    role: Exclude<UserRole, UserRole.PENDENTE | UserRole.ELEITOR>,
+    cityId: string
+  ): Promise<void>
+  completeRegistration(
+    email: string,
+    data: UserRegistrationFormType,
+    mode: 'firstAccess' | 'voterCreation' | 'userCreation',
+    cityId: string
+  ): Promise<User>
+  getUserData(uid: string): Promise<User | null>
+  resetPassword(email: string): Promise<void>
+  checkFirstAccessEligibility(email: string): Promise<FirstAccessEligibility>
+  getPermissionsByRole(role: UserRole): any
+  deleteUser(uid: string): Promise<void>
+  blockUser(uid: string): Promise<User>
+  editUser(
+    uid: string,
+    updatedData: Partial<UserProfile> & { role?: UserRole; status?: UserStatus }
+  ): Promise<User>
+}
+
+export const authService: AuthService = {
+  // Nova função para verificar unicidade de email
+  async checkEmailUniqueness(
+    email: string,
+    excludeId?: string
+  ): Promise<boolean> {
+    const snapshot = await get(ref(db, 'users'))
+    const users = snapshot.val() || {}
+    return !Object.values(users).some(
+      (user: any) => user.email === email && user.id !== excludeId
+    )
+  },
+
+  // Nova função para verificar unicidade de CPF
+  async checkCpfUniqueness(cpf: string, excludeId?: string): Promise<boolean> {
+    const unmaskedCpf = removeMask(cpf)
+    const snapshot = await get(ref(db, 'users'))
+    const users = snapshot.val() || {}
+    return !Object.values(users).some(
+      (user: any) => user.profile?.cpf === unmaskedCpf && user.id !== excludeId
+    )
+  },
+
   async login(email: string, password: string): Promise<User> {
     const userCredential = await signInWithEmailAndPassword(
       auth,

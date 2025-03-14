@@ -360,6 +360,7 @@ const modalSizes = {
 
 export const StyledModal = styled(Modal)<{ size?: ModalSize }>`
   width: ${({ size }) => modalSizes[size || 'default']} !important;
+  margin: 20px auto;
 
   .ant-modal-content {
     border-radius: 8px;

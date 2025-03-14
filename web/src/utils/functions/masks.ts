@@ -147,3 +147,34 @@ export const convertToISODate = (date: string): string => {
 
 // Exporta o objeto de máscaras para uso direto, se necessário
 export const masks = maskFunctions
+
+// Função para validar CPF com base no cálculo dos dígitos verificadores
+export const isValidCpf = (cpf: string): boolean => {
+  const cpfNumerico = removeMask(cpf)
+
+  if (cpfNumerico.length !== 11 || /^(\d)\1{10}$/.test(cpfNumerico)) {
+    return false
+  }
+
+  let soma = 0
+  for (let i = 0; i < 9; i++) {
+    soma += parseInt(cpfNumerico.charAt(i)) * (10 - i)
+  }
+  let resto = (soma * 10) % 11
+  if (resto === 10 || resto === 11) resto = 0
+  if (resto !== parseInt(cpfNumerico.charAt(9))) {
+    return false
+  }
+
+  soma = 0
+  for (let i = 0; i < 10; i++) {
+    soma += parseInt(cpfNumerico.charAt(i)) * (11 - i)
+  }
+  resto = (soma * 10) % 11
+  if (resto === 10 || resto === 11) resto = 0
+  if (resto !== parseInt(cpfNumerico.charAt(10))) {
+    return false
+  }
+
+  return true
+}
