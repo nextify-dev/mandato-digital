@@ -31,6 +31,7 @@ import MonitoramentoRedesView from '@/screens/DashboardV1/views/MonitoramentoRed
 import MinhaContaView from '@/screens/DashboardV1/views/MinhaConta'
 
 import { UserType, Permissions } from '@/@types/user'
+import { CitiesProvider } from '@/contexts/CitiesProvider'
 
 // Interface do Menu
 export interface IMenu {
@@ -71,9 +72,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Gerenciar cidades cadastradas',
     menuIcon: <LuMap />,
     menuView: (
-      <>
+      <CitiesProvider>
         <GestaoCidadesView />
-      </>
+      </CitiesProvider>
     ),
     menuCategory: 'Gestão',
     requiredPermissions: { canManageAllCities: true },
