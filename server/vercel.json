@@ -1,40 +1,15 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "src/server.js",
-      "use": "@vercel/node",
-      "config": {
-        "maxLambdaSize": "50mb",
-        "memory": 512,
-        "maxDuration": 60
-      }
+  "functions": {
+    "src/index.js": {
+      "memory": 1024,
+      "maxDuration": 10
     }
-  ],
-  "rewrites": [
+  },
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "src/server.js"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "https://quiz-funnel-mvp-client.vercel.app"
-        },
-        { "key": "Access-Control-Allow-Credentials", "value": "true" },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT"
-        },
-        {
-          "key": "Access-Control-Allow-Headers",
-          "value": "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token"
-        }
-      ]
+      "src": "/api/(.*)",
+      "dest": "src/index.js"
     }
   ]
 }
