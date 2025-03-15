@@ -1,11 +1,8 @@
 // src/screens/DashboardV1/views/GestaoCidades/components/CityRegistrationForm.tsx
-import React, { forwardRef, Ref } from 'react'
-
+import React, { forwardRef, Ref, useEffect, useState } from 'react'
 import * as S from './styles'
-
 import { Controller, UseFormReturn, DefaultValues } from 'react-hook-form'
 import { Select, Input } from 'antd'
-
 import {
   StyledForm,
   StyledInput,
@@ -23,6 +20,7 @@ import { FormInputsWrapper, FormStep } from '@/utils/styles/commons'
 import { useModalForm } from '@/hooks/useModalForm'
 import { DynamicDescriptions } from '@/components'
 import { citiesService } from '@/services/cities'
+import { ibgeService, IBGEState, IBGECity } from '@/services/ibge'
 import { DynamicDescriptionsField } from '@/components/DynamicDescriptions'
 
 const { TextArea } = Input
@@ -45,22 +43,21 @@ const CityRegistrationForm = forwardRef<
     { onSubmit, initialData, mode, currentStep, setCurrentStep },
     ref: Ref<UseFormReturn<CityRegistrationFormType>>
   ) => {
+    const [states, setStates] = useState<IBGEState[]>([])
+    const [cities, setCities] = useState<IBGECity[]>([])
+    const [registeredCities, setRegisteredCities] = useState<string[]>([])
+    const [isCitiesLoading, setIsCitiesLoading] = useState(false)
+
     const defaultValues: DefaultValues<CityRegistrationFormType> = {
-      name: initialData?.name || '',
+      name: initialData?.name || undefined,
       status: initialData?.status || CityStatus.PENDENTE,
       description: initialData?.description || null,
       totalUsers: initialData?.totalUsers || 0,
       population: initialData?.population || null,
       area: initialData?.area || null,
-      cepRangeStart:
-        (initialData?.cepRangeStart &&
-          applyMask(initialData?.cepRangeStart, 'cep')) ||
-        null,
-      cepRangeEnd:
-        (initialData?.cepRangeEnd &&
-          applyMask(initialData?.cepRangeEnd, 'cep')) ||
-        null,
-      state: initialData?.state || ''
+      cepRangeStart: initialData?.cepRangeStart || null,
+      cepRangeEnd: initialData?.cepRangeEnd || null,
+      state: initialData?.state || undefined
     }
 
     const formMethods = useModalForm<CityRegistrationFormType>({
@@ -76,18 +73,63 @@ const CityRegistrationForm = forwardRef<
       setValue,
       trigger,
       watch,
-      setError,
-      clearErrors,
       formState: { errors, isValid }
     } = formMethods
 
     const formData = watch()
+    const selectedState = watch('state')
+
+    useEffect(() => {
+      const fetchStates = async () => {
+        const stateData = await ibgeService.getStates()
+        setStates(stateData)
+      }
+      fetchStates()
+
+      const fetchRegisteredCities = async () => {
+        const citiesData = await citiesService.getCities({})
+        setRegisteredCities(citiesData.map((city) => city.name))
+      }
+      fetchRegisteredCities()
+    }, [])
+
+    useEffect(() => {
+      const fetchCities = async () => {
+        if (selectedState && mode === 'create') {
+          setIsCitiesLoading(true)
+          const cityData = await ibgeService.getCitiesByState(selectedState)
+
+          const availableCities = cityData.filter(
+            (city) => !registeredCities.includes(city.nome)
+          )
+          setCities(availableCities)
+          setIsCitiesLoading(false)
+        }
+      }
+      fetchCities()
+    }, [selectedState, registeredCities, mode])
+
+    const handleStateChange = async (state: string) => {
+      setValue('state', state)
+      setValue('name', '') // Resetar cidade ao mudar estado
+      await trigger('state')
+    }
+
+    const handleCityChange = async (cityName: string) => {
+      setValue('name', cityName)
+      const details = await ibgeService.getCityDetails(cityName, selectedState)
+      setValue('population', details.population)
+      setValue('area', details.area)
+      setValue('cepRangeStart', details.cepRangeStart)
+      setValue('cepRangeEnd', details.cepRangeEnd)
+      await trigger('name')
+    }
 
     const steps = [
       {
         title: 'Dados Básicos',
-        fields: ['name', 'status', 'state'],
-        requiredFields: ['name', 'status', 'state']
+        fields: ['state', 'name', 'status'],
+        requiredFields: ['state', 'name', 'status']
       },
       {
         title: 'Detalhes',
@@ -106,23 +148,17 @@ const CityRegistrationForm = forwardRef<
       }
     ]
 
-    const areRequiredFieldsValid = () => {
-      const requiredFields = steps[currentStep]
-        .requiredFields as (keyof CityRegistrationFormType)[]
-      return requiredFields.every((field) => {
-        const value = formData[field]
-        const hasError = !!errors[field]
-        return (
-          value !== '' && value !== null && value !== undefined && !hasError
-        )
+    const areRequiredFieldsValid = () =>
+      steps[currentStep].requiredFields.every((field) => {
+        const value = formData[field as keyof CityRegistrationFormType]
+        const hasError = !!errors[field as keyof CityRegistrationFormType]
+        return value && !hasError
       })
-    }
 
     const validateStep = async () => {
       const fieldsToValidate = steps[currentStep]
         .fields as (keyof CityRegistrationFormType)[]
-      const isValidStep = await trigger(fieldsToValidate, { shouldFocus: true })
-      return isValidStep
+      return await trigger(fieldsToValidate, { shouldFocus: true })
     }
 
     const nextStep = async () => {
@@ -139,24 +175,6 @@ const CityRegistrationForm = forwardRef<
       }
     }
 
-    // Função de validação no onBlur
-    const validateNameUniqueness = async (name: string) => {
-      const isUnique = await citiesService.checkCityNameUniqueness(
-        name,
-        initialData?.name
-      )
-      if (!isUnique) {
-        setError('name', {
-          type: 'manual',
-          message: 'Esta cidade já está registrada'
-        })
-      } else {
-        clearErrors('name')
-        await trigger('name') // Revalida o campo com o schema
-      }
-    }
-
-    // Campos para Descriptions
     const descriptionFields: DynamicDescriptionsField<CityRegistrationFormType>[] =
       [
         { key: 'name', label: 'Nome da Cidade' },
@@ -196,20 +214,15 @@ const CityRegistrationForm = forwardRef<
         }
       ]
 
-    // Renderização para modo viewOnly
-    const renderViewOnlyMode = () => {
-      return (
-        <DynamicDescriptions
-          data={initialData ?? {}}
-          fields={descriptionFields}
-          title="Detalhes da Cidade"
-        />
-      )
-    }
+    const renderViewOnlyMode = () => (
+      <DynamicDescriptions
+        data={initialData ?? {}}
+        fields={descriptionFields}
+        title="Detalhes da Cidade"
+      />
+    )
 
-    if (mode === 'viewOnly') {
-      return renderViewOnlyMode()
-    }
+    if (mode === 'viewOnly') return renderViewOnlyMode()
 
     return (
       <StyledForm onFinish={() => {}} layout="vertical">
@@ -224,7 +237,13 @@ const CityRegistrationForm = forwardRef<
             errors={errors}
             setValue={setValue}
             visible={currentStep === 0}
-            validateNameUniqueness={validateNameUniqueness}
+            mode={mode}
+            states={states}
+            cities={cities}
+            isCitiesLoading={isCitiesLoading}
+            onStateChange={handleStateChange}
+            onCityChange={handleCityChange}
+            selectedState={!!selectedState && selectedState !== ''}
           />
           <DetailsStep
             control={control}
@@ -266,7 +285,7 @@ const CityRegistrationForm = forwardRef<
               onClick={handleSubmitClick}
               disabled={!isValid}
             >
-              {!!initialData ? 'Atualizar Cidade' : 'Criar Cidade'}
+              {mode === 'edit' ? 'Atualizar Cidade' : 'Criar Cidade'}
             </StyledButton>
           )}
         </S.CityRegistrationFormFooter>
@@ -285,8 +304,14 @@ interface ICityRegistrationStep {
   setValue: any
   formData?: any
   visible: boolean
+  mode?: FormMode
+  states?: IBGEState[]
+  cities?: IBGECity[]
+  isCitiesLoading?: boolean
+  onStateChange?: (state: string) => void
+  onCityChange?: (city: string) => void
   descriptionFields?: DynamicDescriptionsField<CityRegistrationFormType>[]
-  validateNameUniqueness?: (name: string) => Promise<void>
+  selectedState?: boolean
 }
 
 const BasicDataStep = ({
@@ -294,7 +319,13 @@ const BasicDataStep = ({
   errors,
   setValue,
   visible,
-  validateNameUniqueness
+  mode,
+  states,
+  cities,
+  isCitiesLoading,
+  onStateChange,
+  onCityChange,
+  selectedState
 }: ICityRegistrationStep) => {
   const CITY_STATUS_OPTIONS = Object.values(CityStatus).map((status) => ({
     label: getCityStatusData(status).label,
@@ -303,43 +334,7 @@ const BasicDataStep = ({
 
   return (
     <FormStep visible={visible ? 1 : 0}>
-      <Controller
-        name="name"
-        control={control}
-        render={({ field }) => (
-          <StyledForm.Item
-            label="Nome da Cidade"
-            help={errors.name?.message}
-            validateStatus={errors.name ? 'error' : ''}
-          >
-            <StyledInput
-              {...field}
-              placeholder="Digite o nome da cidade"
-              onBlur={(e) => validateNameUniqueness!(e.target.value)}
-            />
-          </StyledForm.Item>
-        )}
-      />
       <FormInputsWrapper>
-        <Controller
-          name="status"
-          control={control}
-          render={({ field }) => (
-            <StyledForm.Item
-              label="Status"
-              help={errors.status?.message}
-              validateStatus={errors.status ? 'error' : ''}
-            >
-              <Select
-                {...field}
-                placeholder="Selecione o status"
-                options={CITY_STATUS_OPTIONS}
-                onChange={(value) => setValue('status', value)}
-                value={field.value}
-              />
-            </StyledForm.Item>
-          )}
-        />
         <Controller
           name="state"
           control={control}
@@ -348,11 +343,63 @@ const BasicDataStep = ({
               label="Estado"
               help={errors.state?.message}
               validateStatus={errors.state ? 'error' : ''}
+              style={{ width: '16%' }}
             >
-              <StyledInput
+              <Select
                 {...field}
-                placeholder="Digite o estado (ex.: SP)"
-                maxLength={2}
+                // placeholder="Selecione o estado"
+                options={states?.map((state) => ({
+                  label: state.sigla,
+                  value: state.sigla
+                }))}
+                onChange={(value) => onStateChange!(value)}
+                value={field.value}
+                disabled={mode === 'edit'} // Bloqueia edição do estado
+              />
+            </StyledForm.Item>
+          )}
+        />
+        <Controller
+          name="name"
+          control={control}
+          render={({ field }) => (
+            <StyledForm.Item
+              label="Cidade"
+              help={errors.name?.message}
+              validateStatus={errors.name ? 'error' : ''}
+              style={{ width: '42%' }}
+            >
+              <Select
+                {...field}
+                placeholder="Selecione a cidade"
+                options={cities?.map((city) => ({
+                  label: city.nome,
+                  value: city.nome
+                }))}
+                onChange={(value) => onCityChange!(value)}
+                value={field.value}
+                disabled={mode === 'edit' || !selectedState} // Bloqueia edição e exige estado
+                loading={isCitiesLoading}
+              />
+            </StyledForm.Item>
+          )}
+        />
+        <Controller
+          name="status"
+          control={control}
+          render={({ field }) => (
+            <StyledForm.Item
+              label="Status"
+              help={errors.status?.message}
+              validateStatus={errors.status ? 'error' : ''}
+              style={{ width: '42%' }}
+            >
+              <Select
+                {...field}
+                placeholder="Selecione o status"
+                options={CITY_STATUS_OPTIONS}
+                onChange={(value) => setValue('status', value)}
+                value={field.value}
               />
             </StyledForm.Item>
           )}
@@ -497,12 +544,10 @@ const ReviewStep = ({
   setValue,
   visible,
   descriptionFields
-}: ICityRegistrationStep) => {
-  return (
-    <FormStep visible={visible ? 1 : 0}>
-      <DynamicDescriptions data={formData} fields={descriptionFields || []} />
-    </FormStep>
-  )
-}
+}: ICityRegistrationStep) => (
+  <FormStep visible={visible ? 1 : 0}>
+    <DynamicDescriptions data={formData} fields={descriptionFields || []} />
+  </FormStep>
+)
 
 export default CityRegistrationForm

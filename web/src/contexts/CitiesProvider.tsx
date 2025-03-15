@@ -1,8 +1,9 @@
 // src/contexts/CitiesProvider.tsx
-
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { City, CityRegistrationFormType } from '@/@types/city'
 import { citiesService } from '@/services/cities'
+import { ref, get } from 'firebase/database'
+import { db } from '@/lib/firebase'
 
 interface CitiesContextData {
   cities: City[]
@@ -10,7 +11,10 @@ interface CitiesContextData {
   filters: Partial<CityFilters>
   setFilters: React.Dispatch<React.SetStateAction<Partial<CityFilters>>>
   createCity: (data: CityRegistrationFormType) => Promise<string>
-  updateCity: (id: string, data: CityRegistrationFormType) => Promise<void>
+  updateCity: (
+    id: string,
+    data: Partial<CityRegistrationFormType>
+  ) => Promise<void>
   deleteCity: (id: string) => Promise<void>
   getInitialData: (city: City) => Partial<CityRegistrationFormType>
 }
@@ -59,7 +63,7 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
           area: data.area,
           cepRangeStart: data.cepRangeStart,
           cepRangeEnd: data.cepRangeEnd,
-          state: data.state
+          state: data.state.toUpperCase()
         }
       }
       const newCityId = await citiesService.createCity(cityData)
@@ -75,21 +79,29 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const updateCity = async (
     id: string,
-    data: CityRegistrationFormType
+    data: Partial<CityRegistrationFormType>
   ): Promise<void> => {
     setLoading(true)
     try {
+      // Busca os dados atuais da cidade para preservar o `state`
+      const cityRef = ref(db, `cities/${id}`)
+      const snapshot = await get(cityRef)
+      if (!snapshot.exists()) {
+        throw new Error('Cidade não encontrada')
+      }
+      const existingCity = snapshot.val() as City
+
       const cityData: Partial<City> = {
-        name: data.name,
-        status: data.status,
+        status: data.status ?? existingCity.status,
         details: {
-          description: data.description,
-          totalUsers: data.totalUsers || 0,
-          population: data.population,
-          area: data.area,
-          cepRangeStart: data.cepRangeStart,
-          cepRangeEnd: data.cepRangeEnd,
-          state: data.state
+          description: data.description ?? existingCity.details.description,
+          totalUsers: data.totalUsers ?? existingCity.details.totalUsers ?? 0,
+          population: data.population ?? existingCity.details.population,
+          area: data.area ?? existingCity.details.area,
+          cepRangeStart:
+            data.cepRangeStart ?? existingCity.details.cepRangeStart,
+          cepRangeEnd: data.cepRangeEnd ?? existingCity.details.cepRangeEnd,
+          state: existingCity.details.state
         }
       }
       await citiesService.updateCity(id, cityData)

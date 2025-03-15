@@ -8,14 +8,12 @@ export interface FormattedCityTag {
   color: string
 }
 
-// Enum para status da cidade
 export enum CityStatus {
   ATIVA = 'ativa',
   INATIVA = 'inativa',
   PENDENTE = 'pendente'
 }
 
-// Função para converter CityStatus em uma label amigável
 export const getCityStatusData = (status?: CityStatus): FormattedCityTag => {
   switch (status) {
     case CityStatus.ATIVA:
@@ -29,7 +27,6 @@ export const getCityStatusData = (status?: CityStatus): FormattedCityTag => {
   }
 }
 
-// Interface base para dados comuns a todas as cidades
 interface BaseCity {
   id: string
   name: string
@@ -38,23 +35,20 @@ interface BaseCity {
   updatedAt: string
 }
 
-// Interface para informações detalhadas da cidade
 export interface CityDetails {
   description?: string | null
   totalUsers: number
   population?: number | null
   area?: number | null // em km²
-  cepRangeStart?: string | null // Faixa inicial de CEP
-  cepRangeEnd?: string | null // Faixa final de CEP
-  state: string // Estado onde a cidade está localizada
+  cepRangeStart?: string | null
+  cepRangeEnd?: string | null
+  state: string // Apenas as iniciais do estado (ex.: "SP")
 }
 
-// Interface principal da cidade
 export interface City extends BaseCity {
   details: CityDetails
 }
 
-// Tipo para o formulário dinâmico
 export interface CityRegistrationForm {
   name: string
   status: CityStatus
@@ -67,13 +61,11 @@ export interface CityRegistrationForm {
   state: string
 }
 
-// Esquema dinâmico de validação baseado no modo
 export const getCityRegistrationSchema = (mode: 'create' | 'edit') => {
   return yup.object().shape({
     name: yup
       .string()
       .required('Nome da cidade é obrigatório')
-      .min(2, 'O nome deve ter pelo menos 2 caracteres')
       .test('unique-name', 'Esta cidade já está registrada', async (value) => {
         if (!value) return false
         return await citiesService.checkCityNameUniqueness(value)
@@ -95,11 +87,7 @@ export const getCityRegistrationSchema = (mode: 'create' | 'edit') => {
       .min(0, 'Não pode ser negativo')
       .nullable()
       .optional(),
-    area: yup
-      .number()
-      .min(0, 'Não pode ser negativo')
-      .nullable()
-      .optional(),
+    area: yup.number().min(0, 'Não pode ser negativo').nullable().optional(),
     cepRangeStart: yup
       .string()
       .matches(/^\d{5}-\d{3}$/, {
@@ -125,11 +113,13 @@ export const getCityRegistrationSchema = (mode: 'create' | 'edit') => {
           return value >= cepStart
         }
       ),
-    state: yup.string().required('Estado é obrigatório')
+    state: yup
+      .string()
+      .required('Estado é obrigatório')
+      .length(2, 'O estado deve ter 2 caracteres (ex.: SP)')
   })
 }
 
-// Tipo inferido do esquema dinâmico
 export type CityRegistrationFormType = yup.InferType<
   ReturnType<typeof getCityRegistrationSchema>
 >

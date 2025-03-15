@@ -1,5 +1,4 @@
 // src/screens/DashboardV1/views/GestaoCidades/index.tsx
-
 import { useState, useRef } from 'react'
 import * as S from './styles'
 import { Button, Input, Tag, Avatar } from 'antd'
@@ -22,8 +21,6 @@ import { UserRole } from '@/@types/user'
 const { Search } = Input
 
 const GestaoCidadesView = () => {
-  // ============================================= STATES | REFS | CONTEXTS | HOOK
-
   const { user } = useAuth()
   const {
     cities,
@@ -43,8 +40,6 @@ const GestaoCidadesView = () => {
   const [currentStep, setCurrentStep] = useState(0)
   const formRef = useRef<UseFormReturn<CityRegistrationFormType> | null>(null)
 
-  // ============================================= TABELA
-
   const columns = [
     {
       title: 'Logo',
@@ -59,6 +54,11 @@ const GestaoCidadesView = () => {
       dataIndex: 'name',
       key: 'name',
       sorter: (a: City, b: City) => a.name.localeCompare(b.name)
+    },
+    {
+      title: 'Estado',
+      key: 'state',
+      render: (_: any, record: City) => record.details.state
     },
     {
       title: 'Total de Usuários',
@@ -89,7 +89,7 @@ const GestaoCidadesView = () => {
               setSelectedCity(record)
               setIsConfirmModalOpen(true)
             }}
-            disabled={record.details.totalUsers > 0} // Desativa exclusão se houver usuários
+            disabled={record.details.totalUsers > 0}
           />
           <Button
             type="link"
@@ -105,13 +105,9 @@ const GestaoCidadesView = () => {
     }
   ]
 
-  // ============================================= FILTROS
-
   const handleSearch = (value: string) => {
     setFilters({ ...filters, name: value })
   }
-
-  // ============================================= FUNÇÕES
 
   const handleCreateCity = async (data: CityRegistrationFormType) => {
     await createCity(data)
@@ -120,7 +116,8 @@ const GestaoCidadesView = () => {
 
   const handleEditCity = async (data: CityRegistrationFormType) => {
     if (selectedCity) {
-      await updateCity(selectedCity.id, data)
+      const { name, state, ...editableData } = data // Remove name e state
+      await updateCity(selectedCity.id, editableData)
       setIsEditModalOpen(false)
     }
   }
@@ -143,7 +140,6 @@ const GestaoCidadesView = () => {
     setSelectedCity(null)
   }
 
-  // Verifica se o usuário é Administrador Geral
   if (user?.role !== UserRole.ADMINISTRADOR_GERAL) {
     return <div>Acesso restrito ao Administrador Geral.</div>
   }
@@ -173,7 +169,6 @@ const GestaoCidadesView = () => {
         pagination={{ pageSize: 10 }}
       />
 
-      {/* Modal de Criação */}
       <Modal
         title="Criação de Nova Cidade"
         open={isCreateModalOpen}
@@ -192,7 +187,6 @@ const GestaoCidadesView = () => {
         )}
       </Modal>
 
-      {/* Modal de Edição */}
       <Modal
         title="Edição de Cidade"
         open={isEditModalOpen}
@@ -212,7 +206,6 @@ const GestaoCidadesView = () => {
         )}
       </Modal>
 
-      {/* Modal de Visualização */}
       <Modal
         title="Visualização de Cidade"
         open={isViewModalOpen}
@@ -230,7 +223,6 @@ const GestaoCidadesView = () => {
         )}
       </Modal>
 
-      {/* Modal de Confirmação */}
       <ConfirmModal
         type="warning"
         title="Confirmação de Exclusão"
