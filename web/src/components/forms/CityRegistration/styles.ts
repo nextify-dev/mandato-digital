@@ -1,4 +1,4 @@
-// src/components/forms/UserRegistration/styles.ts
+// src/components/forms/CityRegistration/styles.ts
 
 import styled from 'styled-components'
 

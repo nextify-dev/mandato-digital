@@ -40,9 +40,8 @@ export interface CityDetails {
   totalVoters?: number | null // Número de eleitores (opcional)
   population?: number | null // População (opcional)
   ibgeCode?: number | null // Código IBGE (opcional)
-  cepRangeStart?: string | null // CEP inicial (opcional)
-  cepRangeEnd?: string | null // CEP final (opcional)
   observations?: string | null // Observações (opcional)
+  totalUsers?: number // Calculado dinamicamente, não salvo no banco
 }
 
 export interface City extends BaseCity {
@@ -56,8 +55,6 @@ export interface CityRegistrationForm {
   totalVoters?: number | null
   population?: number | null
   ibgeCode?: number | null
-  cepRangeStart?: string | null
-  cepRangeEnd?: string | null
   observations?: string | null
 }
 
@@ -96,31 +93,6 @@ export const getCityRegistrationSchema = (mode: 'create' | 'edit') => {
       .min(0, 'Não pode ser negativo')
       .nullable()
       .optional(),
-    cepRangeStart: yup
-      .string()
-      .matches(/^\d{5}-\d{3}$/, {
-        message: 'CEP deve estar no formato 00000-000',
-        excludeEmptyString: true
-      })
-      .nullable()
-      .optional(),
-    cepRangeEnd: yup
-      .string()
-      .matches(/^\d{5}-\d{3}$/, {
-        message: 'CEP deve estar no formato 00000-000',
-        excludeEmptyString: true
-      })
-      .nullable()
-      .optional()
-      .test(
-        'cep-range-valid',
-        'O CEP final deve ser maior ou igual ao inicial',
-        function (value) {
-          const cepStart = this.parent.cepRangeStart
-          if (!cepStart || !value) return true
-          return value >= cepStart
-        }
-      ),
     observations: yup.string().nullable().optional()
   })
 }

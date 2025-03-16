@@ -1,4 +1,5 @@
 // src/services/cities.ts
+
 import { City, CityStatus } from '@/@types/city'
 import { db } from '@/lib/firebase'
 import {
@@ -38,16 +39,33 @@ export const citiesService = {
       ) as any
     }
 
-    const snapshot = await get(q)
-    const citiesData = snapshot.val() || {}
-    return Object.entries(citiesData).map(([id, data]: [string, any]) => ({
-      id,
-      ...data,
-      details: {
-        ...data.details,
-        totalUsers: Math.floor(Math.random() * 1000) // Simulação de totalUsers (não salvo)
+    const citiesSnapshot = await get(q)
+    const citiesData = citiesSnapshot.val() || {}
+
+    // Buscar usuários para calcular totalUsers
+    const usersRef = ref(db, 'users')
+    const usersSnapshot = await get(usersRef)
+    const usersData = usersSnapshot.val() || {}
+
+    const citiesArray = Object.entries(citiesData).map(
+      ([id, data]: [string, any]) => {
+        // Calcular totalUsers baseado na relação cidade-usuário
+        const totalUsers = Object.values(usersData).filter(
+          (user: any) => user.cityId === id
+        ).length
+
+        return {
+          id,
+          ...data,
+          details: {
+            ...data.details,
+            totalUsers // Adiciona o total calculado
+          }
+        } as City
       }
-    })) as City[]
+    )
+
+    return citiesArray
   },
 
   createCity: async (data: Partial<City>, userId: string): Promise<string> => {
@@ -75,8 +93,6 @@ export const citiesService = {
         totalVoters: data.details?.totalVoters || null,
         population: data.details?.population || null,
         ibgeCode: data.details?.ibgeCode || null,
-        cepRangeStart: data.details?.cepRangeStart || null,
-        cepRangeEnd: data.details?.cepRangeEnd || null,
         observations: data.details?.observations || null
       }
     }
@@ -101,10 +117,6 @@ export const citiesService = {
           data.details?.totalVoters ?? existingCity.details.totalVoters,
         population: data.details?.population ?? existingCity.details.population,
         ibgeCode: data.details?.ibgeCode ?? existingCity.details.ibgeCode,
-        cepRangeStart:
-          data.details?.cepRangeStart ?? existingCity.details.cepRangeStart,
-        cepRangeEnd:
-          data.details?.cepRangeEnd ?? existingCity.details.cepRangeEnd,
         observations:
           data.details?.observations ?? existingCity.details.observations
       }

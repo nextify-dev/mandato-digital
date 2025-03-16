@@ -1,4 +1,5 @@
 // src/screens/DashboardV1/views/GestaoCidades/index.tsx
+
 import { useState, useRef } from 'react'
 import * as S from './styles'
 import { Button, Input, Tag, Avatar } from 'antd'
@@ -64,7 +65,7 @@ const GestaoCidadesView = () => {
       title: 'Total de Usuários',
       key: 'totalUsers',
       render: (_: any, record: City) => (
-        <Tag color="geekblue">{record.details.totalUsers}</Tag>
+        <Tag color="geekblue">{record.details.totalUsers ?? 0}</Tag>
       )
     },
     {
@@ -89,7 +90,7 @@ const GestaoCidadesView = () => {
               setSelectedCity(record)
               setIsConfirmModalOpen(true)
             }}
-            disabled={record.details.totalUsers > 0}
+            disabled={(record.details.totalUsers ?? 0) > 0} // Usa ?? para fallback
           />
           <Button
             type="link"

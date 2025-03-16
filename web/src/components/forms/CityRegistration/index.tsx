@@ -1,4 +1,5 @@
-// src/screens/DashboardV1/views/GestaoCidades/components/CityRegistrationForm.tsx
+// src/components/forms/CityRegistration/index.tsx
+
 import React, { forwardRef, Ref, useEffect, useState } from 'react'
 import * as S from './styles'
 import { Controller, UseFormReturn, DefaultValues } from 'react-hook-form'
@@ -9,7 +10,6 @@ import {
   StyledButton,
   StyledSteps
 } from '@/utils/styles/antd'
-import { applyMask } from '@/utils/functions/masks'
 import {
   CityStatus,
   getCityRegistrationSchema,
@@ -47,14 +47,12 @@ const CityRegistrationForm = forwardRef<
     const [isCitiesLoading, setIsCitiesLoading] = useState(false)
 
     const defaultValues: DefaultValues<CityRegistrationFormType> = {
-      name: initialData?.name || '',
+      name: initialData?.name || undefined,
       state: initialData?.state || '',
-      status: initialData?.status || CityStatus.PENDENTE,
+      status: initialData?.status || CityStatus.ATIVA,
       totalVoters: initialData?.totalVoters || null,
       population: initialData?.population || null,
       ibgeCode: initialData?.ibgeCode || null,
-      cepRangeStart: initialData?.cepRangeStart || null,
-      cepRangeEnd: initialData?.cepRangeEnd || null,
       observations: initialData?.observations || null
     }
 
@@ -105,9 +103,6 @@ const CityRegistrationForm = forwardRef<
 
     const handleCityChange = async (cityName: string) => {
       setValue('name', cityName)
-      const details = await ibgeService.getCityDetails(cityName, selectedState)
-      setValue('cepRangeStart', details.cepRangeStart)
-      setValue('cepRangeEnd', details.cepRangeEnd)
       const city = cities.find((c) => c.nome === cityName)
       if (city) setValue('ibgeCode', city.id)
       await trigger('name')
@@ -122,11 +117,6 @@ const CityRegistrationForm = forwardRef<
       {
         title: 'Detalhes',
         fields: ['totalVoters', 'population', 'observations'],
-        requiredFields: []
-      },
-      {
-        title: 'Faixa de CEP',
-        fields: ['cepRangeStart', 'cepRangeEnd'],
         requiredFields: []
       },
       {
@@ -179,16 +169,6 @@ const CityRegistrationForm = forwardRef<
         },
         { key: 'population', label: 'População', render: (v) => v ?? '-' },
         { key: 'ibgeCode', label: 'Código IBGE', render: (v) => v ?? '-' },
-        {
-          key: 'cepRangeStart',
-          label: 'CEP Inicial',
-          render: (v) => (v ? applyMask(v, 'cep') : '-')
-        },
-        {
-          key: 'cepRangeEnd',
-          label: 'CEP Final',
-          render: (v) => (v ? applyMask(v, 'cep') : '-')
-        },
         { key: 'observations', label: 'Observações' }
       ]
 
@@ -221,6 +201,7 @@ const CityRegistrationForm = forwardRef<
             isCitiesLoading={isCitiesLoading}
             onStateChange={handleStateChange}
             onCityChange={handleCityChange}
+            selectedState={!!selectedState}
           />
           <DetailsStep
             control={control}
@@ -228,18 +209,12 @@ const CityRegistrationForm = forwardRef<
             setValue={setValue}
             visible={currentStep === 1}
           />
-          <CepRangeStep
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            visible={currentStep === 2}
-          />
           <ReviewStep
             control={control}
             errors={errors}
             formData={formData}
             setValue={setValue}
-            visible={currentStep === 3}
+            visible={currentStep === 2}
             descriptionFields={descriptionFields}
           />
         </S.CityRegistrationFormContent>
@@ -287,6 +262,7 @@ interface ICityRegistrationStep {
   onStateChange?: (state: string) => void
   onCityChange?: (city: string) => void
   descriptionFields?: DynamicDescriptionsField<CityRegistrationFormType>[]
+  selectedState?: boolean
 }
 
 const BasicDataStep = ({
@@ -299,7 +275,8 @@ const BasicDataStep = ({
   cities,
   isCitiesLoading,
   onStateChange,
-  onCityChange
+  onCityChange,
+  selectedState
 }: ICityRegistrationStep) => {
   const CITY_STATUS_OPTIONS = Object.values(CityStatus).map((status) => ({
     label: getCityStatusData(status).label,
@@ -317,12 +294,13 @@ const BasicDataStep = ({
               label="Estado"
               help={errors.state?.message}
               validateStatus={errors.state ? 'error' : ''}
+              style={{ width: '15%' }}
             >
               <Select
                 {...field}
                 placeholder="Selecione o estado"
                 options={states?.map((state) => ({
-                  label: state.nome,
+                  label: state.sigla,
                   value: state.sigla
                 }))}
                 onChange={(value) => onStateChange!(value)}
@@ -340,6 +318,7 @@ const BasicDataStep = ({
               label="Cidade"
               help={errors.name?.message}
               validateStatus={errors.name ? 'error' : ''}
+              style={{ width: '55%' }}
             >
               <Select
                 {...field}
@@ -350,7 +329,7 @@ const BasicDataStep = ({
                 }))}
                 onChange={(value) => onCityChange!(value)}
                 value={field.value}
-                disabled={mode === 'edit' || !field.value?.state}
+                disabled={mode === 'edit' || !selectedState}
                 loading={isCitiesLoading}
               />
             </StyledForm.Item>
@@ -364,6 +343,7 @@ const BasicDataStep = ({
               label="Status"
               help={errors.status?.message}
               validateStatus={errors.status ? 'error' : ''}
+              style={{ width: '30%' }}
             >
               <Select
                 {...field}
@@ -444,60 +424,6 @@ const DetailsStep = ({
                 value={field.value || ''}
                 onChange={(e) =>
                   setValue('population', parseInt(e.target.value) || null)
-                }
-              />
-            </StyledForm.Item>
-          )}
-        />
-      </FormInputsWrapper>
-    </FormStep>
-  )
-}
-
-const CepRangeStep = ({
-  control,
-  errors,
-  setValue,
-  visible
-}: ICityRegistrationStep) => {
-  return (
-    <FormStep visible={visible ? 1 : 0}>
-      <FormInputsWrapper>
-        <Controller
-          name="cepRangeStart"
-          control={control}
-          render={({ field }) => (
-            <StyledForm.Item
-              label="CEP Inicial (opcional)"
-              help={errors.cepRangeStart?.message}
-              validateStatus={errors.cepRangeStart ? 'error' : ''}
-            >
-              <StyledInput
-                {...field}
-                placeholder="00000-000"
-                value={field.value || ''}
-                onChange={(e) =>
-                  setValue('cepRangeStart', applyMask(e.target.value, 'cep'))
-                }
-              />
-            </StyledForm.Item>
-          )}
-        />
-        <Controller
-          name="cepRangeEnd"
-          control={control}
-          render={({ field }) => (
-            <StyledForm.Item
-              label="CEP Final (opcional)"
-              help={errors.cepRangeEnd?.message}
-              validateStatus={errors.cepRangeEnd ? 'error' : ''}
-            >
-              <StyledInput
-                {...field}
-                placeholder="00000-000"
-                value={field.value || ''}
-                onChange={(e) =>
-                  setValue('cepRangeEnd', applyMask(e.target.value, 'cep'))
                 }
               />
             </StyledForm.Item>
