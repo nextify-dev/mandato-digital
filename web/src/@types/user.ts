@@ -1,5 +1,4 @@
 // src/@types/user.ts
-
 import { GENDER_OPTIONS, RELIGION_OPTIONS } from '@/data/options'
 import { authService } from '@/services/auth'
 import { convertToISODate, isValidCpf } from '@/utils/functions/masks'
@@ -249,6 +248,7 @@ export interface UserRegistrationForm {
   bairro: string
   cidade: string
   estado: string
+  cityId?: string // Novo campo opcional para selecionar a cidade
   password?: string
   confirmPassword?: string
   observacoes?: string
@@ -269,7 +269,7 @@ export const getUserRegistrationSchema = (
       .test(
         'unique-email',
         'Este email já está registrado',
-        async (value: string): Promise<boolean> => {
+        async (value: string | undefined): Promise<boolean> => {
           if (!value) return false
           return await authService.checkEmailUniqueness(value)
         }
@@ -345,6 +345,7 @@ export const getUserRegistrationSchema = (
     bairro: yup.string().required('Bairro é obrigatório'),
     cidade: yup.string().required('Cidade é obrigatória'),
     estado: yup.string().required('Estado é obrigatório'),
+    cityId: yup.string().nullable().optional(), // Campo opcional, sem validação obrigatória
     password:
       mode === 'firstAccess'
         ? yup

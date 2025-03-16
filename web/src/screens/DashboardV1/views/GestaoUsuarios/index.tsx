@@ -1,5 +1,4 @@
 // src/screens/DashboardV1/views/GestaoUsuarios/index.tsx
-
 import { useState, useRef } from 'react'
 import * as S from './styles'
 import { LuUserPen, LuTrash2, LuLock, LuLockOpen, LuEye } from 'react-icons/lu'
@@ -11,7 +10,6 @@ import {
   UserRegistrationForm,
   ConfirmModal
 } from '@/components'
-import { UsersProvider, useUsers } from '@/contexts/UsersProvider'
 import {
   getRoleData,
   getStatusData,
@@ -24,14 +22,15 @@ import { applyMask } from '@/utils/functions/masks'
 import { TableExtrasWrapper } from '@/utils/styles/commons'
 import { UseFormReturn } from 'react-hook-form'
 import { StyledAvatar } from '@/utils/styles/antd'
+import { useUsers } from '@/contexts/UsersProvider'
 import { useAuth } from '@/contexts/AuthProvider'
+import { useCities } from '@/contexts/CitiesProvider'
 
 const { Search } = Input
 
-const GestaoUsuariosViewContent = () => {
-  // ============================================= STATES | REFS | CONTEXTS | HOOK
-
+const GestaoUsuariosView = () => {
   const { user } = useAuth()
+  const { cities } = useCities()
   const {
     users,
     loading,
@@ -50,8 +49,6 @@ const GestaoUsuariosViewContent = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [currentStep, setCurrentStep] = useState(0)
   const formRef = useRef<UseFormReturn<UserRegistrationFormType> | null>(null)
-
-  // ============================================= TABELA
 
   const columns = [
     {
@@ -83,8 +80,11 @@ const GestaoUsuariosViewContent = () => {
     },
     {
       title: 'Cidade',
-      dataIndex: ['profile', 'cidade'],
-      key: 'cidade'
+      key: 'cidade',
+      render: (_: any, record: User) => {
+        const city = cities.find((c) => c.id === record.cityId)
+        return city ? city.name : 'N/A'
+      }
     },
     {
       title: 'Cargo',
@@ -119,14 +119,19 @@ const GestaoUsuariosViewContent = () => {
                 setIsEditModalOpen(true)
                 setCurrentStep(0)
               }}
-              disabled={isCurrentUser}
+              disabled={isCurrentUser || !user?.permissions.canEditUsers}
             />
             <Button
               type="link"
               icon={<LuTrash2 />}
               danger
-              onClick={() => deleteUser(record.id)}
-              disabled={isCurrentUser}
+              onClick={() => {
+                setSelectedUser(record)
+                setIsConfirmModalOpen(true)
+              }}
+              disabled={
+                !user?.permissions.canEditUsers || record.id === user?.id
+              }
             />
             <Button
               type="link"
@@ -135,7 +140,7 @@ const GestaoUsuariosViewContent = () => {
                 setSelectedUser(record)
                 setIsConfirmModalOpen(true)
               }}
-              disabled={isCurrentUser}
+              disabled={isCurrentUser || !user?.permissions.canEditUsers}
             />
             <Button
               type="link"
@@ -144,7 +149,6 @@ const GestaoUsuariosViewContent = () => {
                 setSelectedUser(record)
                 setIsViewModalOpen(true)
               }}
-              disabled={isCurrentUser}
             />
           </TableExtrasWrapper>
         )
@@ -152,8 +156,6 @@ const GestaoUsuariosViewContent = () => {
       width: 150
     }
   ]
-
-  // ============================================= FILTROS
 
   const handleSearch = (value: string) => {
     setFilters({
@@ -192,21 +194,43 @@ const GestaoUsuariosViewContent = () => {
 
   const CITY_FILTERED_OPTIONS = [
     { label: 'Todas', value: '' },
-    { label: 'Cidade A', value: 'cityA' },
-    { label: 'Cidade B', value: 'cityB' }
+    ...cities.map((city) => ({
+      label: `${city.name} - ${city.state}`,
+      value: city.id
+    }))
   ]
 
-  // ============================================= FUNÇÕES
-
-  const handleCreateUser = async (data: UserRegistrationFormType) => {
-    await createUser(data, 'default_city', 'userCreation')
+  const handleCreateUser = async (
+    data: UserRegistrationFormType & { cityId?: string }
+  ) => {
+    const cityId = data.cityId ?? user?.cityId // Usa o cityId do formulário ou fallback para user.cityId
+    if (!cityId) throw new Error('Nenhuma cidade associada ao usuário')
+    await createUser(data, cityId, 'userCreation')
     setIsCreateModalOpen(false)
   }
 
-  const handleEditUser = async (data: UserRegistrationFormType) => {
+  const handleEditUser = async (
+    data: UserRegistrationFormType & { cityId?: string }
+  ) => {
     if (selectedUser) {
       await updateUser(selectedUser.id, {
-        ...data,
+        nomeCompleto: data.nomeCompleto,
+        cpf: data.cpf,
+        dataNascimento: data.dataNascimento,
+        genero: data.genero,
+        religiao: data.religiao,
+        foto: data.foto,
+        telefone: data.telefone,
+        whatsapp: data.whatsapp,
+        instagram: data.instagram,
+        facebook: data.facebook,
+        cep: data.cep,
+        endereco: data.endereco,
+        numero: data.numero,
+        complemento: data.complemento,
+        bairro: data.bairro,
+        cidade: data.cidade,
+        estado: data.estado,
         role: data.role as UserRole
       })
       setIsEditModalOpen(false)
@@ -216,6 +240,13 @@ const GestaoUsuariosViewContent = () => {
   const handleToggleStatus = async () => {
     if (selectedUser) {
       await toggleUserStatus(selectedUser.id)
+      setIsConfirmModalOpen(false)
+    }
+  }
+
+  const handleDeleteUser = async () => {
+    if (selectedUser) {
+      await deleteUser(selectedUser.id)
       setIsConfirmModalOpen(false)
     }
   }
@@ -231,12 +262,12 @@ const GestaoUsuariosViewContent = () => {
     setSelectedUser(null)
   }
 
-  const ROLE_FILTER_OPTIONS_DATA = Object.values(UserRole)
-    .filter((role) => role !== UserRole.ELEITOR)
-    .map((role) => ({
-      label: getRoleData(role).label,
-      value: role
-    }))
+  if (
+    !user?.permissions.canManageCityUsers &&
+    user?.role !== UserRole.ADMINISTRADOR_GERAL
+  ) {
+    return <div>Acesso restrito a administradores de cidade ou gerais.</div>
+  }
 
   return (
     <View
@@ -270,7 +301,8 @@ const GestaoUsuariosViewContent = () => {
               placeholder="Filtrar por cidade"
               options={CITY_FILTERED_OPTIONS}
               onChange={handleCityFilter}
-              style={{ width: 150 }}
+              style={{ width: 200 }}
+              disabled={user?.role !== UserRole.ADMINISTRADOR_GERAL}
             />
           </S.SearchWrapper>
           <Button type="primary" onClick={() => setIsCreateModalOpen(true)}>
@@ -288,7 +320,6 @@ const GestaoUsuariosViewContent = () => {
         disabledRowKey={user?.id}
       />
 
-      {/* Modal de Criação */}
       <Modal
         title="Criação de Novo Usuário"
         open={isCreateModalOpen}
@@ -307,7 +338,6 @@ const GestaoUsuariosViewContent = () => {
         )}
       </Modal>
 
-      {/* Modal de Edição */}
       <Modal
         title="Edição de Usuário"
         open={isEditModalOpen}
@@ -318,7 +348,7 @@ const GestaoUsuariosViewContent = () => {
         {isEditModalOpen && selectedUser && (
           <UserRegistrationForm
             onSubmit={handleEditUser}
-            mode="voterCreation"
+            mode="userCreation"
             initialData={getInitialData(selectedUser)}
             ref={formRef}
             currentStep={currentStep}
@@ -327,7 +357,6 @@ const GestaoUsuariosViewContent = () => {
         )}
       </Modal>
 
-      {/* Modal de Visualização */}
       <Modal
         title="Visualização de Usuário"
         open={isViewModalOpen}
@@ -345,15 +374,22 @@ const GestaoUsuariosViewContent = () => {
         )}
       </Modal>
 
-      {/* Modal de Confirmação */}
       <ConfirmModal
         type="warning"
-        title="Confirmação de Alteração de Status"
+        title={
+          selectedUser?.status === UserStatus.ATIVO
+            ? 'Confirmação de Bloqueio'
+            : 'Confirmação de Exclusão'
+        }
         content={`Deseja ${
-          selectedUser?.status === 'ativo' ? 'bloquear' : 'desbloquear'
+          selectedUser?.status === UserStatus.ATIVO ? 'bloquear' : 'excluir'
         } o usuário ${selectedUser?.profile?.nomeCompleto || 'selecionado'}?`}
         visible={isConfirmModalOpen}
-        onConfirm={handleToggleStatus}
+        onConfirm={
+          selectedUser?.status === UserStatus.ATIVO
+            ? handleToggleStatus
+            : handleDeleteUser
+        }
         onCancel={() => setIsConfirmModalOpen(false)}
         confirmText="Sim"
         cancelText="Não"
@@ -361,11 +397,5 @@ const GestaoUsuariosViewContent = () => {
     </View>
   )
 }
-
-const GestaoUsuariosView = () => (
-  <UsersProvider>
-    <GestaoUsuariosViewContent />
-  </UsersProvider>
-)
 
 export default GestaoUsuariosView

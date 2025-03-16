@@ -1,5 +1,4 @@
 // src/screens/DashboardV1/views/CadastroEleitores/index.tsx
-
 import { useState, useRef } from 'react'
 import * as S from './styles'
 import { Button, Input, Select, Tag, Avatar } from 'antd'
@@ -16,7 +15,8 @@ import {
   User,
   UserRegistrationFormType,
   UserProfile,
-  UserStatus
+  UserStatus,
+  UserRole
 } from '@/@types/user'
 import { GENDER_OPTIONS, getGenderLabel } from '@/data/options'
 import { applyMask } from '@/utils/functions/masks'
@@ -25,13 +25,13 @@ import { UseFormReturn } from 'react-hook-form'
 import { StyledAvatar } from '@/utils/styles/antd'
 import { useUsers } from '@/contexts/UsersProvider'
 import { useAuth } from '@/contexts/AuthProvider'
+import { useCities } from '@/contexts/CitiesProvider'
 
 const { Search } = Input
 
 const CadastroEleitoresView = () => {
-  // ============================================= STATES | REFS | CONTEXTS | HOOK
-
   const { user } = useAuth()
+  const { cities } = useCities()
   const {
     voters,
     loading,
@@ -50,8 +50,6 @@ const CadastroEleitoresView = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [currentStep, setCurrentStep] = useState(0)
   const formRef = useRef<UseFormReturn<UserRegistrationFormType> | null>(null)
-
-  // ============================================= TABELA
 
   const columns = [
     {
@@ -83,8 +81,11 @@ const CadastroEleitoresView = () => {
     },
     {
       title: 'Cidade',
-      dataIndex: ['profile', 'cidade'],
-      key: 'cidade'
+      key: 'cidade',
+      render: (_: any, record: User) => {
+        const city = cities.find((c) => c.id === record.cityId)
+        return city ? city.name : 'N/A'
+      }
     },
     {
       title: 'Gênero',
@@ -126,14 +127,19 @@ const CadastroEleitoresView = () => {
                 setIsEditModalOpen(true)
                 setCurrentStep(0)
               }}
-              disabled={isCurrentUser}
+              disabled={isCurrentUser || !user?.permissions.canEditUsers}
             />
             <Button
               type="link"
               icon={<LuTrash2 />}
               danger
-              onClick={() => deleteUser(record.id)}
-              disabled={true || isCurrentUser}
+              onClick={() => {
+                setSelectedUser(record)
+                setIsConfirmModalOpen(true)
+              }}
+              disabled={
+                !user?.permissions.canEditUsers || record.id === user?.id
+              }
             />
             <Button
               type="link"
@@ -142,7 +148,7 @@ const CadastroEleitoresView = () => {
                 setSelectedUser(record)
                 setIsConfirmModalOpen(true)
               }}
-              disabled={isCurrentUser}
+              disabled={isCurrentUser || !user?.permissions.canEditUsers}
             />
             <Button
               type="link"
@@ -151,7 +157,6 @@ const CadastroEleitoresView = () => {
                 setSelectedUser(record)
                 setIsViewModalOpen(true)
               }}
-              disabled={isCurrentUser}
             />
           </TableExtrasWrapper>
         )
@@ -159,8 +164,6 @@ const CadastroEleitoresView = () => {
       width: 150
     }
   ]
-
-  // =========================================================== FILTROS
 
   const handleSearch = (value: string) => {
     setFilters({
@@ -192,20 +195,25 @@ const CadastroEleitoresView = () => {
 
   const CITY_FILTERED_OPTIONS = [
     { label: 'Todas', value: '' },
-    { label: 'Cidade A', value: 'cityA' },
-    { label: 'Cidade B', value: 'cityB' }
+    ...cities.map((city) => ({
+      label: `${city.name} - ${city.state}`,
+      value: city.id
+    }))
   ]
 
-  // =========================================================== FUNÇÕES
-
-  const handleCreateVoter = async (data: UserRegistrationFormType) => {
-    await createUser(data, 'default_city', 'voterCreation')
+  const handleCreateVoter = async (
+    data: UserRegistrationFormType & { cityId?: string }
+  ) => {
+    const cityId = data.cityId ?? user?.cityId // Usa o cityId do formulário ou fallback para user.cityId
+    if (!cityId) throw new Error('Nenhuma cidade associada ao usuário')
+    await createUser(data, cityId, 'voterCreation')
     setIsCreateModalOpen(false)
   }
 
-  const handleEditVoter = async (data: UserRegistrationFormType) => {
+  const handleEditVoter = async (
+    data: UserRegistrationFormType & { cityId?: string }
+  ) => {
     if (selectedUser) {
-      // Filtra apenas os campos válidos para UserProfile
       const profileUpdates: Partial<UserProfile> = {
         nomeCompleto: data.nomeCompleto,
         cpf: data.cpf,
@@ -237,6 +245,13 @@ const CadastroEleitoresView = () => {
     }
   }
 
+  const handleDeleteVoter = async () => {
+    if (selectedUser) {
+      await deleteUser(selectedUser.id)
+      setIsConfirmModalOpen(false)
+    }
+  }
+
   const handleModalClose = (type: 'create' | 'edit' | 'view') => {
     if (type === 'create') setIsCreateModalOpen(false)
     if (type === 'edit') setIsEditModalOpen(false)
@@ -246,6 +261,14 @@ const CadastroEleitoresView = () => {
       setCurrentStep(0)
     }
     setSelectedUser(null)
+  }
+
+  if (!user?.permissions.canRegisterVoters) {
+    return (
+      <div>
+        Acesso restrito a usuários com permissão para cadastrar eleitores.
+      </div>
+    )
   }
 
   return (
@@ -277,7 +300,8 @@ const CadastroEleitoresView = () => {
               placeholder="Filtrar por cidade"
               options={CITY_FILTERED_OPTIONS}
               onChange={handleCityFilter}
-              style={{ width: 150 }}
+              style={{ width: 200 }}
+              disabled={user?.role !== UserRole.ADMINISTRADOR_GERAL}
             />
           </S.SearchWrapper>
           <Button type="primary" onClick={() => setIsCreateModalOpen(true)}>
@@ -295,7 +319,6 @@ const CadastroEleitoresView = () => {
         disabledRowKey={user?.id}
       />
 
-      {/* Modal de Criação */}
       <Modal
         title="Criação de Novo Eleitor"
         open={isCreateModalOpen}
@@ -314,7 +337,6 @@ const CadastroEleitoresView = () => {
         )}
       </Modal>
 
-      {/* Modal de Edição */}
       <Modal
         title="Edição de Eleitor"
         open={isEditModalOpen}
@@ -334,7 +356,6 @@ const CadastroEleitoresView = () => {
         )}
       </Modal>
 
-      {/* Modal de Visualização */}
       <Modal
         title="Visualização de Eleitor"
         open={isViewModalOpen}
@@ -352,15 +373,22 @@ const CadastroEleitoresView = () => {
         )}
       </Modal>
 
-      {/* Modal de Confirmação */}
       <ConfirmModal
         type="warning"
-        title="Confirmação de Alteração de Status"
+        title={
+          selectedUser?.status === UserStatus.ATIVO
+            ? 'Confirmação de Bloqueio'
+            : 'Confirmação de Desbloqueio'
+        }
         content={`Deseja ${
-          selectedUser?.status === 'ativo' ? 'bloquear' : 'desbloquear'
+          selectedUser?.status === UserStatus.ATIVO ? 'bloquear' : 'desbloquear'
         } o eleitor ${selectedUser?.profile?.nomeCompleto || 'selecionado'}?`}
         visible={isConfirmModalOpen}
-        onConfirm={handleToggleStatus}
+        onConfirm={
+          selectedUser?.status === UserStatus.ATIVO
+            ? handleToggleStatus
+            : handleDeleteVoter
+        }
         onCancel={() => setIsConfirmModalOpen(false)}
         confirmText="Sim"
         cancelText="Não"

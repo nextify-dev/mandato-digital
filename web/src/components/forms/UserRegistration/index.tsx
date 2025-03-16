@@ -34,13 +34,17 @@ import DynamicDescriptions, {
   DynamicDescriptionsField
 } from '@/components/DynamicDescriptions'
 import { authService } from '@/services/auth'
+import { useAuth } from '@/contexts/AuthProvider'
+import { useCities } from '@/contexts/CitiesProvider'
 
 const { TextArea } = Input
 
 type FormMode = 'firstAccess' | 'voterCreation' | 'userCreation' | 'viewOnly'
 
 interface UserRegistrationFormProps {
-  onSubmit?: (data: UserRegistrationFormType) => Promise<void>
+  onSubmit?: (
+    data: UserRegistrationFormType & { cityId?: string }
+  ) => Promise<void>
   initialData?: Partial<UserRegistrationFormType>
   mode: FormMode
   currentStep: number
@@ -56,6 +60,8 @@ const UserRegistrationForm = forwardRef<
     ref: Ref<UseFormReturn<UserRegistrationFormType>>
   ) => {
     const { voters, loading } = useUsers()
+    const { user } = useAuth()
+    const { cities } = useCities()
     const [filteredVoters, setFilteredVoters] = React.useState<User[]>([])
 
     const defaultValues: DefaultValues<UserRegistrationFormType> = {
@@ -97,7 +103,15 @@ const UserRegistrationForm = forwardRef<
         mode === 'viewOnly' ? 'voterCreation' : mode
       ),
       defaultValues,
-      onSubmit
+      onSubmit: async (data: UserRegistrationFormType) => {
+        const cityId =
+          user?.role === UserRole.ADMINISTRADOR_GERAL
+            ? formData.cityId ?? user?.cityId
+            : user?.cityId
+        if (onSubmit) {
+          await onSubmit({ ...data, cityId })
+        }
+      }
     })
 
     React.useImperativeHandle(ref, () => formMethods)
@@ -136,6 +150,11 @@ const UserRegistrationForm = forwardRef<
     const VOTER_OPTIONS = filteredVoters.map((voter: User) => ({
       label: `${voter.profile?.nomeCompleto} (${voter.email})`,
       value: voter.id
+    }))
+
+    const CITY_OPTIONS = cities.map((city) => ({
+      label: `${city.name} - ${city.state}`,
+      value: city.id
     }))
 
     const steps = [
@@ -184,7 +203,8 @@ const UserRegistrationForm = forwardRef<
           'complemento',
           'bairro',
           'cidade',
-          'estado'
+          'estado',
+          'cityId' // Novo campo para selecionar cidade
         ],
         requiredFields: [
           'cep',
@@ -232,12 +252,17 @@ const UserRegistrationForm = forwardRef<
     const prevStep = () => setCurrentStep((prev) => prev - 1)
 
     const handleSubmitClick = async () => {
-      if (await validateStep()) {
-        formMethods.handleSubmit(onSubmit!)()
+      if ((await validateStep()) && onSubmit) {
+        formMethods.handleSubmit((data: UserRegistrationFormType) => {
+          const cityId =
+            user?.role === UserRole.ADMINISTRADOR_GERAL
+              ? formData.cityId ?? user?.cityId
+              : user?.cityId
+          return onSubmit({ ...data, cityId })
+        })()
       }
     }
 
-    // Funções de validação no onBlur
     const validateEmailUniqueness = async (email: string) => {
       const isUnique = await authService.checkEmailUniqueness(
         email,
@@ -250,7 +275,7 @@ const UserRegistrationForm = forwardRef<
         })
       } else {
         clearErrors('email')
-        await trigger('email') // Revalida o campo com o schema
+        await trigger('email')
       }
     }
 
@@ -266,11 +291,10 @@ const UserRegistrationForm = forwardRef<
         })
       } else {
         clearErrors('cpf')
-        await trigger('cpf') // Revalida o campo com o schema
+        await trigger('cpf')
       }
     }
 
-    // Campos comuns para Descriptions
     const descriptionFields: DynamicDescriptionsField<UserRegistrationFormType>[] =
       [
         { key: 'email', label: 'Email' },
@@ -319,10 +343,17 @@ const UserRegistrationForm = forwardRef<
         { key: 'bairro', label: 'Bairro' },
         { key: 'cidade', label: 'Cidade' },
         { key: 'estado', label: 'Estado' },
+        {
+          key: 'cityId',
+          label: 'Cidade de Registro',
+          render: (value) => {
+            const city = cities.find((c) => c.id === value)
+            return city ? `${city.name} - ${city.state}` : '-'
+          }
+        },
         { key: 'observacoes', label: 'Observações' }
       ]
 
-    // Renderização para modo viewOnly
     const renderViewOnlyMode = () => {
       const viewFields = [
         ...(mode === 'userCreation'
@@ -404,6 +435,8 @@ const UserRegistrationForm = forwardRef<
             setValue={setValue}
             trigger={trigger}
             visible={currentStep === (mode === 'userCreation' ? 3 : 2)}
+            isAdminGeral={user?.role === UserRole.ADMINISTRADOR_GERAL}
+            cityOptions={CITY_OPTIONS}
           />
           <ReviewStep
             control={control}
@@ -447,7 +480,7 @@ UserRegistrationForm.displayName = 'UserRegistrationForm'
 
 export default UserRegistrationForm
 
-// ==================================================== STEPS COMPONENTS
+// STEPS COMPONENTS
 
 interface IUserRegistrationStep {
   control: any
@@ -466,6 +499,8 @@ interface IUserRegistrationStep {
   descriptionFields?: DynamicDescriptionsField<UserRegistrationFormType>[]
   validateEmailUniqueness?: (email: string) => Promise<void>
   validateCpfUniqueness?: (cpf: string) => Promise<void>
+  isAdminGeral?: boolean
+  cityOptions?: { label: string; value: string }[]
 }
 
 const CreationModeStep = ({
@@ -840,7 +875,9 @@ const EnderecoStep = ({
   errors,
   setValue,
   visible,
-  trigger
+  trigger,
+  isAdminGeral,
+  cityOptions
 }: IUserRegistrationStep) => {
   const [cepSearchLoading, setCepSearchLoading] = React.useState(false)
 
@@ -866,6 +903,27 @@ const EnderecoStep = ({
 
   return (
     <FormStep visible={visible ? 1 : 0}>
+      {isAdminGeral && (
+        <Controller
+          name="cityId"
+          control={control}
+          render={({ field }) => (
+            <StyledForm.Item
+              label="Cidade de Registro"
+              help={errors.cityId?.message}
+              validateStatus={errors.cityId ? 'error' : ''}
+            >
+              <Select
+                {...field}
+                placeholder="Selecione a cidade"
+                options={cityOptions}
+                onChange={(value) => setValue('cityId', value)}
+                value={field.value}
+              />
+            </StyledForm.Item>
+          )}
+        />
+      )}
       <Controller
         name="cep"
         control={control}
@@ -1006,6 +1064,7 @@ const EnderecoStep = ({
     </FormStep>
   )
 }
+
 const ReviewStep = ({
   control,
   errors,
@@ -1050,7 +1109,8 @@ const ReviewStep = ({
         'complemento',
         'bairro',
         'cidade',
-        'estado'
+        'estado',
+        'cityId'
       ].includes(field.key as string)
     )
   ]

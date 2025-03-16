@@ -11,6 +11,8 @@ import {
   UserRole,
   UserStatus
 } from '@/@types/user'
+import { useAuth } from '@/contexts/AuthProvider'
+import { useCities } from '@/contexts/CitiesProvider'
 
 interface UserFilter {
   cityId?: string
@@ -23,8 +25,8 @@ interface UserFilter {
 }
 
 interface UsersContextData {
-  users: User[] // Usuários exceto ELEITOR
-  voters: User[] // Apenas ELEITOR
+  users: User[]
+  voters: User[]
   loading: boolean
   filters: UserFilter
   setFilters: (filters: UserFilter) => void
@@ -46,52 +48,58 @@ const UsersContext = createContext<UsersContextData>({} as UsersContextData)
 
 export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
   const [messageApi, contextHolder] = message.useMessage()
-  const [users, setUsers] = useState<User[]>([]) // Usuários exceto ELEITOR
-  const [voters, setVoters] = useState<User[]>([]) // Apenas ELEITOR
+  const { user } = useAuth()
+  const { cities } = useCities()
+  const [users, setUsers] = useState<User[]>([])
+  const [voters, setVoters] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
   const [filters, setFilters] = useState<UserFilter>({})
 
   const fetchUsersAndVoters = async () => {
+    if (!user) return
+
     setLoading(true)
     try {
       const snapshot = await get(ref(db, 'users'))
       const usersData = snapshot.val() || {}
       const allUsers = Object.values(usersData) as User[]
 
-      // Filtra usuários exceto ELEITOR
-      const filteredUsers = allUsers.filter((user) => {
+      // Restringe usuários visíveis com base no papel do usuário logado
+      const allowedCityIds =
+        user.role === UserRole.ADMINISTRADOR_GERAL
+          ? cities.map((city) => city.id)
+          : [user.cityId]
+
+      const filteredUsers = allUsers.filter((u) => {
         return (
-          user.role !== UserRole.ELEITOR &&
-          (!filters.cityId || user.cityId === filters.cityId) &&
-          (!filters.status || user.status === filters.status) &&
-          (!filters.role || user.role === filters.role) &&
+          u.role !== UserRole.ELEITOR &&
+          allowedCityIds.includes(u.cityId) &&
+          (!filters.cityId || u.cityId === filters.cityId) &&
+          (!filters.status || u.status === filters.status) &&
+          (!filters.role || u.role === filters.role) &&
           (!filters.name ||
-            user.profile?.nomeCompleto
+            u.profile?.nomeCompleto
               ?.toLowerCase()
               .includes(filters.name?.toLowerCase() || '')) &&
           (!filters.email ||
-            user.email
-              .toLowerCase()
-              .includes(filters.email?.toLowerCase() || ''))
+            u.email.toLowerCase().includes(filters.email?.toLowerCase() || ''))
         )
       })
 
-      // Filtra apenas ELEITOR
-      const filteredVoters = allUsers.filter((user) => {
+      const filteredVoters = allUsers.filter((u) => {
         return (
-          user.role === UserRole.ELEITOR &&
-          (!filters.cityId || user.cityId === filters.cityId) &&
-          (!filters.status || user.status === filters.status) &&
-          (!filters.genero || user.profile?.genero === filters.genero) &&
+          u.role === UserRole.ELEITOR &&
+          allowedCityIds.includes(u.cityId) &&
+          (!filters.cityId || u.cityId === filters.cityId) &&
+          (!filters.status || u.status === filters.status) &&
+          (!filters.genero || u.profile?.genero === filters.genero) &&
           (!filters.name ||
-            user.profile?.nomeCompleto
+            u.profile?.nomeCompleto
               ?.toLowerCase()
               .includes(filters.name?.toLowerCase() || '')) &&
-          (!filters.cpf || user.profile?.cpf.includes(filters.cpf || ''))
+          (!filters.cpf || u.profile?.cpf.includes(filters.cpf || ''))
         )
       })
-
-      console.log(filteredVoters)
 
       setUsers(filteredUsers)
       setVoters(filteredVoters)
@@ -104,21 +112,20 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     fetchUsersAndVoters()
-  }, [filters])
+  }, [filters, user, cities])
 
   const createUser = async (
     userData: UserRegistrationFormType,
     cityId: string,
     mode: 'userCreation' | 'voterCreation'
   ) => {
+    if (!user || !cities.some((city) => city.id === cityId)) {
+      throw new Error('Cidade inválida ou usuário não autenticado')
+    }
+
     setLoading(true)
     try {
-      await authService.completeRegistration(
-        userData.email,
-        userData,
-        mode,
-        cityId
-      )
+      await authService.completeRegistration(userData.email, userData, mode, cityId)
       messageApi.success(
         mode === 'userCreation'
           ? 'Usuário cadastrado com sucesso!'
@@ -167,14 +174,11 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
   const toggleUserStatus = async (userId: string) => {
     setLoading(true)
     try {
-      const user = await authService.getUserData(userId)
-      if (!user) throw new Error('Usuário/Eleitor não encontrado')
+      const userData = await authService.getUserData(userId)
+      if (!userData) throw new Error('Usuário/Eleitor não encontrado')
 
       const newStatus =
-        user.status === UserStatus.ATIVO
-          ? UserStatus.SUSPENSO
-          : UserStatus.ATIVO
-
+        userData.status === UserStatus.ATIVO ? UserStatus.SUSPENSO : UserStatus.ATIVO
       await authService.editUser(userId, { status: newStatus })
       messageApi.success('Status do usuário/eleitor alterado com sucesso!')
       await fetchUsersAndVoters()
