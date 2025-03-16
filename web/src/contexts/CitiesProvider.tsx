@@ -1,9 +1,9 @@
 // src/contexts/CitiesProvider.tsx
+
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { City, CityRegistrationFormType } from '@/@types/city'
 import { citiesService } from '@/services/cities'
-import { ref, get } from 'firebase/database'
-import { db } from '@/lib/firebase'
+import { useAuth } from '@/contexts/AuthProvider'
 
 interface CitiesContextData {
   cities: City[]
@@ -28,6 +28,7 @@ const CitiesContext = createContext<CitiesContextData>({} as CitiesContextData)
 export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
   children
 }) => {
+  const { user } = useAuth()
   const [cities, setCities] = useState<City[]>([])
   const [loading, setLoading] = useState(false)
   const [filters, setFilters] = useState<Partial<CityFilters>>({})
@@ -55,18 +56,18 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const cityData: Partial<City> = {
         name: data.name,
+        state: data.state.toUpperCase(),
         status: data.status,
         details: {
-          description: data.description,
-          totalUsers: data.totalUsers || 0,
+          totalVoters: data.totalVoters,
           population: data.population,
-          area: data.area,
+          ibgeCode: data.ibgeCode,
           cepRangeStart: data.cepRangeStart,
           cepRangeEnd: data.cepRangeEnd,
-          state: data.state.toUpperCase()
+          observations: data.observations
         }
       }
-      const newCityId = await citiesService.createCity(cityData)
+      const newCityId = await citiesService.createCity(cityData, user!.id)
       await fetchCities()
       return newCityId
     } catch (error) {
@@ -83,25 +84,15 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
   ): Promise<void> => {
     setLoading(true)
     try {
-      // Busca os dados atuais da cidade para preservar o `state`
-      const cityRef = ref(db, `cities/${id}`)
-      const snapshot = await get(cityRef)
-      if (!snapshot.exists()) {
-        throw new Error('Cidade não encontrada')
-      }
-      const existingCity = snapshot.val() as City
-
       const cityData: Partial<City> = {
-        status: data.status ?? existingCity.status,
+        status: data.status,
         details: {
-          description: data.description ?? existingCity.details.description,
-          totalUsers: data.totalUsers ?? existingCity.details.totalUsers ?? 0,
-          population: data.population ?? existingCity.details.population,
-          area: data.area ?? existingCity.details.area,
-          cepRangeStart:
-            data.cepRangeStart ?? existingCity.details.cepRangeStart,
-          cepRangeEnd: data.cepRangeEnd ?? existingCity.details.cepRangeEnd,
-          state: existingCity.details.state
+          totalVoters: data.totalVoters,
+          population: data.population,
+          ibgeCode: data.ibgeCode,
+          cepRangeStart: data.cepRangeStart,
+          cepRangeEnd: data.cepRangeEnd,
+          observations: data.observations
         }
       }
       await citiesService.updateCity(id, cityData)
@@ -129,14 +120,14 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const getInitialData = (city: City): Partial<CityRegistrationFormType> => ({
     name: city.name,
+    state: city.state,
     status: city.status,
-    description: city.details.description,
-    totalUsers: city.details.totalUsers,
+    totalVoters: city.details.totalVoters,
     population: city.details.population,
-    area: city.details.area,
+    ibgeCode: city.details.ibgeCode,
     cepRangeStart: city.details.cepRangeStart,
     cepRangeEnd: city.details.cepRangeEnd,
-    state: city.details.state
+    observations: city.details.observations
   })
 
   return (

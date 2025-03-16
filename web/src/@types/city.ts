@@ -3,15 +3,15 @@
 import { citiesService } from '@/services/cities'
 import * as yup from 'yup'
 
-export interface FormattedCityTag {
-  label: string
-  color: string
-}
-
 export enum CityStatus {
   ATIVA = 'ativa',
   INATIVA = 'inativa',
   PENDENTE = 'pendente'
+}
+
+export interface FormattedCityTag {
+  label: string
+  color: string
 }
 
 export const getCityStatusData = (status?: CityStatus): FormattedCityTag => {
@@ -30,19 +30,19 @@ export const getCityStatusData = (status?: CityStatus): FormattedCityTag => {
 interface BaseCity {
   id: string
   name: string
+  state: string // Sigla do estado (ex.: "SP")
+  createdAt: string // ISO 8601 (ex.: "2025-03-15T00:00:00Z")
+  createdBy: string // ID do usuário criador
   status: CityStatus
-  createdAt: string
-  updatedAt: string
 }
 
 export interface CityDetails {
-  description?: string | null
-  totalUsers: number
-  population?: number | null
-  area?: number | null // em km²
-  cepRangeStart?: string | null
-  cepRangeEnd?: string | null
-  state: string // Apenas as iniciais do estado (ex.: "SP")
+  totalVoters?: number | null // Número de eleitores (opcional)
+  population?: number | null // População (opcional)
+  ibgeCode?: number | null // Código IBGE (opcional)
+  cepRangeStart?: string | null // CEP inicial (opcional)
+  cepRangeEnd?: string | null // CEP final (opcional)
+  observations?: string | null // Observações (opcional)
 }
 
 export interface City extends BaseCity {
@@ -51,14 +51,14 @@ export interface City extends BaseCity {
 
 export interface CityRegistrationForm {
   name: string
+  state: string
   status: CityStatus
-  description?: string | null
-  totalUsers?: number
+  totalVoters?: number | null
   population?: number | null
-  area?: number | null
+  ibgeCode?: number | null
   cepRangeStart?: string | null
   cepRangeEnd?: string | null
-  state: string
+  observations?: string | null
 }
 
 export const getCityRegistrationSchema = (mode: 'create' | 'edit') => {
@@ -70,24 +70,32 @@ export const getCityRegistrationSchema = (mode: 'create' | 'edit') => {
         if (!value) return false
         return await citiesService.checkCityNameUniqueness(value)
       }),
+    state: yup
+      .string()
+      .required('Estado é obrigatório')
+      .length(2, 'O estado deve ter 2 caracteres (ex.: SP)'),
     status: yup
       .string()
       .required('Status é obrigatório')
       .oneOf(Object.values(CityStatus), 'Selecione um status válido'),
-    description: yup.string().nullable().optional(),
-    totalUsers: yup
+    totalVoters: yup
       .number()
       .integer('Deve ser um número inteiro')
       .min(0, 'Não pode ser negativo')
-      .optional()
-      .default(0),
+      .nullable()
+      .optional(),
     population: yup
       .number()
       .integer('Deve ser um número inteiro')
       .min(0, 'Não pode ser negativo')
       .nullable()
       .optional(),
-    area: yup.number().min(0, 'Não pode ser negativo').nullable().optional(),
+    ibgeCode: yup
+      .number()
+      .integer('Deve ser um número inteiro')
+      .min(0, 'Não pode ser negativo')
+      .nullable()
+      .optional(),
     cepRangeStart: yup
       .string()
       .matches(/^\d{5}-\d{3}$/, {
@@ -113,10 +121,7 @@ export const getCityRegistrationSchema = (mode: 'create' | 'edit') => {
           return value >= cepStart
         }
       ),
-    state: yup
-      .string()
-      .required('Estado é obrigatório')
-      .length(2, 'O estado deve ter 2 caracteres (ex.: SP)')
+    observations: yup.string().nullable().optional()
   })
 }
 

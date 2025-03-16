@@ -19,7 +19,6 @@ import {
 import { FormInputsWrapper, FormStep } from '@/utils/styles/commons'
 import { useModalForm } from '@/hooks/useModalForm'
 import { DynamicDescriptions } from '@/components'
-import { citiesService } from '@/services/cities'
 import { ibgeService, IBGEState, IBGECity } from '@/services/ibge'
 import { DynamicDescriptionsField } from '@/components/DynamicDescriptions'
 
@@ -45,19 +44,18 @@ const CityRegistrationForm = forwardRef<
   ) => {
     const [states, setStates] = useState<IBGEState[]>([])
     const [cities, setCities] = useState<IBGECity[]>([])
-    const [registeredCities, setRegisteredCities] = useState<string[]>([])
     const [isCitiesLoading, setIsCitiesLoading] = useState(false)
 
     const defaultValues: DefaultValues<CityRegistrationFormType> = {
-      name: initialData?.name || undefined,
+      name: initialData?.name || '',
+      state: initialData?.state || '',
       status: initialData?.status || CityStatus.PENDENTE,
-      description: initialData?.description || null,
-      totalUsers: initialData?.totalUsers || 0,
+      totalVoters: initialData?.totalVoters || null,
       population: initialData?.population || null,
-      area: initialData?.area || null,
+      ibgeCode: initialData?.ibgeCode || null,
       cepRangeStart: initialData?.cepRangeStart || null,
       cepRangeEnd: initialData?.cepRangeEnd || null,
-      state: initialData?.state || undefined
+      observations: initialData?.observations || null
     }
 
     const formMethods = useModalForm<CityRegistrationFormType>({
@@ -85,12 +83,6 @@ const CityRegistrationForm = forwardRef<
         setStates(stateData)
       }
       fetchStates()
-
-      const fetchRegisteredCities = async () => {
-        const citiesData = await citiesService.getCities({})
-        setRegisteredCities(citiesData.map((city) => city.name))
-      }
-      fetchRegisteredCities()
     }, [])
 
     useEffect(() => {
@@ -98,30 +90,26 @@ const CityRegistrationForm = forwardRef<
         if (selectedState && mode === 'create') {
           setIsCitiesLoading(true)
           const cityData = await ibgeService.getCitiesByState(selectedState)
-
-          const availableCities = cityData.filter(
-            (city) => !registeredCities.includes(city.nome)
-          )
-          setCities(availableCities)
+          setCities(cityData)
           setIsCitiesLoading(false)
         }
       }
       fetchCities()
-    }, [selectedState, registeredCities, mode])
+    }, [selectedState, mode])
 
     const handleStateChange = async (state: string) => {
       setValue('state', state)
-      setValue('name', '') // Resetar cidade ao mudar estado
+      setValue('name', '')
       await trigger('state')
     }
 
     const handleCityChange = async (cityName: string) => {
       setValue('name', cityName)
       const details = await ibgeService.getCityDetails(cityName, selectedState)
-      setValue('population', details.population)
-      setValue('area', details.area)
       setValue('cepRangeStart', details.cepRangeStart)
       setValue('cepRangeEnd', details.cepRangeEnd)
+      const city = cities.find((c) => c.nome === cityName)
+      if (city) setValue('ibgeCode', city.id)
       await trigger('name')
     }
 
@@ -133,7 +121,7 @@ const CityRegistrationForm = forwardRef<
       },
       {
         title: 'Detalhes',
-        fields: ['description', 'population', 'area'],
+        fields: ['totalVoters', 'population', 'observations'],
         requiredFields: []
       },
       {
@@ -178,40 +166,30 @@ const CityRegistrationForm = forwardRef<
     const descriptionFields: DynamicDescriptionsField<CityRegistrationFormType>[] =
       [
         { key: 'name', label: 'Nome da Cidade' },
+        { key: 'state', label: 'Estado' },
         {
           key: 'status',
           label: 'Status',
           render: (value: CityStatus) => getCityStatusData(value).label
         },
-        { key: 'state', label: 'Estado' },
-        { key: 'description', label: 'Descrição' },
         {
-          key: 'totalUsers',
-          label: 'Total de Usuários',
-          render: (value: number) => value ?? 0
+          key: 'totalVoters',
+          label: 'Total de Eleitores',
+          render: (v) => v ?? '-'
         },
-        {
-          key: 'population',
-          label: 'População',
-          render: (value: number | null) => value ?? '-'
-        },
-        {
-          key: 'area',
-          label: 'Área (km²)',
-          render: (value: number | null) => value ?? '-'
-        },
+        { key: 'population', label: 'População', render: (v) => v ?? '-' },
+        { key: 'ibgeCode', label: 'Código IBGE', render: (v) => v ?? '-' },
         {
           key: 'cepRangeStart',
           label: 'CEP Inicial',
-          render: (value: string | null) =>
-            value ? applyMask(value, 'cep') : '-'
+          render: (v) => (v ? applyMask(v, 'cep') : '-')
         },
         {
           key: 'cepRangeEnd',
           label: 'CEP Final',
-          render: (value: string | null) =>
-            value ? applyMask(value, 'cep') : '-'
-        }
+          render: (v) => (v ? applyMask(v, 'cep') : '-')
+        },
+        { key: 'observations', label: 'Observações' }
       ]
 
     const renderViewOnlyMode = () => (
@@ -243,7 +221,6 @@ const CityRegistrationForm = forwardRef<
             isCitiesLoading={isCitiesLoading}
             onStateChange={handleStateChange}
             onCityChange={handleCityChange}
-            selectedState={!!selectedState && selectedState !== ''}
           />
           <DetailsStep
             control={control}
@@ -296,8 +273,7 @@ const CityRegistrationForm = forwardRef<
 
 CityRegistrationForm.displayName = 'CityRegistrationForm'
 
-// ==================================================== STEPS COMPONENTS
-
+// Steps Components
 interface ICityRegistrationStep {
   control: any
   errors: any
@@ -311,7 +287,6 @@ interface ICityRegistrationStep {
   onStateChange?: (state: string) => void
   onCityChange?: (city: string) => void
   descriptionFields?: DynamicDescriptionsField<CityRegistrationFormType>[]
-  selectedState?: boolean
 }
 
 const BasicDataStep = ({
@@ -324,8 +299,7 @@ const BasicDataStep = ({
   cities,
   isCitiesLoading,
   onStateChange,
-  onCityChange,
-  selectedState
+  onCityChange
 }: ICityRegistrationStep) => {
   const CITY_STATUS_OPTIONS = Object.values(CityStatus).map((status) => ({
     label: getCityStatusData(status).label,
@@ -343,18 +317,17 @@ const BasicDataStep = ({
               label="Estado"
               help={errors.state?.message}
               validateStatus={errors.state ? 'error' : ''}
-              style={{ width: '16%' }}
             >
               <Select
                 {...field}
-                // placeholder="Selecione o estado"
+                placeholder="Selecione o estado"
                 options={states?.map((state) => ({
-                  label: state.sigla,
+                  label: state.nome,
                   value: state.sigla
                 }))}
                 onChange={(value) => onStateChange!(value)}
                 value={field.value}
-                disabled={mode === 'edit'} // Bloqueia edição do estado
+                disabled={mode === 'edit'}
               />
             </StyledForm.Item>
           )}
@@ -367,7 +340,6 @@ const BasicDataStep = ({
               label="Cidade"
               help={errors.name?.message}
               validateStatus={errors.name ? 'error' : ''}
-              style={{ width: '42%' }}
             >
               <Select
                 {...field}
@@ -378,7 +350,7 @@ const BasicDataStep = ({
                 }))}
                 onChange={(value) => onCityChange!(value)}
                 value={field.value}
-                disabled={mode === 'edit' || !selectedState} // Bloqueia edição e exige estado
+                disabled={mode === 'edit' || !field.value?.state}
                 loading={isCitiesLoading}
               />
             </StyledForm.Item>
@@ -392,7 +364,6 @@ const BasicDataStep = ({
               label="Status"
               help={errors.status?.message}
               validateStatus={errors.status ? 'error' : ''}
-              style={{ width: '42%' }}
             >
               <Select
                 {...field}
@@ -418,24 +389,45 @@ const DetailsStep = ({
   return (
     <FormStep visible={visible ? 1 : 0}>
       <Controller
-        name="description"
+        name="observations"
         control={control}
         render={({ field }) => (
           <StyledForm.Item
-            label="Descrição (opcional)"
-            help={errors.description?.message}
-            validateStatus={errors.description ? 'error' : ''}
+            label="Observações (opcional)"
+            help={errors.observations?.message}
+            validateStatus={errors.observations ? 'error' : ''}
           >
             <TextArea
               {...field}
               rows={4}
-              placeholder="Digite uma descrição da cidade"
+              placeholder="Digite observações sobre a cidade"
               value={field.value || ''}
             />
           </StyledForm.Item>
         )}
       />
       <FormInputsWrapper>
+        <Controller
+          name="totalVoters"
+          control={control}
+          render={({ field }) => (
+            <StyledForm.Item
+              label="Total de Eleitores (opcional)"
+              help={errors.totalVoters?.message}
+              validateStatus={errors.totalVoters ? 'error' : ''}
+            >
+              <StyledInput
+                {...field}
+                type="number"
+                placeholder="Digite o número de eleitores"
+                value={field.value || ''}
+                onChange={(e) =>
+                  setValue('totalVoters', parseInt(e.target.value) || null)
+                }
+              />
+            </StyledForm.Item>
+          )}
+        />
         <Controller
           name="population"
           control={control}
@@ -452,27 +444,6 @@ const DetailsStep = ({
                 value={field.value || ''}
                 onChange={(e) =>
                   setValue('population', parseInt(e.target.value) || null)
-                }
-              />
-            </StyledForm.Item>
-          )}
-        />
-        <Controller
-          name="area"
-          control={control}
-          render={({ field }) => (
-            <StyledForm.Item
-              label="Área em km² (opcional)"
-              help={errors.area?.message}
-              validateStatus={errors.area ? 'error' : ''}
-            >
-              <StyledInput
-                {...field}
-                type="number"
-                placeholder="Digite a área"
-                value={field.value || ''}
-                onChange={(e) =>
-                  setValue('area', parseFloat(e.target.value) || null)
                 }
               />
             </StyledForm.Item>

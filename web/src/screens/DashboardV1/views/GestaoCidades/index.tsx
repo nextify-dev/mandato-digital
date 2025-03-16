@@ -57,8 +57,8 @@ const GestaoCidadesView = () => {
     },
     {
       title: 'Estado',
-      key: 'state',
-      render: (_: any, record: City) => record.details.state
+      dataIndex: 'state',
+      key: 'state'
     },
     {
       title: 'Total de Usuários',
@@ -116,7 +116,7 @@ const GestaoCidadesView = () => {
 
   const handleEditCity = async (data: CityRegistrationFormType) => {
     if (selectedCity) {
-      const { name, state, ...editableData } = data // Remove name e state
+      const { name, state, ...editableData } = data
       await updateCity(selectedCity.id, editableData)
       setIsEditModalOpen(false)
     }
