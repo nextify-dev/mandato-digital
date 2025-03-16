@@ -62,8 +62,6 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
           totalVoters: data.totalVoters,
           population: data.population,
           ibgeCode: data.ibgeCode,
-          cepRangeStart: data.cepRangeStart,
-          cepRangeEnd: data.cepRangeEnd,
           observations: data.observations
         }
       }
@@ -90,8 +88,6 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
           totalVoters: data.totalVoters,
           population: data.population,
           ibgeCode: data.ibgeCode,
-          cepRangeStart: data.cepRangeStart,
-          cepRangeEnd: data.cepRangeEnd,
           observations: data.observations
         }
       }
@@ -125,8 +121,6 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
     totalVoters: city.details.totalVoters,
     population: city.details.population,
     ibgeCode: city.details.ibgeCode,
-    cepRangeStart: city.details.cepRangeStart,
-    cepRangeEnd: city.details.cepRangeEnd,
     observations: city.details.observations
   })
 
