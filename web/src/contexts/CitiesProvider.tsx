@@ -1,25 +1,33 @@
-// src/contexts/CitiesProvider.tsx
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { message } from 'antd'
 import { City, CityRegistrationFormType, CityStatus } from '@/@types/city'
 import { citiesService } from '@/services/cities'
 import { useAuth } from '@/contexts/AuthProvider'
 import { db } from '@/lib/firebase'
-import { ref, onValue, off } from 'firebase/database'
-import { UserRole } from '@/@types/user'
+import { ref, onValue, get } from 'firebase/database'
+import { UserRole, User } from '@/@types/user'
 
 interface CitiesContextData {
   cities: City[]
   loading: boolean
   filters: Partial<CityFilters>
   setFilters: React.Dispatch<React.SetStateAction<Partial<CityFilters>>>
-  createCity: (data: CityRegistrationFormType) => Promise<string>
+  createCity: (data: CityRegistrationFormTypeExtended) => Promise<string>
   updateCity: (
     id: string,
-    data: Partial<CityRegistrationFormType>
+    data: Partial<CityRegistrationFormTypeExtended>
   ) => Promise<void>
   deleteCity: (id: string) => Promise<void>
-  getInitialData: (city: City) => Partial<CityRegistrationFormType>
+  getInitialData: (
+    city: City
+  ) => Promise<Partial<CityRegistrationFormTypeExtended>>
+}
+
+interface CityRegistrationFormTypeExtended extends CityRegistrationFormType {
+  administratorId?: string | null
+  mayorId?: string | null
+  vereadorIds?: string[]
+  caboEleitoralIds?: string[]
 }
 
 interface CityFilters {
@@ -41,9 +49,18 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     const citiesRef = ref(db, 'cities')
+    const usersRef = ref(db, 'users')
     setLoading(true)
 
-    const unsubscribe = onValue(
+    const updateCities = async () => {
+      const snapshot = await get(citiesRef)
+      const citiesData = snapshot.val() || {}
+      const citiesArray = await processCitiesData(citiesData, filters)
+      setCities(citiesArray)
+      setLoading(false)
+    }
+
+    const unsubscribeCities = onValue(
       citiesRef,
       async (snapshot) => {
         const citiesData = snapshot.val() || {}
@@ -59,7 +76,21 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     )
 
-    return () => off(citiesRef, 'value', unsubscribe)
+    const unsubscribeUsers = onValue(usersRef, () => {
+      updateCities()
+    })
+
+    updateCities().catch((error) => {
+      messageApi.error(
+        'Erro ao carregar cidades iniciais, tente reiniciar a página ou contacte um administrador'
+      )
+      setLoading(false)
+    })
+
+    return () => {
+      unsubscribeCities()
+      unsubscribeUsers()
+    }
   }, [filters, messageApi])
 
   const processCitiesData = async (
@@ -68,24 +99,24 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
   ): Promise<City[]> => {
     const usersRef = ref(db, 'users')
     const usersSnapshot = await citiesService.getSnapshot(usersRef)
-    const usersData = usersSnapshot.val() || {}
+    const usersData = (usersSnapshot.val() || {}) as { [key: string]: User }
 
     let citiesArray = Object.entries(citiesData).map(
       ([id, data]: [string, any]) => {
         const cityUsers = Object.values(usersData).filter(
-          (user: any) => user.cityId === id
+          (user) => user.cityId === id
         )
         const totalUsers = cityUsers.filter(
-          (user: any) => user.role !== UserRole.ELEITOR
+          (user) => user.role !== UserRole.ELEITOR
         ).length
         const totalVoters = cityUsers.filter(
-          (user: any) => user.role === UserRole.ELEITOR
+          (user) => user.role === UserRole.ELEITOR
         ).length
         const totalVereadores = cityUsers.filter(
-          (user: any) => user.role === UserRole.VEREADOR
+          (user) => user.role === UserRole.VEREADOR
         ).length
         const totalCabosEleitorais = cityUsers.filter(
-          (user: any) => user.role === UserRole.CABO_ELEITORAL
+          (user) => user.role === UserRole.CABO_ELEITORAL
         ).length
 
         return {
@@ -119,20 +150,12 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
   }
 
   const createCity = async (
-    data: CityRegistrationFormType
+    data: CityRegistrationFormTypeExtended
   ): Promise<string> => {
     setLoading(true)
     try {
-      const cityData: Partial<City> = {
-        name: data.name,
-        state: data.state!.toUpperCase(),
-        status: data.status,
-        details: {
-          ibgeCode: data.ibgeCode ?? null,
-          observations: data.observations ?? null
-        }
-      }
-      const newCityId = await citiesService.createCity(cityData, user!.id)
+      if (!user) throw new Error('Usuário não autenticado')
+      const newCityId = await citiesService.createCity(data, user.id)
       messageApi.success('Cidade criada com sucesso!')
       setLoading(false)
       return newCityId
@@ -145,18 +168,11 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const updateCity = async (
     id: string,
-    data: Partial<CityRegistrationFormType>
+    data: Partial<CityRegistrationFormTypeExtended>
   ): Promise<void> => {
     setLoading(true)
     try {
-      const cityData: Partial<City> = {
-        status: data.status,
-        details: {
-          ibgeCode: data.ibgeCode ?? null,
-          observations: data.observations ?? null
-        }
-      }
-      await citiesService.updateCity(id, cityData)
+      await citiesService.updateCity(id, data)
       messageApi.success('Cidade atualizada com sucesso!')
       setLoading(false)
     } catch (error: any) {
@@ -179,13 +195,41 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }
 
-  const getInitialData = (city: City): Partial<CityRegistrationFormType> => ({
-    name: city.name,
-    state: city.state,
-    status: city.status,
-    ibgeCode: city.details.ibgeCode,
-    observations: city.details.observations
-  })
+  const getInitialData = async (
+    city: City
+  ): Promise<Partial<CityRegistrationFormTypeExtended>> => {
+    const usersRef = ref(db, 'users')
+    const usersSnapshot = await citiesService.getSnapshot(usersRef)
+    const usersData = (usersSnapshot.val() || {}) as { [key: string]: User }
+
+    const cityUsers = Object.values(usersData).filter(
+      (user) => user.cityId === city.id
+    )
+
+    const administratorId =
+      cityUsers.find((user) => user.role === UserRole.ADMINISTRADOR_CIDADE)
+        ?.id || null
+    const mayorId =
+      cityUsers.find((user) => user.role === UserRole.PREFEITO)?.id || null
+    const vereadorIds = cityUsers
+      .filter((user) => user.role === UserRole.VEREADOR)
+      .map((user) => user.id)
+    const caboEleitoralIds = cityUsers
+      .filter((user) => user.role === UserRole.CABO_ELEITORAL)
+      .map((user) => user.id)
+
+    return {
+      name: city.name,
+      state: city.state,
+      status: city.status,
+      ibgeCode: city.details.ibgeCode,
+      observations: city.details.observations,
+      administratorId,
+      mayorId,
+      vereadorIds: vereadorIds.length > 0 ? vereadorIds : [],
+      caboEleitoralIds: caboEleitoralIds.length > 0 ? caboEleitoralIds : []
+    }
+  }
 
   return (
     <CitiesContext.Provider

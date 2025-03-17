@@ -1,17 +1,16 @@
+import { color } from '@/utils/styles/colors'
 // src/components/ActiveCity/styles.ts
 
 import styled from 'styled-components'
 import { Tag, theme } from 'antd'
 
 import { font } from '@/utils/styles/fonts'
-import { textColor } from '@/utils/styles/colors'
+import { backgroundColor, textColor } from '@/utils/styles/colors'
 
 export const ActiveCity = styled.div`
   display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 5px;
+  flex-direction: column;
+  gap: 8px;
   width: 100%;
   height: fit-content;
   padding: 10px;
@@ -19,6 +18,16 @@ export const ActiveCity = styled.div`
 
   background-color: #fffde6;
   border: 2px solid #fec107;
+`
+
+export const ActiveCityIndicator = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  height: fit-content;
 `
 
 export const ActiveCityLabel = styled.p`
@@ -38,4 +47,27 @@ export const ActiveCityTag = styled(Tag)`
   padding: 4px 6px;
 
   ${font('xxxs')}
+`
+
+export const ActiveCityAdminWarning = styled.div`
+  display: flex;
+  align-items: center;
+  column-gap: 4px;
+  width: 100%;
+  border-radius: 6px;
+  padding: 4px 6px;
+
+  ${font('xxxs')}
+  font-weight: 400;
+  color: white;
+
+  b {
+    font-weight: 600;
+  }
+
+  svg {
+    ${font('xs')}
+  }
+
+  ${backgroundColor('colorPrimary')};
 `

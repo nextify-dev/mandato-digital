@@ -380,12 +380,12 @@ const GestaoUsuariosView = () => {
         open={isEditModalOpen}
         onCancel={() => handleModalClose('edit')}
         footer={null}
-        size="default"
+        size="large"
       >
         {isEditModalOpen && selectedUser && (
           <UserRegistrationForm
             onSubmit={handleEditUser}
-            mode="userCreation"
+            mode="voterCreation"
             initialData={getInitialData(selectedUser)}
             ref={formRef}
             currentStep={currentStep}

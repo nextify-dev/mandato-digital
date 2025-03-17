@@ -94,6 +94,7 @@ export interface UserProfile {
   bairro: string
   cidade: string
   estado: string
+  cityId?: string
 }
 
 // Interface para informações de acesso

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import * as S from './styles'
 import { Button, Input, Tag, Avatar, Select } from 'antd'
 import { LuPen, LuTrash2, LuEye } from 'react-icons/lu'
@@ -23,7 +23,6 @@ import { useAuth } from '@/contexts/AuthProvider'
 import { useUsers } from '@/contexts/UsersProvider'
 import { UserRole } from '@/@types/user'
 
-// Interface estendida para incluir os campos de cargos
 interface CityRegistrationFormTypeExtended
   extends BaseCityRegistrationFormType {
   administratorId?: string | null
@@ -53,6 +52,11 @@ const GestaoCidadesView = () => {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
   const [selectedCity, setSelectedCity] = useState<City | null>(null)
   const [currentStep, setCurrentStep] = useState(0)
+  const [initialEditData, setInitialEditData] =
+    useState<Partial<CityRegistrationFormTypeExtended> | null>(null)
+  const [initialViewData, setInitialViewData] =
+    useState<Partial<CityRegistrationFormTypeExtended> | null>(null)
+  const [isLoadingInitialData, setIsLoadingInitialData] = useState(false)
   const formRef =
     useRef<UseFormReturn<CityRegistrationFormTypeExtended> | null>(null)
 
@@ -159,6 +163,28 @@ const GestaoCidadesView = () => {
     }
   ]
 
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      if (selectedCity) {
+        setIsLoadingInitialData(true)
+        try {
+          const data = await getInitialData(selectedCity)
+          if (isEditModalOpen) {
+            setInitialEditData(data)
+          } else if (isViewModalOpen) {
+            setInitialViewData(data)
+          }
+        } catch (error) {
+          console.error('Erro ao buscar dados iniciais:', error)
+        } finally {
+          setIsLoadingInitialData(false)
+        }
+      }
+    }
+
+    fetchInitialData()
+  }, [selectedCity, isEditModalOpen, isViewModalOpen, getInitialData])
+
   const handleSearch = (value: string) => {
     setFilters({ ...filters, name: value })
   }
@@ -216,6 +242,8 @@ const GestaoCidadesView = () => {
       setCurrentStep(0)
     }
     setSelectedCity(null)
+    setInitialEditData(null)
+    setInitialViewData(null)
   }
 
   if (user?.role !== UserRole.ADMINISTRADOR_GERAL) {
@@ -286,12 +314,13 @@ const GestaoCidadesView = () => {
         onCancel={() => handleModalClose('edit')}
         footer={null}
         size="default"
+        confirmLoading={isLoadingInitialData}
       >
-        {isEditModalOpen && selectedCity && (
+        {isEditModalOpen && selectedCity && initialEditData && (
           <CityRegistrationForm
             onSubmit={handleEditCity}
             mode="edit"
-            initialData={getInitialData(selectedCity)}
+            initialData={initialEditData}
             ref={formRef}
             currentStep={currentStep}
             setCurrentStep={setCurrentStep}
@@ -305,11 +334,12 @@ const GestaoCidadesView = () => {
         onCancel={() => handleModalClose('view')}
         footer={null}
         size="default"
+        confirmLoading={isLoadingInitialData}
       >
-        {isViewModalOpen && selectedCity && (
+        {isViewModalOpen && selectedCity && initialViewData && (
           <CityRegistrationForm
             mode="viewOnly"
-            initialData={getInitialData(selectedCity)}
+            initialData={initialViewData}
             currentStep={0}
             setCurrentStep={() => {}}
           />
