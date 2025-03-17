@@ -28,11 +28,7 @@ interface IAuthContextData {
   emailLocked: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
-  inviteUser: (
-    email: string,
-    role: Exclude<UserRole, UserRole.PENDENTE | UserRole.ELEITOR>,
-    cityId: string
-  ) => Promise<void>
+  inviteUser: (email: string, role: UserRole, cityId: string) => Promise<void>
   completeRegistration: (
     email: string,
     data: UserRegistrationFormType,
@@ -63,8 +59,6 @@ const convertToUserType = (user: User): UserType => {
       return { ...user, role: UserRole.CABO_ELEITORAL } as UserType
     case UserRole.ELEITOR:
       return { ...user, role: UserRole.ELEITOR } as UserType
-    case UserRole.PENDENTE:
-      return { ...user, role: UserRole.PENDENTE, profile: null } as UserType
     default:
       throw new Error('Papel de usuário desconhecido')
   }
@@ -128,11 +122,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }
 
-  const inviteUser = async (
-    email: string,
-    role: Exclude<UserRole, UserRole.PENDENTE | UserRole.ELEITOR>,
-    cityId: string
-  ) => {
+  const inviteUser = async (email: string, role: UserRole, cityId: string) => {
     setIsAuthLoading(true)
     try {
       await authService.inviteUser(email, role, cityId)

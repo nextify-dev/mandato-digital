@@ -35,11 +35,7 @@ interface AuthService {
   checkCpfUniqueness(cpf: string, excludeId?: string): Promise<boolean>
   login(email: string, password: string): Promise<User>
   logout(): Promise<void>
-  inviteUser(
-    email: string,
-    role: Exclude<UserRole, UserRole.PENDENTE | UserRole.ELEITOR>,
-    cityId: string
-  ): Promise<void>
+  inviteUser(email: string, role: UserRole, cityId: string): Promise<void>
   completeRegistration(
     email: string,
     data: UserRegistrationFormType,
@@ -54,7 +50,11 @@ interface AuthService {
   blockUser(uid: string): Promise<User>
   editUser(
     uid: string,
-    updatedData: Partial<UserProfile> & { role?: UserRole; status?: UserStatus }
+    updatedData: Partial<UserProfile> & {
+      role?: UserRole
+      status?: UserStatus
+      cityId?: string
+    }
   ): Promise<User>
 }
 
@@ -63,7 +63,6 @@ export const authService: AuthService = {
     email: string,
     excludeId?: string
   ): Promise<boolean> {
-    console.log(excludeId)
     const snapshot = await get(ref(db, 'users'))
     const users = snapshot.val() || {}
     return !Object.values(users).some(
@@ -101,7 +100,7 @@ export const authService: AuthService = {
 
   async inviteUser(
     email: string,
-    role: Exclude<UserRole, UserRole.PENDENTE | UserRole.ELEITOR>,
+    role: UserRole,
     cityId: string
   ): Promise<void> {
     const invitedBy = auth.currentUser?.uid
@@ -113,7 +112,7 @@ export const authService: AuthService = {
     const newUser: User = {
       id: tempId,
       email,
-      role: UserRole.PENDENTE,
+      role: role,
       status: UserStatus.PENDENTE,
       cityId,
       createdAt: new Date().toISOString(),
@@ -174,7 +173,7 @@ export const authService: AuthService = {
 
       if (!tempUserEntry) throw new Error('Convite não encontrado')
       ;[tempId, existingUser] = tempUserEntry as [string, User]
-      if (existingUser.role !== UserRole.PENDENTE)
+      if (existingUser.status !== UserStatus.PENDENTE)
         throw new Error('Este email já foi registrado')
     }
 
@@ -481,7 +480,11 @@ export const authService: AuthService = {
   // Nova funcionalidade: Editar usuário
   async editUser(
     uid: string,
-    updatedData: Partial<UserProfile> & { role?: UserRole; status?: UserStatus }
+    updatedData: Partial<UserProfile> & {
+      role?: UserRole
+      status?: UserStatus
+      cityId?: string
+    }
   ): Promise<User> {
     const currentUser = auth.currentUser
     if (!currentUser) throw new Error('Usuário não autenticado')
@@ -553,6 +556,7 @@ export const authService: AuthService = {
       ...targetUserData,
       profile: updatedProfile,
       ...(updatedData.role && {
+        cityId: updatedData.cityId,
         role: updatedData.role,
         permissions: this.getPermissionsByRole(updatedData.role)
       }),

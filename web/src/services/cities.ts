@@ -190,7 +190,10 @@ export const citiesService = {
         const userData = usersData[userId]
         if (userData.role !== UserRole.ELEITOR) {
           try {
-            await authService.editUser(userId, { role: UserRole.ELEITOR })
+            await authService.editUser(userId, {
+              role: UserRole.ELEITOR,
+              cityId: newCityId
+            })
           } catch (error) {
             console.error(`Erro ao resetar cargo do usuário ${userId}:`, error)
           }
@@ -288,7 +291,10 @@ export const citiesService = {
         const userData = usersData[userId]
         if (userData.role !== UserRole.ELEITOR) {
           try {
-            await authService.editUser(userId, { role: UserRole.ELEITOR })
+            await authService.editUser(userId, {
+              role: UserRole.ELEITOR,
+              cityId: id
+            })
           } catch (error) {
             console.error(`Erro ao resetar cargo do usuário ${userId}:`, error)
           }

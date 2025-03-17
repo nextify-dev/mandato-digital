@@ -16,8 +16,7 @@ export enum UserRole {
   PREFEITO = 'Prefeito',
   VEREADOR = 'Vereador',
   CABO_ELEITORAL = 'Cabo_Eleitoral',
-  ELEITOR = 'Eleitor',
-  PENDENTE = 'Pendente'
+  ELEITOR = 'Eleitor'
 }
 
 // Função para converter UserRole em uma label amigável
@@ -35,8 +34,6 @@ export const getRoleData = (role?: UserRole): FormattedUserTag => {
       return { label: 'Cabo Eleitoral', color: '#DAA520' }
     case UserRole.ELEITOR:
       return { label: 'Eleitor', color: '#696969' }
-    case UserRole.PENDENTE:
-      return { label: 'Pendente', color: '#FF4500' }
     default:
       return { label: 'Desconhecido', color: '#808080' }
   }
@@ -73,6 +70,7 @@ interface BaseUser {
   status: UserStatus
   createdAt: string
   updatedAt: string
+  cityId: string
 }
 
 // Interface para informações de perfil (completadas no primeiro acesso ou cadastro)
@@ -94,7 +92,6 @@ export interface UserProfile {
   bairro: string
   cidade: string
   estado: string
-  cityId?: string
 }
 
 // Interface para informações de acesso
@@ -118,7 +115,6 @@ export interface Permissions {
 
 // Interface principal do usuário
 export interface User extends BaseUser {
-  cityId: string
   vereadorId?: string | null
   caboEleitoralId?: string | null
   profile?: UserProfile | null
@@ -205,20 +201,6 @@ export interface Eleitor extends User {
   }
 }
 
-export interface Pendente extends User {
-  role: UserRole.PENDENTE
-  profile: null
-  permissions: {
-    canManageAllCities: false
-    canManageCityUsers: false
-    canEditUsers: false
-    canViewReports: false
-    canRegisterVoters: false
-    canViewCityMap: false
-    canManageCampaigns: false
-  }
-}
-
 // Tipo unificado para todos os usuários
 export type UserType =
   | AdministradorGeral
@@ -227,7 +209,6 @@ export type UserType =
   | Vereador
   | CaboEleitoral
   | Eleitor
-  | Pendente
 
 // Tipo único para o formulário dinâmico
 export interface UserRegistrationForm {
