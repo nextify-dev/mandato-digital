@@ -59,11 +59,11 @@ interface AuthService {
 }
 
 export const authService: AuthService = {
-  // Nova função para verificar unicidade de email
   async checkEmailUniqueness(
     email: string,
     excludeId?: string
   ): Promise<boolean> {
+    console.log(excludeId)
     const snapshot = await get(ref(db, 'users'))
     const users = snapshot.val() || {}
     return !Object.values(users).some(
@@ -71,7 +71,6 @@ export const authService: AuthService = {
     )
   },
 
-  // Nova função para verificar unicidade de CPF
   async checkCpfUniqueness(cpf: string, excludeId?: string): Promise<boolean> {
     const unmaskedCpf = removeMask(cpf)
     const snapshot = await get(ref(db, 'users'))

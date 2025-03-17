@@ -260,7 +260,8 @@ export interface UserRegistrationForm {
 
 // Esquema dinâmico de validação baseado no modo
 export const getUserRegistrationSchema = (
-  mode: 'firstAccess' | 'voterCreation' | 'userCreation'
+  mode: 'firstAccess' | 'voterCreation' | 'userCreation',
+  excludeId?: string
 ) => {
   return yup.object().shape({
     email: yup
@@ -272,7 +273,7 @@ export const getUserRegistrationSchema = (
         'Este email já está registrado',
         async (value: string | undefined): Promise<boolean> => {
           if (!value) return false
-          return await authService.checkEmailUniqueness(value)
+          return await authService.checkEmailUniqueness(value, excludeId)
         }
       ),
     nomeCompleto: yup.string().required('Nome completo é obrigatório'),
@@ -289,7 +290,7 @@ export const getUserRegistrationSchema = (
       })
       .test('unique-cpf', 'Este CPF já está registrado', async (value) => {
         if (!value) return false
-        return await authService.checkCpfUniqueness(value)
+        return await authService.checkCpfUniqueness(value, excludeId)
       }),
     dataNascimento: yup
       .string()
@@ -346,7 +347,7 @@ export const getUserRegistrationSchema = (
     bairro: yup.string().required('Bairro é obrigatório'),
     cidade: yup.string().required('Cidade é obrigatória'),
     estado: yup.string().required('Estado é obrigatório'),
-    cityId: yup.string().nullable().optional(), // Campo opcional, sem validação obrigatória
+    cityId: yup.string().nullable().optional(),
     password:
       mode === 'firstAccess'
         ? yup

@@ -46,6 +46,7 @@ interface UserRegistrationFormProps {
     data: UserRegistrationFormType & { cityId?: string }
   ) => Promise<void>
   initialData?: Partial<UserRegistrationFormType>
+  userId?: string
   mode: FormMode
   currentStep: number
   setCurrentStep: React.Dispatch<React.SetStateAction<number>>
@@ -56,7 +57,7 @@ const UserRegistrationForm = forwardRef<
   UserRegistrationFormProps
 >(
   (
-    { onSubmit, initialData, mode, currentStep, setCurrentStep },
+    { onSubmit, initialData, userId, mode, currentStep, setCurrentStep },
     ref: Ref<UseFormReturn<UserRegistrationFormType>>
   ) => {
     const { voters, loading } = useUsers()
@@ -95,12 +96,15 @@ const UserRegistrationForm = forwardRef<
       observacoes: initialData?.observacoes || undefined,
       role: mode === 'userCreation' ? undefined : initialData?.role,
       creationMode: mode === 'userCreation' ? 'fromScratch' : undefined,
-      voterId: undefined
+      voterId: undefined,
+      cityId: initialData?.cityId || undefined
     }
 
+    const excludeId = userId // Usa o userId passado como prop
     const formMethods = useModalForm<UserRegistrationFormType>({
       schema: getUserRegistrationSchema(
-        mode === 'viewOnly' ? 'voterCreation' : mode
+        mode === 'viewOnly' ? 'voterCreation' : mode,
+        excludeId
       ),
       defaultValues,
       onSubmit: async (data: UserRegistrationFormType) => {
@@ -204,7 +208,7 @@ const UserRegistrationForm = forwardRef<
           'bairro',
           'cidade',
           'estado',
-          'cityId' // Novo campo para selecionar cidade
+          'cityId'
         ],
         requiredFields: [
           'cep',
@@ -264,10 +268,7 @@ const UserRegistrationForm = forwardRef<
     }
 
     const validateEmailUniqueness = async (email: string) => {
-      const isUnique = await authService.checkEmailUniqueness(
-        email,
-        initialData?.email ? undefined : undefined
-      )
+      const isUnique = await authService.checkEmailUniqueness(email, excludeId)
       if (!isUnique) {
         setError('email', {
           type: 'manual',
@@ -280,10 +281,7 @@ const UserRegistrationForm = forwardRef<
     }
 
     const validateCpfUniqueness = async (cpf: string) => {
-      const isUnique = await authService.checkCpfUniqueness(
-        cpf,
-        initialData?.cpf ? undefined : undefined
-      )
+      const isUnique = await authService.checkCpfUniqueness(cpf, excludeId)
       if (!isUnique) {
         setError('cpf', {
           type: 'manual',
@@ -477,7 +475,6 @@ const UserRegistrationForm = forwardRef<
 )
 
 UserRegistrationForm.displayName = 'UserRegistrationForm'
-
 export default UserRegistrationForm
 
 // STEPS COMPONENTS

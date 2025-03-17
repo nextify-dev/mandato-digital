@@ -387,6 +387,7 @@ const GestaoUsuariosView = () => {
             onSubmit={handleEditUser}
             mode="voterCreation"
             initialData={getInitialData(selectedUser)}
+            userId={selectedUser.id}
             ref={formRef}
             currentStep={currentStep}
             setCurrentStep={setCurrentStep}

@@ -125,7 +125,12 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
 
     setLoading(true)
     try {
-      await authService.completeRegistration(userData.email, userData, mode, cityId)
+      await authService.completeRegistration(
+        userData.email,
+        userData,
+        mode,
+        cityId
+      )
       messageApi.success(
         mode === 'userCreation'
           ? 'Usuário cadastrado com sucesso!'
@@ -178,7 +183,9 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
       if (!userData) throw new Error('Usuário/Eleitor não encontrado')
 
       const newStatus =
-        userData.status === UserStatus.ATIVO ? UserStatus.SUSPENSO : UserStatus.ATIVO
+        userData.status === UserStatus.ATIVO
+          ? UserStatus.SUSPENSO
+          : UserStatus.ATIVO
       await authService.editUser(userId, { status: newStatus })
       messageApi.success('Status do usuário/eleitor alterado com sucesso!')
       await fetchUsersAndVoters()
@@ -210,7 +217,8 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
       bairro: user.profile?.bairro || '',
       cidade: user.profile?.cidade || '',
       estado: user.profile?.estado || '',
-      role: user.role
+      role: user.role,
+      cityId: user.cityId || undefined
     }
   }
 
