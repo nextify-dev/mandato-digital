@@ -69,6 +69,13 @@ const GestaoCidadesView = () => {
       )
     },
     {
+      title: 'Total de Eleitores',
+      key: 'totalVoters',
+      render: (_: any, record: City) => (
+        <Tag color="green">{record.details.totalVoters ?? 0}</Tag>
+      )
+    },
+    {
       title: 'Ações',
       key: 'actions',
       render: (_: any, record: City) => (
@@ -90,7 +97,10 @@ const GestaoCidadesView = () => {
               setSelectedCity(record)
               setIsConfirmModalOpen(true)
             }}
-            disabled={(record.details.totalUsers ?? 0) > 0} // Usa ?? para fallback
+            disabled={
+              (record.details.totalUsers ?? 0) > 0 ||
+              (record.details.totalVoters ?? 0) > 0
+            }
           />
           <Button
             type="link"

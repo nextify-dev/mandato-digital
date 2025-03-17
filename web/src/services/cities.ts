@@ -1,12 +1,12 @@
 // src/services/cities.ts
 
 import { City, CityStatus } from '@/@types/city'
+import { UserRole } from '@/@types/user'
 import { db } from '@/lib/firebase'
 import {
   ref,
   get,
   set,
-  update,
   remove,
   query,
   orderByChild,
@@ -26,7 +26,13 @@ export const citiesService = {
     return !Object.values(cities).some((city: any) => city.name === name)
   },
 
+  getSnapshot: async (reference: any) => {
+    return await get(reference)
+  },
+
   getCities: async (filters: Partial<{ name: string }>): Promise<City[]> => {
+    console.log('totalUsers, totalVoters')
+
     const citiesRef = ref(db, 'cities')
     let q = citiesRef
 
@@ -42,16 +48,21 @@ export const citiesService = {
     const citiesSnapshot = await get(q)
     const citiesData = citiesSnapshot.val() || {}
 
-    // Buscar usuários para calcular totalUsers
     const usersRef = ref(db, 'users')
     const usersSnapshot = await get(usersRef)
     const usersData = usersSnapshot.val() || {}
 
+
     const citiesArray = Object.entries(citiesData).map(
       ([id, data]: [string, any]) => {
-        // Calcular totalUsers baseado na relação cidade-usuário
-        const totalUsers = Object.values(usersData).filter(
+        const cityUsers = Object.values(usersData).filter(
           (user: any) => user.cityId === id
+        )
+        const totalUsers = cityUsers.filter(
+          (user: any) => user.role !== UserRole.ELEITOR
+        ).length
+        const totalVoters = cityUsers.filter(
+          (user: any) => user.role === UserRole.ELEITOR
         ).length
 
         return {
@@ -59,7 +70,8 @@ export const citiesService = {
           ...data,
           details: {
             ...data.details,
-            totalUsers // Adiciona o total calculado
+            totalUsers, // Usuários não eleitores
+            totalVoters // Eleitores
           }
         } as City
       }
@@ -90,8 +102,6 @@ export const citiesService = {
       createdBy: userId,
       status: data.status || CityStatus.PENDENTE,
       details: {
-        totalVoters: data.details?.totalVoters || null,
-        population: data.details?.population || null,
         ibgeCode: data.details?.ibgeCode || null,
         observations: data.details?.observations || null
       }
@@ -113,9 +123,6 @@ export const citiesService = {
       ...existingCity,
       status: data.status ?? existingCity.status,
       details: {
-        totalVoters:
-          data.details?.totalVoters ?? existingCity.details.totalVoters,
-        population: data.details?.population ?? existingCity.details.population,
         ibgeCode: data.details?.ibgeCode ?? existingCity.details.ibgeCode,
         observations:
           data.details?.observations ?? existingCity.details.observations

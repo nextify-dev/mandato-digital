@@ -1,5 +1,4 @@
 // src/@types/city.ts
-
 import { citiesService } from '@/services/cities'
 import * as yup from 'yup'
 
@@ -37,62 +36,60 @@ interface BaseCity {
 }
 
 export interface CityDetails {
-  totalVoters?: number | null // Número de eleitores (opcional)
-  population?: number | null // População (opcional)
-  ibgeCode?: number | null // Código IBGE (opcional)
-  observations?: string | null // Observações (opcional)
-  totalUsers?: number // Calculado dinamicamente, não salvo no banco
+  totalVoters?: number | null // Calculado dinamicamente, não salvo no banco
+  totalUsers?: number | null // Calculado dinamicamente, não salvo no banco
+  ibgeCode: string | null
+  observations: string | null
 }
 
 export interface City extends BaseCity {
   details: CityDetails
 }
 
-export interface CityRegistrationForm {
+export interface ICityRegistrationForm {
   name: string
   state: string
   status: CityStatus
-  totalVoters?: number | null
-  population?: number | null
-  ibgeCode?: number | null
+  ibgeCode?: string | null
   observations?: string | null
 }
 
 export const getCityRegistrationSchema = (mode: 'create' | 'edit') => {
   return yup.object().shape({
-    name: yup
-      .string()
-      .required('Nome da cidade é obrigatório')
-      .test('unique-name', 'Esta cidade já está registrada', async (value) => {
-        if (!value) return false
-        return await citiesService.checkCityNameUniqueness(value)
-      }),
-    state: yup
-      .string()
-      .required('Estado é obrigatório')
-      .length(2, 'O estado deve ter 2 caracteres (ex.: SP)'),
+    name: yup.string().when(mode, {
+      is: (value: string) => value === 'create',
+      then: () =>
+        yup
+          .string()
+          .required('Nome da cidade é obrigatório')
+          .test(
+            'unique-name',
+            'Esta cidade já está registrada',
+            async (value) => {
+              if (!value) return false
+              return await citiesService.checkCityNameUniqueness(value)
+            }
+          ),
+      otherwise: () => yup.string().notRequired()
+    }),
+    state: yup.string().when(mode, {
+      is: (value: string) => value === 'create',
+      then: () =>
+        yup
+          .string()
+          .required('Estado é obrigatório')
+          .length(2, 'O estado deve ter 2 caracteres (ex.: SP)'),
+      otherwise: () =>
+        yup
+          .string()
+          .length(2, 'O estado deve ter 2 caracteres (ex.: SP)')
+          .notRequired()
+    }),
     status: yup
       .string()
       .required('Status é obrigatório')
       .oneOf(Object.values(CityStatus), 'Selecione um status válido'),
-    totalVoters: yup
-      .number()
-      .integer('Deve ser um número inteiro')
-      .min(0, 'Não pode ser negativo')
-      .nullable()
-      .optional(),
-    population: yup
-      .number()
-      .integer('Deve ser um número inteiro')
-      .min(0, 'Não pode ser negativo')
-      .nullable()
-      .optional(),
-    ibgeCode: yup
-      .number()
-      .integer('Deve ser um número inteiro')
-      .min(0, 'Não pode ser negativo')
-      .nullable()
-      .optional(),
+    ibgeCode: yup.string().nullable().optional(),
     observations: yup.string().nullable().optional()
   })
 }

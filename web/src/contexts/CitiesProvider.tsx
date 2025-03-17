@@ -4,6 +4,9 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import { City, CityRegistrationFormType } from '@/@types/city'
 import { citiesService } from '@/services/cities'
 import { useAuth } from '@/contexts/AuthProvider'
+import { db } from '@/lib/firebase'
+import { ref, onValue, off } from 'firebase/database'
+import { UserRole } from '@/@types/user'
 
 interface CitiesContextData {
   cities: City[]
@@ -34,19 +37,66 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [filters, setFilters] = useState<Partial<CityFilters>>({})
 
   useEffect(() => {
-    fetchCities()
+    const citiesRef = ref(db, 'cities')
+    setLoading(true)
+
+    const unsubscribe = onValue(
+      citiesRef,
+      async (snapshot) => {
+        const citiesData = snapshot.val() || {}
+        const citiesArray = await processCitiesData(citiesData, filters)
+        setCities(citiesArray)
+        setLoading(false)
+      },
+      (error) => {
+        console.error('Erro ao ouvir mudanças em /cities:', error)
+        setLoading(false)
+      }
+    )
+
+    return () => off(citiesRef, 'value', unsubscribe)
   }, [filters])
 
-  const fetchCities = async () => {
-    setLoading(true)
-    try {
-      const fetchedCities = await citiesService.getCities(filters)
-      setCities(fetchedCities)
-    } catch (error) {
-      console.error('Erro ao buscar cidades:', error)
-    } finally {
-      setLoading(false)
+  const processCitiesData = async (
+    citiesData: { [key: string]: any },
+    filters: Partial<CityFilters>
+  ): Promise<City[]> => {
+    const usersRef = ref(db, 'users')
+    const usersSnapshot = await citiesService.getSnapshot(usersRef)
+    const usersData = usersSnapshot.val() || {}
+
+    let citiesArray = Object.entries(citiesData).map(
+      ([id, data]: [string, any]) => {
+        const cityUsers = Object.values(usersData).filter(
+          (user: any) => user.cityId === id
+        )
+        const totalUsers = cityUsers.filter(
+          (user: any) => user.role !== UserRole.ELEITOR
+        ).length
+        const totalVoters = cityUsers.filter(
+          (user: any) => user.role === UserRole.ELEITOR
+        ).length
+
+        return {
+          id,
+          ...data,
+          details: {
+            ...data.details,
+            totalUsers,
+            totalVoters
+          }
+        } as City
+      }
+    )
+
+    if (filters.name) {
+      const searchTerm = filters.name.toLowerCase()
+      citiesArray = citiesArray.filter((city) =>
+        city.name.toLowerCase().includes(searchTerm)
+      )
     }
+
+    return citiesArray
   }
 
   const createCity = async (
@@ -56,23 +106,20 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const cityData: Partial<City> = {
         name: data.name,
-        state: data.state.toUpperCase(),
+        state: data.state!.toUpperCase(),
         status: data.status,
         details: {
-          totalVoters: data.totalVoters,
-          population: data.population,
-          ibgeCode: data.ibgeCode,
-          observations: data.observations
+          ibgeCode: data.ibgeCode ?? null,
+          observations: data.observations ?? null
         }
       }
       const newCityId = await citiesService.createCity(cityData, user!.id)
-      await fetchCities()
+      setLoading(false)
       return newCityId
     } catch (error) {
       console.error('Erro ao criar cidade:', error)
-      throw error
-    } finally {
       setLoading(false)
+      throw error
     }
   }
 
@@ -85,19 +132,16 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
       const cityData: Partial<City> = {
         status: data.status,
         details: {
-          totalVoters: data.totalVoters,
-          population: data.population,
-          ibgeCode: data.ibgeCode,
-          observations: data.observations
+          ibgeCode: data.ibgeCode ?? null,
+          observations: data.observations ?? null
         }
       }
       await citiesService.updateCity(id, cityData)
-      await fetchCities()
+      setLoading(false)
     } catch (error) {
       console.error('Erro ao atualizar cidade:', error)
-      throw error
-    } finally {
       setLoading(false)
+      throw error
     }
   }
 
@@ -105,12 +149,11 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
     setLoading(true)
     try {
       await citiesService.deleteCity(id)
-      await fetchCities()
+      setLoading(false)
     } catch (error) {
       console.error('Erro ao deletar cidade:', error)
-      throw error
-    } finally {
       setLoading(false)
+      throw error
     }
   }
 
@@ -118,8 +161,6 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
     name: city.name,
     state: city.state,
     status: city.status,
-    totalVoters: city.details.totalVoters,
-    population: city.details.population,
     ibgeCode: city.details.ibgeCode,
     observations: city.details.observations
   })

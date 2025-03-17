@@ -4,12 +4,7 @@ import React, { forwardRef, Ref, useEffect, useState } from 'react'
 import * as S from './styles'
 import { Controller, UseFormReturn, DefaultValues } from 'react-hook-form'
 import { Select, Input } from 'antd'
-import {
-  StyledForm,
-  StyledInput,
-  StyledButton,
-  StyledSteps
-} from '@/utils/styles/antd'
+import { StyledForm, StyledButton, StyledSteps } from '@/utils/styles/antd'
 import {
   CityStatus,
   getCityRegistrationSchema,
@@ -50,8 +45,6 @@ const CityRegistrationForm = forwardRef<
       name: initialData?.name || undefined,
       state: initialData?.state || '',
       status: initialData?.status || CityStatus.ATIVA,
-      totalVoters: initialData?.totalVoters || null,
-      population: initialData?.population || null,
       ibgeCode: initialData?.ibgeCode || null,
       observations: initialData?.observations || null
     }
@@ -104,34 +97,35 @@ const CityRegistrationForm = forwardRef<
     const handleCityChange = async (cityName: string) => {
       setValue('name', cityName)
       const city = cities.find((c) => c.nome === cityName)
-      if (city) setValue('ibgeCode', city.id)
+      if (city) setValue('ibgeCode', city.id.toString())
       await trigger('name')
     }
+
+    console.log(mode === 'edit')
 
     const steps = [
       {
         title: 'Dados Básicos',
         fields: ['state', 'name', 'status'],
-        requiredFields: ['state', 'name', 'status']
+        requiredFields:
+          mode === 'edit' ? ['status'] : ['state', 'name', 'status']
       },
       {
         title: 'Detalhes',
-        fields: ['totalVoters', 'population', 'observations'],
+        fields: ['ibgeCode', 'observations'],
         requiredFields: []
       },
-      {
-        title: 'Revisão',
-        fields: [],
-        requiredFields: []
-      }
+      { title: 'Revisão', fields: [], requiredFields: [] }
     ]
 
-    const areRequiredFieldsValid = () =>
-      steps[currentStep].requiredFields.every((field) => {
+    const areRequiredFieldsValid = () => {
+      const currentStepRequiredFields = steps[currentStep].requiredFields
+      return currentStepRequiredFields.every((field) => {
         const value = formData[field as keyof CityRegistrationFormType]
         const hasError = !!errors[field as keyof CityRegistrationFormType]
         return value && !hasError
       })
+    }
 
     const validateStep = async () => {
       const fieldsToValidate = steps[currentStep]
@@ -140,7 +134,7 @@ const CityRegistrationForm = forwardRef<
     }
 
     const nextStep = async () => {
-      if (await validateStep()) {
+      if ((await validateStep()) && areRequiredFieldsValid()) {
         setCurrentStep((prev) => prev + 1)
       }
     }
@@ -148,7 +142,7 @@ const CityRegistrationForm = forwardRef<
     const prevStep = () => setCurrentStep((prev) => prev - 1)
 
     const handleSubmitClick = async () => {
-      if (await validateStep()) {
+      if ((await validateStep()) && areRequiredFieldsValid()) {
         formMethods.handleSubmit(onSubmit!)()
       }
     }
@@ -162,12 +156,6 @@ const CityRegistrationForm = forwardRef<
           label: 'Status',
           render: (value: CityStatus) => getCityStatusData(value).label
         },
-        {
-          key: 'totalVoters',
-          label: 'Total de Eleitores',
-          render: (v) => v ?? '-'
-        },
-        { key: 'population', label: 'População', render: (v) => v ?? '-' },
         { key: 'ibgeCode', label: 'Código IBGE', render: (v) => v ?? '-' },
         { key: 'observations', label: 'Observações' }
       ]
@@ -248,7 +236,6 @@ const CityRegistrationForm = forwardRef<
 
 CityRegistrationForm.displayName = 'CityRegistrationForm'
 
-// Steps Components
 interface ICityRegistrationStep {
   control: any
   errors: any
@@ -386,50 +373,23 @@ const DetailsStep = ({
           </StyledForm.Item>
         )}
       />
-      <FormInputsWrapper>
-        <Controller
-          name="totalVoters"
-          control={control}
-          render={({ field }) => (
-            <StyledForm.Item
-              label="Total de Eleitores (opcional)"
-              help={errors.totalVoters?.message}
-              validateStatus={errors.totalVoters ? 'error' : ''}
-            >
-              <StyledInput
-                {...field}
-                type="number"
-                placeholder="Digite o número de eleitores"
-                value={field.value || ''}
-                onChange={(e) =>
-                  setValue('totalVoters', parseInt(e.target.value) || null)
-                }
-              />
-            </StyledForm.Item>
-          )}
-        />
-        <Controller
-          name="population"
-          control={control}
-          render={({ field }) => (
-            <StyledForm.Item
-              label="População (opcional)"
-              help={errors.population?.message}
-              validateStatus={errors.population ? 'error' : ''}
-            >
-              <StyledInput
-                {...field}
-                type="number"
-                placeholder="Digite a população"
-                value={field.value || ''}
-                onChange={(e) =>
-                  setValue('population', parseInt(e.target.value) || null)
-                }
-              />
-            </StyledForm.Item>
-          )}
-        />
-      </FormInputsWrapper>
+      <Controller
+        name="ibgeCode"
+        control={control}
+        render={({ field }) => (
+          <StyledForm.Item
+            label="Código IBGE (opcional)"
+            help={errors.ibgeCode?.message}
+            validateStatus={errors.ibgeCode ? 'error' : ''}
+          >
+            <Input
+              {...field}
+              placeholder="Digite o código IBGE"
+              value={field.value || ''}
+            />
+          </StyledForm.Item>
+        )}
+      />
     </FormStep>
   )
 }
