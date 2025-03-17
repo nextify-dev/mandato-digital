@@ -1,7 +1,7 @@
 // src/contexts/CitiesProvider.tsx
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { message } from 'antd'
-import { City, CityRegistrationFormType } from '@/@types/city'
+import { City, CityRegistrationFormType, CityStatus } from '@/@types/city'
 import { citiesService } from '@/services/cities'
 import { useAuth } from '@/contexts/AuthProvider'
 import { db } from '@/lib/firebase'
@@ -24,6 +24,8 @@ interface CitiesContextData {
 
 interface CityFilters {
   name: string
+  status?: CityStatus
+  state?: string
 }
 
 const CitiesContext = createContext<CitiesContextData>({} as CitiesContextData)
@@ -79,6 +81,12 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
         const totalVoters = cityUsers.filter(
           (user: any) => user.role === UserRole.ELEITOR
         ).length
+        const totalVereadores = cityUsers.filter(
+          (user: any) => user.role === UserRole.VEREADOR
+        ).length
+        const totalCabosEleitorais = cityUsers.filter(
+          (user: any) => user.role === UserRole.CABO_ELEITORAL
+        ).length
 
         return {
           id,
@@ -86,7 +94,9 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
           details: {
             ...data.details,
             totalUsers,
-            totalVoters
+            totalVoters,
+            totalVereadores,
+            totalCabosEleitorais
           }
         } as City
       }
@@ -97,6 +107,12 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
       citiesArray = citiesArray.filter((city) =>
         city.name.toLowerCase().includes(searchTerm)
       )
+    }
+    if (filters.status) {
+      citiesArray = citiesArray.filter((city) => city.status === filters.status)
+    }
+    if (filters.state) {
+      citiesArray = citiesArray.filter((city) => city.state === filters.state)
     }
 
     return citiesArray

@@ -38,6 +38,8 @@ interface BaseCity {
 export interface CityDetails {
   totalVoters?: number | null // Calculado dinamicamente, não salvo no banco
   totalUsers?: number | null // Calculado dinamicamente, não salvo no banco
+  totalVereadores?: number | null // Calculado dinamicamente, não salvo no banco
+  totalCabosEleitorais?: number | null // Calculado dinamicamente, não salvo no banco
   ibgeCode: string | null
   observations: string | null
 }
@@ -52,6 +54,10 @@ export interface ICityRegistrationForm {
   status: CityStatus
   ibgeCode?: string | null
   observations?: string | null
+  administratorId?: string | null
+  mayorId?: string | null
+  vereadorIds?: string[] // Alterado para não incluir null
+  caboEleitoralIds?: string[] // Alterado para não incluir null
 }
 
 export const getCityRegistrationSchema = (mode: 'create' | 'edit') => {
@@ -90,7 +96,11 @@ export const getCityRegistrationSchema = (mode: 'create' | 'edit') => {
       .required('Status é obrigatório')
       .oneOf(Object.values(CityStatus), 'Selecione um status válido'),
     ibgeCode: yup.string().nullable().optional(),
-    observations: yup.string().nullable().optional()
+    observations: yup.string().nullable().optional(),
+    administratorId: yup.string().nullable().optional(),
+    mayorId: yup.string().nullable().optional(),
+    vereadorIds: yup.array().of(yup.string().required()).optional(), // Removido nullable()
+    caboEleitoralIds: yup.array().of(yup.string().required()).optional() // Removido nullable()
   })
 }
 

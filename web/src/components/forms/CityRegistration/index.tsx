@@ -1,9 +1,8 @@
 // src/components/forms/CityRegistration/index.tsx
-
 import React, { forwardRef, Ref, useEffect, useState } from 'react'
 import * as S from './styles'
 import { Controller, UseFormReturn, DefaultValues } from 'react-hook-form'
-import { Select, Input } from 'antd'
+import { Select, Input, message } from 'antd'
 import { StyledForm, StyledButton, StyledSteps } from '@/utils/styles/antd'
 import {
   CityStatus,
@@ -13,43 +12,64 @@ import {
 } from '@/@types/city'
 import { FormInputsWrapper, FormStep } from '@/utils/styles/commons'
 import { useModalForm } from '@/hooks/useModalForm'
-import { DynamicDescriptions } from '@/components'
+import { DynamicDescriptions, ConfirmModal } from '@/components'
 import { ibgeService, IBGEState, IBGECity } from '@/services/ibge'
 import { DynamicDescriptionsField } from '@/components/DynamicDescriptions'
+import { useUsers } from '@/contexts/UsersProvider'
+import { getRoleData, User, UserRole } from '@/@types/user'
+import { citiesService } from '@/services/cities'
 
 const { TextArea } = Input
 
 type FormMode = 'create' | 'edit' | 'viewOnly'
 
+// Interface estendida para incluir os cargos
+interface CityRegistrationFormTypeExtended extends CityRegistrationFormType {
+  administratorId?: string | null
+  mayorId?: string | null
+  vereadorIds?: string[]
+  caboEleitoralIds?: string[]
+}
+
 interface CityRegistrationFormProps {
-  onSubmit?: (data: CityRegistrationFormType) => Promise<void>
-  initialData?: Partial<CityRegistrationFormType>
+  onSubmit?: (data: CityRegistrationFormTypeExtended) => Promise<void>
+  initialData?: Partial<CityRegistrationFormTypeExtended>
   mode: FormMode
   currentStep: number
   setCurrentStep: React.Dispatch<React.SetStateAction<number>>
 }
 
 const CityRegistrationForm = forwardRef<
-  UseFormReturn<CityRegistrationFormType>,
+  UseFormReturn<CityRegistrationFormTypeExtended>,
   CityRegistrationFormProps
 >(
   (
     { onSubmit, initialData, mode, currentStep, setCurrentStep },
-    ref: Ref<UseFormReturn<CityRegistrationFormType>>
+    ref: Ref<UseFormReturn<CityRegistrationFormTypeExtended>>
   ) => {
     const [states, setStates] = useState<IBGEState[]>([])
     const [cities, setCities] = useState<IBGECity[]>([])
     const [isCitiesLoading, setIsCitiesLoading] = useState(false)
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
+    const [selectedUser, setSelectedUser] = useState<User | null>(null)
+    const [roleChangeField, setRoleChangeField] = useState<
+      keyof CityRegistrationFormTypeExtended | null
+    >(null)
+    const { users } = useUsers()
 
-    const defaultValues: DefaultValues<CityRegistrationFormType> = {
+    const defaultValues: DefaultValues<CityRegistrationFormTypeExtended> = {
       name: initialData?.name || undefined,
       state: initialData?.state || '',
       status: initialData?.status || CityStatus.ATIVA,
       ibgeCode: initialData?.ibgeCode || null,
-      observations: initialData?.observations || null
+      observations: initialData?.observations || null,
+      administratorId: initialData?.administratorId || null,
+      mayorId: initialData?.mayorId || null,
+      vereadorIds: initialData?.vereadorIds || [],
+      caboEleitoralIds: initialData?.caboEleitoralIds || []
     }
 
-    const formMethods = useModalForm<CityRegistrationFormType>({
+    const formMethods = useModalForm<CityRegistrationFormTypeExtended>({
       schema: getCityRegistrationSchema(mode === 'viewOnly' ? 'create' : mode),
       defaultValues,
       onSubmit
@@ -101,12 +121,73 @@ const CityRegistrationForm = forwardRef<
       await trigger('name')
     }
 
+    const handleRoleChange = async (
+      field: keyof CityRegistrationFormTypeExtended,
+      value: string | string[]
+    ) => {
+      const userId = Array.isArray(value) ? value[value.length - 1] : value
+      const user = users.find((u) => u.id === userId)
+      if (user && user.role !== UserRole.ELEITOR) {
+        setSelectedUser(user)
+        setRoleChangeField(field)
+        setIsConfirmModalOpen(true)
+      } else {
+        setValue(field, value)
+        if (user) {
+          await updateUserRole(user, field)
+        }
+      }
+    }
+
+    const confirmRoleChange = async () => {
+      if (selectedUser && roleChangeField) {
+        const newValue =
+          roleChangeField === 'administratorId' || roleChangeField === 'mayorId'
+            ? selectedUser.id
+            : [...(formData[roleChangeField] as string[]), selectedUser.id]
+        setValue(roleChangeField, newValue)
+        await updateUserRole(selectedUser, roleChangeField)
+        setIsConfirmModalOpen(false)
+        setSelectedUser(null)
+        setRoleChangeField(null)
+      }
+    }
+
+    const updateUserRole = async (
+      user: User,
+      field: keyof CityRegistrationFormTypeExtended
+    ) => {
+      const newRole =
+        field === 'administratorId'
+          ? UserRole.ADMINISTRADOR_CIDADE
+          : field === 'mayorId'
+          ? UserRole.PREFEITO
+          : field === 'vereadorIds'
+          ? UserRole.VEREADOR
+          : UserRole.CABO_ELEITORAL
+      // Aqui você chamaria o serviço para atualizar o usuário no backend
+      // await usersService.updateUser(user.id, { role: newRole });
+      message.success(
+        `Cargo de ${user.profile?.nomeCompleto} atualizado para ${newRole}`
+      )
+    }
+
     const steps = [
       {
         title: 'Dados Básicos',
         fields: ['state', 'name', 'status'],
         requiredFields:
           mode === 'edit' ? ['status'] : ['state', 'name', 'status']
+      },
+      {
+        title: 'Cargos',
+        fields: [
+          'administratorId',
+          'mayorId',
+          'vereadorIds',
+          'caboEleitoralIds'
+        ],
+        requiredFields: []
       },
       {
         title: 'Detalhes',
@@ -119,15 +200,16 @@ const CityRegistrationForm = forwardRef<
     const areRequiredFieldsValid = () => {
       const currentStepRequiredFields = steps[currentStep].requiredFields
       return currentStepRequiredFields.every((field) => {
-        const value = formData[field as keyof CityRegistrationFormType]
-        const hasError = !!errors[field as keyof CityRegistrationFormType]
+        const value = formData[field as keyof CityRegistrationFormTypeExtended]
+        const hasError =
+          !!errors[field as keyof CityRegistrationFormTypeExtended]
         return value && !hasError
       })
     }
 
     const validateStep = async () => {
       const fieldsToValidate = steps[currentStep]
-        .fields as (keyof CityRegistrationFormType)[]
+        .fields as (keyof CityRegistrationFormTypeExtended)[]
       return await trigger(fieldsToValidate, { shouldFocus: true })
     }
 
@@ -145,7 +227,7 @@ const CityRegistrationForm = forwardRef<
       }
     }
 
-    const descriptionFields: DynamicDescriptionsField<CityRegistrationFormType>[] =
+    const descriptionFields: DynamicDescriptionsField<CityRegistrationFormTypeExtended>[] =
       [
         { key: 'name', label: 'Nome da Cidade' },
         { key: 'state', label: 'Estado' },
@@ -153,6 +235,38 @@ const CityRegistrationForm = forwardRef<
           key: 'status',
           label: 'Status',
           render: (value: CityStatus) => getCityStatusData(value).label
+        },
+        {
+          key: 'administratorId',
+          label: 'Administrador',
+          render: (value) =>
+            users.find((u) => u.id === value)?.profile?.nomeCompleto || '-'
+        },
+        {
+          key: 'mayorId',
+          label: 'Prefeito',
+          render: (value) =>
+            users.find((u) => u.id === value)?.profile?.nomeCompleto || '-'
+        },
+        {
+          key: 'vereadorIds',
+          label: 'Vereadores',
+          render: (value: string[]) =>
+            value
+              ?.map(
+                (id) => users.find((u) => u.id === id)?.profile?.nomeCompleto
+              )
+              .join(', ') || '-'
+        },
+        {
+          key: 'caboEleitoralIds',
+          label: 'Cabos Eleitorais',
+          render: (value: string[]) =>
+            value
+              ?.map(
+                (id) => users.find((u) => u.id === id)?.profile?.nomeCompleto
+              )
+              .join(', ') || '-'
         },
         { key: 'ibgeCode', label: 'Código IBGE', render: (v) => v ?? '-' },
         { key: 'observations', label: 'Observações' }
@@ -189,18 +303,26 @@ const CityRegistrationForm = forwardRef<
             onCityChange={handleCityChange}
             selectedState={!!selectedState}
           />
-          <DetailsStep
+          <RolesStep
             control={control}
             errors={errors}
             setValue={setValue}
             visible={currentStep === 1}
+            users={users}
+            onRoleChange={handleRoleChange}
+          />
+          <DetailsStep
+            control={control}
+            errors={errors}
+            setValue={setValue}
+            visible={currentStep === 2}
           />
           <ReviewStep
             control={control}
             errors={errors}
             formData={formData}
             setValue={setValue}
-            visible={currentStep === 2}
+            visible={currentStep === 3}
             descriptionFields={descriptionFields}
           />
         </S.CityRegistrationFormContent>
@@ -227,6 +349,37 @@ const CityRegistrationForm = forwardRef<
             </StyledButton>
           )}
         </S.CityRegistrationFormFooter>
+
+        <ConfirmModal
+          type="warning"
+          title="Confirmação de Alteração de Cargo"
+          content={
+            selectedUser && roleChangeField
+              ? `O usuário ${
+                  selectedUser.profile?.nomeCompleto
+                } já possui o cargo de ${
+                  getRoleData(selectedUser.role).label
+                }. Deseja alterar seu cargo para ${
+                  roleChangeField === 'administratorId'
+                    ? 'Administrador da Cidade'
+                    : roleChangeField === 'mayorId'
+                    ? 'Prefeito'
+                    : roleChangeField === 'vereadorIds'
+                    ? 'Vereador'
+                    : 'Cabo Eleitoral'
+                }? A cidade atual ficará sem esse cargo preenchido por este usuário.`
+              : ''
+          }
+          visible={isConfirmModalOpen}
+          onConfirm={confirmRoleChange}
+          onCancel={() => {
+            setIsConfirmModalOpen(false)
+            setSelectedUser(null)
+            setRoleChangeField(null)
+          }}
+          confirmText="Sim"
+          cancelText="Não"
+        />
       </StyledForm>
     )
   }
@@ -246,8 +399,13 @@ interface ICityRegistrationStep {
   isCitiesLoading?: boolean
   onStateChange?: (state: string) => void
   onCityChange?: (city: string) => void
-  descriptionFields?: DynamicDescriptionsField<CityRegistrationFormType>[]
+  onRoleChange?: (
+    field: keyof CityRegistrationFormTypeExtended,
+    value: string | string[]
+  ) => void
+  descriptionFields?: DynamicDescriptionsField<CityRegistrationFormTypeExtended>[]
   selectedState?: boolean
+  users?: User[]
 }
 
 const BasicDataStep = ({
@@ -341,6 +499,150 @@ const BasicDataStep = ({
           )}
         />
       </FormInputsWrapper>
+    </FormStep>
+  )
+}
+
+const RolesStep = ({
+  control,
+  errors,
+  setValue,
+  visible,
+  users,
+  onRoleChange
+}: ICityRegistrationStep) => {
+  const userOptions =
+    users?.map((user) => ({
+      label: `${user.profile?.nomeCompleto || 'Sem Nome'} - ${
+        user.cityId
+          ? citiesService
+              .getCities({})
+              .then(
+                (cities) =>
+                  cities.find((c) => c.id === user.cityId)?.name || 'N/A'
+              )
+          : 'N/A'
+      }, ${
+        user.cityId
+          ? citiesService
+              .getCities({})
+              .then(
+                (cities) =>
+                  cities.find((c) => c.id === user.cityId)?.state || 'N/A'
+              )
+          : 'N/A'
+      }`,
+      value: user.id
+    })) || []
+
+  return (
+    <FormStep visible={visible ? 1 : 0}>
+      <Controller
+        name="administratorId"
+        control={control}
+        render={({ field }) => (
+          <StyledForm.Item
+            label="Administrador da Cidade (opcional)"
+            help={errors.administratorId?.message}
+            validateStatus={errors.administratorId ? 'error' : ''}
+          >
+            <Select
+              {...field}
+              placeholder="Selecione um administrador"
+              options={userOptions}
+              showSearch
+              filterOption={(input, option) =>
+                (option?.label ?? '')
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+              onChange={(value) => onRoleChange!('administratorId', value)}
+              value={field.value}
+              allowClear
+            />
+          </StyledForm.Item>
+        )}
+      />
+      <Controller
+        name="mayorId"
+        control={control}
+        render={({ field }) => (
+          <StyledForm.Item
+            label="Prefeito (opcional)"
+            help={errors.mayorId?.message}
+            validateStatus={errors.mayorId ? 'error' : ''}
+          >
+            <Select
+              {...field}
+              placeholder="Selecione um prefeito"
+              options={userOptions}
+              showSearch
+              filterOption={(input, option) =>
+                (option?.label ?? '')
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+              onChange={(value) => onRoleChange!('mayorId', value)}
+              value={field.value}
+              allowClear
+            />
+          </StyledForm.Item>
+        )}
+      />
+      <Controller
+        name="vereadorIds"
+        control={control}
+        render={({ field }) => (
+          <StyledForm.Item
+            label="Vereadores (opcional)"
+            help={errors.vereadorIds?.message}
+            validateStatus={errors.vereadorIds ? 'error' : ''}
+          >
+            <Select
+              {...field}
+              mode="multiple"
+              placeholder="Selecione os vereadores"
+              options={userOptions}
+              showSearch
+              filterOption={(input, option) =>
+                (option?.label ?? '')
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+              onChange={(value) => onRoleChange!('vereadorIds', value)}
+              value={field.value}
+              allowClear
+            />
+          </StyledForm.Item>
+        )}
+      />
+      <Controller
+        name="caboEleitoralIds"
+        control={control}
+        render={({ field }) => (
+          <StyledForm.Item
+            label="Cabos Eleitorais (opcional)"
+            help={errors.caboEleitoralIds?.message}
+            validateStatus={errors.caboEleitoralIds ? 'error' : ''}
+          >
+            <Select
+              {...field}
+              mode="multiple"
+              placeholder="Selecione os cabos eleitorais"
+              options={userOptions}
+              showSearch
+              filterOption={(input, option) =>
+                (option?.label ?? '')
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+              onChange={(value) => onRoleChange!('caboEleitoralIds', value)}
+              value={field.value}
+              allowClear
+            />
+          </StyledForm.Item>
+        )}
+      />
     </FormStep>
   )
 }

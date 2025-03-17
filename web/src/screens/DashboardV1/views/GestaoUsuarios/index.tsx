@@ -1,7 +1,13 @@
-// src/screens/DashboardV1/views/GestaoUsuarios/index.tsx
 import { useState, useRef } from 'react'
 import * as S from './styles'
-import { LuUserPen, LuTrash2, LuLock, LuLockOpen, LuEye } from 'react-icons/lu'
+import {
+  LuUserPen,
+  LuTrash2,
+  LuLock,
+  LuLockOpen,
+  LuEye,
+  LuUserX
+} from 'react-icons/lu'
 import { Button, Input, Select, Tag, Avatar } from 'antd'
 import {
   View,
@@ -46,7 +52,11 @@ const GestaoUsuariosView = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
+  const [isRemoveRoleModalOpen, setIsRemoveRoleModalOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [actionType, setActionType] = useState<
+    'toggleStatus' | 'delete' | null
+  >(null)
   const [currentStep, setCurrentStep] = useState(0)
   const formRef = useRef<UseFormReturn<UserRegistrationFormType> | null>(null)
 
@@ -127,6 +137,7 @@ const GestaoUsuariosView = () => {
               danger
               onClick={() => {
                 setSelectedUser(record)
+                setActionType('delete')
                 setIsConfirmModalOpen(true)
               }}
               disabled={
@@ -135,9 +146,12 @@ const GestaoUsuariosView = () => {
             />
             <Button
               type="link"
-              icon={record.status === 'ativo' ? <LuLockOpen /> : <LuLock />}
+              icon={
+                record.status === UserStatus.ATIVO ? <LuLock /> : <LuLockOpen />
+              }
               onClick={() => {
                 setSelectedUser(record)
+                setActionType('toggleStatus')
                 setIsConfirmModalOpen(true)
               }}
               disabled={isCurrentUser || !user?.permissions.canEditUsers}
@@ -150,10 +164,21 @@ const GestaoUsuariosView = () => {
                 setIsViewModalOpen(true)
               }}
             />
+            {record.role !== UserRole.ELEITOR && (
+              <Button
+                type="link"
+                icon={<LuUserX />}
+                onClick={() => {
+                  setSelectedUser(record)
+                  setIsRemoveRoleModalOpen(true)
+                }}
+                disabled={isCurrentUser || !user?.permissions.canEditUsers}
+              />
+            )}
           </TableExtrasWrapper>
         )
       },
-      width: 150
+      width: 180
     }
   ]
 
@@ -203,7 +228,7 @@ const GestaoUsuariosView = () => {
   const handleCreateUser = async (
     data: UserRegistrationFormType & { cityId?: string }
   ) => {
-    const cityId = data.cityId ?? user?.cityId // Usa o cityId do formulário ou fallback para user.cityId
+    const cityId = data.cityId ?? user?.cityId
     if (!cityId) throw new Error('Nenhuma cidade associada ao usuário')
     await createUser(data, cityId, 'userCreation')
     setIsCreateModalOpen(false)
@@ -241,6 +266,8 @@ const GestaoUsuariosView = () => {
     if (selectedUser) {
       await toggleUserStatus(selectedUser.id)
       setIsConfirmModalOpen(false)
+      setActionType(null)
+      setSelectedUser(null)
     }
   }
 
@@ -248,6 +275,16 @@ const GestaoUsuariosView = () => {
     if (selectedUser) {
       await deleteUser(selectedUser.id)
       setIsConfirmModalOpen(false)
+      setActionType(null)
+      setSelectedUser(null)
+    }
+  }
+
+  const handleRemoveRole = async () => {
+    if (selectedUser) {
+      await updateUser(selectedUser.id, { role: UserRole.ELEITOR })
+      setIsRemoveRoleModalOpen(false)
+      setSelectedUser(null)
     }
   }
 
@@ -377,20 +414,58 @@ const GestaoUsuariosView = () => {
       <ConfirmModal
         type="warning"
         title={
-          selectedUser?.status === UserStatus.ATIVO
-            ? 'Confirmação de Bloqueio'
+          actionType === 'toggleStatus'
+            ? selectedUser?.status === UserStatus.ATIVO
+              ? 'Confirmação de Bloqueio'
+              : 'Confirmação de Desbloqueio'
             : 'Confirmação de Exclusão'
         }
-        content={`Deseja ${
-          selectedUser?.status === UserStatus.ATIVO ? 'bloquear' : 'excluir'
-        } o usuário ${selectedUser?.profile?.nomeCompleto || 'selecionado'}?`}
+        content={
+          actionType === 'toggleStatus'
+            ? `Deseja ${
+                selectedUser?.status === UserStatus.ATIVO
+                  ? 'bloquear'
+                  : 'desbloquear'
+              } o usuário ${
+                selectedUser?.profile?.nomeCompleto || 'selecionado'
+              }?`
+            : `Deseja excluir o usuário ${
+                selectedUser?.profile?.nomeCompleto || 'selecionado'
+              }?`
+        }
         visible={isConfirmModalOpen}
         onConfirm={
-          selectedUser?.status === UserStatus.ATIVO
-            ? handleToggleStatus
-            : handleDeleteUser
+          actionType === 'toggleStatus' ? handleToggleStatus : handleDeleteUser
         }
-        onCancel={() => setIsConfirmModalOpen(false)}
+        onCancel={() => {
+          setIsConfirmModalOpen(false)
+          setActionType(null)
+          setSelectedUser(null)
+        }}
+        confirmText="Sim"
+        cancelText="Não"
+      />
+
+      <ConfirmModal
+        type="warning"
+        title="Confirmação de Remoção de Cargo"
+        content={
+          selectedUser
+            ? `Deseja remover o cargo de ${
+                getRoleData(selectedUser.role).label
+              } do usuário ${
+                selectedUser.profile?.nomeCompleto || 'selecionado'
+              } na cidade ${
+                cities.find((c) => c.id === selectedUser.cityId)?.name || 'N/A'
+              } e torná-lo um Eleitor?`
+            : 'Deseja remover o cargo do usuário selecionado?'
+        }
+        visible={isRemoveRoleModalOpen}
+        onConfirm={handleRemoveRole}
+        onCancel={() => {
+          setIsRemoveRoleModalOpen(false)
+          setSelectedUser(null)
+        }}
         confirmText="Sim"
         cancelText="Não"
       />

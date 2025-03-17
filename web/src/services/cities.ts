@@ -1,5 +1,4 @@
 // src/services/cities.ts
-
 import { City, CityStatus } from '@/@types/city'
 import { UserRole } from '@/@types/user'
 import { db } from '@/lib/firebase'
@@ -61,14 +60,22 @@ export const citiesService = {
         const totalVoters = cityUsers.filter(
           (user: any) => user.role === UserRole.ELEITOR
         ).length
+        const totalVereadores = cityUsers.filter(
+          (user: any) => user.role === UserRole.VEREADOR
+        ).length
+        const totalCabosEleitorais = cityUsers.filter(
+          (user: any) => user.role === UserRole.CABO_ELEITORAL
+        ).length
 
         return {
           id,
           ...data,
           details: {
             ...data.details,
-            totalUsers, // Usuários não eleitores
-            totalVoters // Eleitores
+            totalUsers,
+            totalVoters,
+            totalVereadores,
+            totalCabosEleitorais
           }
         } as City
       }

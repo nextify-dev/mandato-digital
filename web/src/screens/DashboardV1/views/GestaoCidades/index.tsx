@@ -1,8 +1,6 @@
-// src/screens/DashboardV1/views/GestaoCidades/index.tsx
-
 import { useState, useRef } from 'react'
 import * as S from './styles'
-import { Button, Input, Tag, Avatar } from 'antd'
+import { Button, Input, Tag, Avatar, Select } from 'antd'
 import { LuPen, LuTrash2, LuEye } from 'react-icons/lu'
 import {
   View,
@@ -11,18 +9,34 @@ import {
   ConfirmModal,
   CityRegistrationForm
 } from '@/components'
-import { City, CityRegistrationFormType } from '@/@types/city'
+import {
+  City,
+  CityStatus,
+  getCityStatusData,
+  CityRegistrationFormType as BaseCityRegistrationFormType
+} from '@/@types/city'
 import { TableExtrasWrapper } from '@/utils/styles/commons'
 import { UseFormReturn } from 'react-hook-form'
 import { StyledAvatar } from '@/utils/styles/antd'
 import { useCities } from '@/contexts/CitiesProvider'
 import { useAuth } from '@/contexts/AuthProvider'
+import { useUsers } from '@/contexts/UsersProvider'
 import { UserRole } from '@/@types/user'
+
+// Interface estendida para incluir os campos de cargos
+interface CityRegistrationFormTypeExtended
+  extends BaseCityRegistrationFormType {
+  administratorId?: string | null
+  mayorId?: string | null
+  vereadorIds?: string[]
+  caboEleitoralIds?: string[]
+}
 
 const { Search } = Input
 
 const GestaoCidadesView = () => {
   const { user } = useAuth()
+  const { users } = useUsers()
   const {
     cities,
     loading,
@@ -39,7 +53,8 @@ const GestaoCidadesView = () => {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
   const [selectedCity, setSelectedCity] = useState<City | null>(null)
   const [currentStep, setCurrentStep] = useState(0)
-  const formRef = useRef<UseFormReturn<CityRegistrationFormType> | null>(null)
+  const formRef =
+    useRef<UseFormReturn<CityRegistrationFormTypeExtended> | null>(null)
 
   const columns = [
     {
@@ -62,10 +77,38 @@ const GestaoCidadesView = () => {
       key: 'state'
     },
     {
-      title: 'Total de Usuários',
-      key: 'totalUsers',
+      title: 'Administrador',
+      key: 'administrator',
+      render: (_: any, record: City) => {
+        const admin = users.find(
+          (u) =>
+            u.role === UserRole.ADMINISTRADOR_CIDADE && u.cityId === record.id
+        )
+        return admin ? admin.profile?.nomeCompleto : '-'
+      }
+    },
+    {
+      title: 'Prefeito',
+      key: 'mayor',
+      render: (_: any, record: City) => {
+        const mayor = users.find(
+          (u) => u.role === UserRole.PREFEITO && u.cityId === record.id
+        )
+        return mayor ? mayor.profile?.nomeCompleto : '-'
+      }
+    },
+    {
+      title: 'Total de Vereadores',
+      key: 'totalVereadores',
       render: (_: any, record: City) => (
-        <Tag color="geekblue">{record.details.totalUsers ?? 0}</Tag>
+        <Tag color="purple">{record.details.totalVereadores ?? 0}</Tag>
+      )
+    },
+    {
+      title: 'Total de Cabos Eleitorais',
+      key: 'totalCabosEleitorais',
+      render: (_: any, record: City) => (
+        <Tag color="orange">{record.details.totalCabosEleitorais ?? 0}</Tag>
       )
     },
     {
@@ -120,12 +163,36 @@ const GestaoCidadesView = () => {
     setFilters({ ...filters, name: value })
   }
 
-  const handleCreateCity = async (data: CityRegistrationFormType) => {
+  const handleStatusFilter = (value: string) => {
+    setFilters({
+      ...filters,
+      status: value ? (value as CityStatus) : undefined
+    })
+  }
+
+  const handleStateFilter = (value: string) => {
+    setFilters({ ...filters, state: value || undefined })
+  }
+
+  const STATUS_FILTERED_OPTIONS = Object.values(CityStatus).map((status) => ({
+    label: getCityStatusData(status).label,
+    value: status
+  }))
+
+  const STATE_FILTERED_OPTIONS = [
+    { label: 'Todos', value: '' },
+    ...Array.from(new Set(cities.map((city) => city.state))).map((state) => ({
+      label: state,
+      value: state
+    }))
+  ]
+
+  const handleCreateCity = async (data: CityRegistrationFormTypeExtended) => {
     await createCity(data)
     setIsCreateModalOpen(false)
   }
 
-  const handleEditCity = async (data: CityRegistrationFormType) => {
+  const handleEditCity = async (data: CityRegistrationFormTypeExtended) => {
     if (selectedCity) {
       const { name, state, ...editableData } = data
       await updateCity(selectedCity.id, editableData)
@@ -164,6 +231,21 @@ const GestaoCidadesView = () => {
               placeholder="Pesquisar por nome da cidade"
               onSearch={handleSearch}
               style={{ width: 300 }}
+            />
+            <Select
+              placeholder="Filtrar por status"
+              options={[
+                { label: 'Todos', value: '' },
+                ...STATUS_FILTERED_OPTIONS
+              ]}
+              onChange={handleStatusFilter}
+              style={{ width: 150 }}
+            />
+            <Select
+              placeholder="Filtrar por estado"
+              options={STATE_FILTERED_OPTIONS}
+              onChange={handleStateFilter}
+              style={{ width: 150 }}
             />
           </S.SearchWrapper>
           <Button type="primary" onClick={() => setIsCreateModalOpen(true)}>
