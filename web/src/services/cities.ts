@@ -31,8 +31,6 @@ export const citiesService = {
   },
 
   getCities: async (filters: Partial<{ name: string }>): Promise<City[]> => {
-    console.log('totalUsers, totalVoters')
-
     const citiesRef = ref(db, 'cities')
     let q = citiesRef
 
@@ -51,7 +49,6 @@ export const citiesService = {
     const usersRef = ref(db, 'users')
     const usersSnapshot = await get(usersRef)
     const usersData = usersSnapshot.val() || {}
-
 
     const citiesArray = Object.entries(citiesData).map(
       ([id, data]: [string, any]) => {
@@ -123,9 +120,12 @@ export const citiesService = {
       ...existingCity,
       status: data.status ?? existingCity.status,
       details: {
-        ibgeCode: data.details?.ibgeCode ?? existingCity.details.ibgeCode,
+        ibgeCode:
+          data.details?.ibgeCode || existingCity.details.ibgeCode || null,
         observations:
-          data.details?.observations ?? existingCity.details.observations
+          data.details?.observations ||
+          existingCity.details.observations ||
+          null
       }
     }
 

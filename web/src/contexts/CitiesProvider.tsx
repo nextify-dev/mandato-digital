@@ -1,6 +1,6 @@
 // src/contexts/CitiesProvider.tsx
-
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { message } from 'antd'
 import { City, CityRegistrationFormType } from '@/@types/city'
 import { citiesService } from '@/services/cities'
 import { useAuth } from '@/contexts/AuthProvider'
@@ -32,6 +32,7 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
   children
 }) => {
   const { user } = useAuth()
+  const [messageApi, contextHolder] = message.useMessage()
   const [cities, setCities] = useState<City[]>([])
   const [loading, setLoading] = useState(false)
   const [filters, setFilters] = useState<Partial<CityFilters>>({})
@@ -49,13 +50,15 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
         setLoading(false)
       },
       (error) => {
-        console.error('Erro ao ouvir mudanças em /cities:', error)
+        messageApi.error(
+          'Erro ao carregar cidades, tente reiniciar a página ou contacte um administrador'
+        )
         setLoading(false)
       }
     )
 
     return () => off(citiesRef, 'value', unsubscribe)
-  }, [filters])
+  }, [filters, messageApi])
 
   const processCitiesData = async (
     citiesData: { [key: string]: any },
@@ -114,10 +117,11 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       }
       const newCityId = await citiesService.createCity(cityData, user!.id)
+      messageApi.success('Cidade criada com sucesso!')
       setLoading(false)
       return newCityId
-    } catch (error) {
-      console.error('Erro ao criar cidade:', error)
+    } catch (error: any) {
+      messageApi.error('Erro ao criar cidade, tente novamente')
       setLoading(false)
       throw error
     }
@@ -137,9 +141,10 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       }
       await citiesService.updateCity(id, cityData)
+      messageApi.success('Cidade atualizada com sucesso!')
       setLoading(false)
-    } catch (error) {
-      console.error('Erro ao atualizar cidade:', error)
+    } catch (error: any) {
+      messageApi.error('Erro ao atualizar cidade, tente novamente')
       setLoading(false)
       throw error
     }
@@ -149,9 +154,10 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
     setLoading(true)
     try {
       await citiesService.deleteCity(id)
+      messageApi.success('Cidade deletada com sucesso!')
       setLoading(false)
-    } catch (error) {
-      console.error('Erro ao deletar cidade:', error)
+    } catch (error: any) {
+      messageApi.error('Erro ao deletar cidade, tente novamente')
       setLoading(false)
       throw error
     }
@@ -178,6 +184,7 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
         getInitialData
       }}
     >
+      {contextHolder}
       {children}
     </CitiesContext.Provider>
   )

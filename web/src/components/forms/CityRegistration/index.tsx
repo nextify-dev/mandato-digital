@@ -101,8 +101,6 @@ const CityRegistrationForm = forwardRef<
       await trigger('name')
     }
 
-    console.log(mode === 'edit')
-
     const steps = [
       {
         title: 'Dados Básicos',
