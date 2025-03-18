@@ -1,82 +1,197 @@
 // src/contexts/VisitsProvider.tsx
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode
-} from 'react'
-import { visitsService } from '@/services/visits'
-import { Visit, VisitRegistrationFormType } from '@/@types/visit'
-import { useAuth } from './AuthProvider'
 
-interface VisitsContextType {
+import React, { createContext, useContext, useState, useEffect } from 'react'
+import { message } from 'antd'
+import { Visit, VisitRegistrationFormType, VisitStatus } from '@/@types/visit'
+import { visitsService } from '@/services/visits'
+import { useAuth } from '@/contexts/AuthProvider'
+import { db } from '@/lib/firebase'
+import { ref, onValue, get } from 'firebase/database'
+import { User } from '@/@types/user'
+
+interface VisitsContextData {
   visits: Visit[]
   loading: boolean
-  registerVisit: (data: VisitRegistrationFormType) => Promise<void>
+  filters: Partial<VisitFilters>
+  setFilters: React.Dispatch<React.SetStateAction<Partial<VisitFilters>>>
+  createVisit: (data: VisitRegistrationFormType) => Promise<string>
   updateVisit: (
-    visitId: string,
-    data: VisitRegistrationFormType
+    id: string,
+    data: Partial<VisitRegistrationFormType>
   ) => Promise<void>
-  deleteVisit: (visitId: string) => Promise<void>
-  fetchVisits: () => Promise<void> // Exposto para permitir atualização manual
+  deleteVisit: (id: string) => Promise<void>
+  getInitialData: (visit: Visit) => Promise<Partial<VisitRegistrationFormType>>
 }
 
-const VisitsContext = createContext<VisitsContextType | undefined>(undefined)
+interface VisitFilters {
+  voterId: string
+  status?: VisitStatus
+  relatedUserId?: string
+}
 
-export const VisitsProvider = ({ children }: { children: ReactNode }) => {
+const VisitsContext = createContext<VisitsContextData>({} as VisitsContextData)
+
+export const VisitsProvider: React.FC<{ children: React.ReactNode }> = ({
+  children
+}) => {
+  const { user } = useAuth()
+  const [messageApi, contextHolder] = message.useMessage()
   const [visits, setVisits] = useState<Visit[]>([])
   const [loading, setLoading] = useState(false)
-  const { user } = useAuth()
+  const [filters, setFilters] = useState<Partial<VisitFilters>>({})
 
   useEffect(() => {
-    if (user?.cityId) {
-      fetchVisits()
-    }
-  }, [user])
-
-  const fetchVisits = async () => {
+    const visitsRef = ref(db, 'visits')
+    const usersRef = ref(db, 'users')
     setLoading(true)
-    try {
-      const cityVisits = await visitsService.getVisitsByCity(user!.cityId)
-      setVisits(cityVisits)
-    } catch (error) {
-      console.error('Erro ao carregar visitas:', error)
-    } finally {
+
+    const updateVisits = async () => {
+      const snapshot = await get(visitsRef)
+      const visitsData = snapshot.val() || {}
+      const visitsArray = await processVisitsData(visitsData, filters)
+      setVisits(visitsArray)
       setLoading(false)
     }
+
+    const unsubscribeVisits = onValue(
+      visitsRef,
+      async (snapshot) => {
+        const visitsData = snapshot.val() || {}
+        const visitsArray = await processVisitsData(visitsData, filters)
+        setVisits(visitsArray)
+        setLoading(false)
+      },
+      (error) => {
+        messageApi.error(
+          'Erro ao carregar visitas, tente reiniciar a página ou contacte um administrador'
+        )
+        setLoading(false)
+      }
+    )
+
+    const unsubscribeUsers = onValue(usersRef, () => {
+      updateVisits()
+    })
+
+    updateVisits().catch((error) => {
+      messageApi.error(
+        'Erro ao carregar visitas iniciais, tente reiniciar a página ou contacte um administrador'
+      )
+      setLoading(false)
+    })
+
+    return () => {
+      unsubscribeVisits()
+      unsubscribeUsers()
+    }
+  }, [filters, messageApi])
+
+  const processVisitsData = async (
+    visitsData: { [key: string]: any },
+    filters: Partial<VisitFilters>
+  ): Promise<Visit[]> => {
+    const usersRef = ref(db, 'users')
+    const usersSnapshot = await visitsService.getSnapshot(usersRef)
+    const usersData = (usersSnapshot.val() || {}) as { [key: string]: User }
+
+    let visitsArray = Object.entries(visitsData).map(
+      ([id, data]: [string, any]) =>
+        ({
+          id,
+          ...data,
+          details: {
+            ...data.details
+          }
+        } as Visit)
+    )
+
+    if (filters.voterId) {
+      visitsArray = visitsArray.filter(
+        (visit) => visit.voterId === filters.voterId
+      )
+    }
+    if (filters.status) {
+      visitsArray = visitsArray.filter(
+        (visit) => visit.status === filters.status
+      )
+    }
+    if (filters.relatedUserId) {
+      visitsArray = visitsArray.filter(
+        (visit) => visit.details.relatedUserId === filters.relatedUserId
+      )
+    }
+
+    return visitsArray
   }
 
-  const registerVisit = async (data: VisitRegistrationFormType) => {
+  const createVisit = async (
+    data: VisitRegistrationFormType
+  ): Promise<string> => {
+    setLoading(true)
     try {
-      await visitsService.registerVisit(data)
-      await fetchVisits() // Atualiza a lista após registro
-    } catch (error) {
-      console.error('Erro ao registrar visita:', error)
+      if (!user) throw new Error('Usuário não autenticado')
+      const newVisitId = await visitsService.createVisit(data, user.id)
+      messageApi.success('Visita criada com sucesso!')
+      setLoading(false)
+      return newVisitId
+    } catch (error: any) {
+      messageApi.error('Erro ao criar visita, tente novamente')
+      setLoading(false)
       throw error
     }
   }
 
   const updateVisit = async (
-    visitId: string,
-    data: VisitRegistrationFormType
-  ) => {
+    id: string,
+    data: Partial<VisitRegistrationFormType>
+  ): Promise<void> => {
+    setLoading(true)
     try {
-      await visitsService.updateVisit(visitId, data)
-      await fetchVisits() // Atualiza a lista após edição
-    } catch (error) {
-      console.error('Erro ao atualizar visita:', error)
+      await visitsService.updateVisit(id, data)
+      messageApi.success('Visita atualizada com sucesso!')
+      setLoading(false)
+    } catch (error: any) {
+      messageApi.error('Erro ao atualizar visita, tente novamente')
+      setLoading(false)
       throw error
     }
   }
 
-  const deleteVisit = async (visitId: string) => {
+  const deleteVisit = async (id: string): Promise<void> => {
+    setLoading(true)
     try {
-      await visitsService.deleteVisit(visitId)
-      await fetchVisits() // Atualiza a lista após exclusão
-    } catch (error) {
-      console.error('Erro ao excluir visita:', error)
+      await visitsService.deleteVisit(id)
+      messageApi.success('Visita deletada com sucesso!')
+      setLoading(false)
+    } catch (error: any) {
+      messageApi.error('Erro ao deletar visita, tente novamente')
+      setLoading(false)
       throw error
+    }
+  }
+
+  const getInitialData = async (
+    visit: Visit
+  ): Promise<Partial<VisitRegistrationFormType>> => {
+    return {
+      voterId: visit.voterId,
+      dateTime: visit.dateTime
+        ? require('moment')(visit.dateTime, require('moment').ISO_8601).format(
+            'DD/MM/YYYY HH:mm'
+          )
+        : '',
+      status: visit.status,
+      reason: visit.details.reason,
+      relatedUserId: visit.details.relatedUserId,
+      documents: visit.details.documents
+        ? visit.details.documents.map((url, index) => ({
+            uid: `${index}`,
+            name: `Documento ${index + 1}`,
+            status: 'done',
+            url
+          }))
+        : null,
+      observations: visit.details.observations || null
     }
   }
 
@@ -85,21 +200,18 @@ export const VisitsProvider = ({ children }: { children: ReactNode }) => {
       value={{
         visits,
         loading,
-        registerVisit,
+        filters,
+        setFilters,
+        createVisit,
         updateVisit,
         deleteVisit,
-        fetchVisits
+        getInitialData
       }}
     >
+      {contextHolder}
       {children}
     </VisitsContext.Provider>
   )
 }
 
-export const useVisits = () => {
-  const context = useContext(VisitsContext)
-  if (!context) {
-    throw new Error('useVisits must be used within a VisitsProvider')
-  }
-  return context
-}
+export const useVisits = () => useContext(VisitsContext)

@@ -13,18 +13,6 @@ import {
 } from 'firebase/database'
 import { authService } from '@/services/auth'
 
-interface CityRegistrationFormTypeExtended {
-  name: string
-  state: string
-  status: CityStatus
-  ibgeCode?: string | null
-  observations?: string | null
-  administratorId?: string | null
-  mayorId?: string | null
-  vereadorIds?: string[]
-  caboEleitoralIds?: string[]
-}
-
 export const citiesService = {
   checkCityNameUniqueness: async (
     name: string,

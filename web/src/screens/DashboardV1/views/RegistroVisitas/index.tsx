@@ -1,8 +1,9 @@
 // src/screens/DashboardV1/views/RegistroVisitasView.tsx
-import { useState, useRef } from 'react'
-import { Button, Input } from 'antd'
-import { LuPlus, LuPen, LuTrash2, LuEye } from 'react-icons/lu'
+
+import { useState, useRef, useEffect } from 'react'
 import * as S from './styles'
+import { Button, Input, Tag, Select } from 'antd'
+import { LuPen, LuTrash2, LuEye } from 'react-icons/lu'
 import {
   View,
   Table,
@@ -10,31 +11,44 @@ import {
   ConfirmModal,
   VisitRegistrationForm
 } from '@/components'
-import { useVisits } from '@/contexts/VisitsProvider'
 import {
   Visit,
-  VisitReason,
-  VisitRegistrationFormType,
-  getVisitReasonData
+  VisitStatus,
+  getVisitStatusData,
+  VisitRegistrationFormType
 } from '@/@types/visit'
-import { applyMask } from '@/utils/functions/masks'
 import { TableExtrasWrapper } from '@/utils/styles/commons'
 import { UseFormReturn } from 'react-hook-form'
+import { useVisits } from '@/contexts/VisitsProvider'
+import { useAuth } from '@/contexts/AuthProvider'
 import { useUsers } from '@/contexts/UsersProvider'
-import moment from 'moment'
 
 const { Search } = Input
 
 const RegistroVisitasView = () => {
-  const { visits, loading, registerVisit, updateVisit, deleteVisit } =
-    useVisits()
+  const { user } = useAuth()
   const { allUsers } = useUsers()
+  const {
+    visits,
+    loading,
+    filters,
+    setFilters,
+    createVisit,
+    updateVisit,
+    deleteVisit,
+    getInitialData
+  } = useVisits()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null)
-  const [voterSearch, setVoterSearch] = useState('')
+  const [currentStep, setCurrentStep] = useState(0)
+  const [initialEditData, setInitialEditData] =
+    useState<Partial<VisitRegistrationFormType> | null>(null)
+  const [initialViewData, setInitialViewData] =
+    useState<Partial<VisitRegistrationFormType> | null>(null)
+  const [isLoadingInitialData, setIsLoadingInitialData] = useState(false)
   const formRef = useRef<UseFormReturn<VisitRegistrationFormType> | null>(null)
 
   const columns = [
@@ -49,21 +63,29 @@ const RegistroVisitasView = () => {
       title: 'Data e Horário',
       dataIndex: 'dateTime',
       key: 'dateTime',
-      render: (text: string) =>
-        applyMask(text.replace('T', ' ').replace('Z', ''), 'dateTime')
+      sorter: (a: Visit, b: Visit) => a.dateTime.localeCompare(b.dateTime)
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status: VisitStatus) => (
+        <Tag color={getVisitStatusData(status).color}>
+          {getVisitStatusData(status).label}
+        </Tag>
+      )
     },
     {
       title: 'Motivo',
-      dataIndex: 'reason',
       key: 'reason',
-      render: (reason: VisitReason) => getVisitReasonData(reason).label
+      render: (_: any, record: Visit) => record.details.reason
     },
     {
       title: 'Vinculado a',
-      dataIndex: 'relatedUserId',
       key: 'relatedUserId',
-      render: (id: string) =>
-        allUsers.find((u) => u.id === id)?.profile?.nomeCompleto || id
+      render: (_: any, record: Visit) =>
+        allUsers.find((u) => u.id === record.details.relatedUserId)?.profile
+          ?.nomeCompleto || record.details.relatedUserId
     },
     {
       title: 'Ações',
@@ -73,7 +95,11 @@ const RegistroVisitasView = () => {
           <Button
             type="link"
             icon={<LuPen />}
-            onClick={() => handleModalOpen('edit', record)}
+            onClick={() => {
+              setSelectedVisit(record)
+              setIsEditModalOpen(true)
+              setCurrentStep(0)
+            }}
           />
           <Button
             type="link"
@@ -81,7 +107,7 @@ const RegistroVisitasView = () => {
             danger
             onClick={() => {
               setSelectedVisit(record)
-              setIsDeleteModalOpen(true)
+              setIsConfirmModalOpen(true)
             }}
           />
           <Button
@@ -98,18 +124,65 @@ const RegistroVisitasView = () => {
     }
   ]
 
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      if (selectedVisit) {
+        setIsLoadingInitialData(true)
+        try {
+          const data = await getInitialData(selectedVisit)
+          if (isEditModalOpen) {
+            setInitialEditData(data)
+          } else if (isViewModalOpen) {
+            setInitialViewData(data)
+          }
+        } catch (error) {
+          console.error('Erro ao buscar dados iniciais:', error)
+        } finally {
+          setIsLoadingInitialData(false)
+        }
+      }
+    }
+
+    fetchInitialData()
+  }, [selectedVisit, isEditModalOpen, isViewModalOpen, getInitialData])
+
   const handleSearch = (value: string) => {
-    setVoterSearch(value)
+    setFilters({ ...filters, voterId: value })
   }
 
+  const handleStatusFilter = (value: string) => {
+    setFilters({
+      ...filters,
+      status: value ? (value as VisitStatus) : undefined
+    })
+  }
+
+  const handleUserFilter = (value: string) => {
+    setFilters({ ...filters, relatedUserId: value || undefined })
+  }
+
+  const STATUS_FILTERED_OPTIONS = Object.values(VisitStatus).map((status) => ({
+    label: getVisitStatusData(status).label,
+    value: status
+  }))
+
+  const USER_FILTERED_OPTIONS = [
+    { label: 'Todos', value: '' },
+    ...allUsers.map((user) => ({
+      label: `${user.profile?.nomeCompleto} (${user.role})`,
+      value: user.id
+    }))
+  ]
+
   const handleCreateVisit = async (data: VisitRegistrationFormType) => {
-    await registerVisit(data)
+    await createVisit(data)
     setIsCreateModalOpen(false)
   }
 
   const handleEditVisit = async (data: VisitRegistrationFormType) => {
     if (selectedVisit) {
-      await updateVisit(selectedVisit.id, data)
+      const { voterId, dateTime, ...editableData } = data
+      await updateVisit(selectedVisit.id, editableData)
       setIsEditModalOpen(false)
     }
   }
@@ -117,26 +190,21 @@ const RegistroVisitasView = () => {
   const handleDeleteVisit = async () => {
     if (selectedVisit) {
       await deleteVisit(selectedVisit.id)
-      setIsDeleteModalOpen(false)
+      setIsConfirmModalOpen(false)
     }
   }
 
-  const handleModalClose = (type: 'create' | 'edit' | 'view' | 'delete') => {
+  const handleModalClose = (type: 'create' | 'edit' | 'view') => {
     if (type === 'create') setIsCreateModalOpen(false)
     if (type === 'edit') setIsEditModalOpen(false)
     if (type === 'view') setIsViewModalOpen(false)
-    if (type === 'delete') setIsDeleteModalOpen(false)
-    setSelectedVisit(null)
-  }
-
-  const handleModalOpen = (type: 'create' | 'edit', visit?: Visit) => {
-    if (type === 'create') {
-      setSelectedVisit(null)
-      setIsCreateModalOpen(true)
-    } else if (type === 'edit' && visit) {
-      setSelectedVisit(visit)
-      setIsEditModalOpen(true)
+    if (formRef.current) {
+      formRef.current.reset()
+      setCurrentStep(0)
     }
+    setSelectedVisit(null)
+    setInitialEditData(null)
+    setInitialViewData(null)
   }
 
   return (
@@ -145,18 +213,28 @@ const RegistroVisitasView = () => {
         <S.HeaderWrapper>
           <S.SearchWrapper>
             <Search
-              placeholder="Buscar eleitor"
-              value={voterSearch}
+              placeholder="Pesquisar por eleitor"
               onSearch={handleSearch}
               style={{ width: 300 }}
             />
+            <Select
+              placeholder="Filtrar por status"
+              options={[
+                { label: 'Todos', value: '' },
+                ...STATUS_FILTERED_OPTIONS
+              ]}
+              onChange={handleStatusFilter}
+              style={{ width: 150 }}
+            />
+            <Select
+              placeholder="Filtrar por usuário vinculado"
+              options={USER_FILTERED_OPTIONS}
+              onChange={handleUserFilter}
+              style={{ width: 200 }}
+            />
           </S.SearchWrapper>
-          <Button
-            type="primary"
-            icon={<LuPlus />}
-            onClick={() => handleModalOpen('create')}
-          >
-            Registrar Visita
+          <Button type="primary" onClick={() => setIsCreateModalOpen(true)}>
+            Nova Visita
           </Button>
         </S.HeaderWrapper>
       }
@@ -164,13 +242,13 @@ const RegistroVisitasView = () => {
       <Table
         columns={columns}
         dataSource={visits}
-        loading={loading}
         rowKey="id"
+        loading={loading}
         pagination={{ pageSize: 10 }}
       />
 
       <Modal
-        title="Nova Visita"
+        title="Criação de Nova Visita"
         open={isCreateModalOpen}
         onCancel={() => handleModalClose('create')}
         footer={null}
@@ -181,65 +259,46 @@ const RegistroVisitasView = () => {
             onSubmit={handleCreateVisit}
             mode="create"
             ref={formRef}
-            onModalClose={() => handleModalClose('create')} // Passa a função de fechamento
+            currentStep={currentStep}
+            setCurrentStep={setCurrentStep}
           />
         )}
       </Modal>
 
       <Modal
-        title="Editar Visita"
+        title="Edição de Visita"
         open={isEditModalOpen}
         onCancel={() => handleModalClose('edit')}
         footer={null}
         size="default"
+        confirmLoading={isLoadingInitialData}
       >
-        {isEditModalOpen && selectedVisit && (
+        {isEditModalOpen && selectedVisit && initialEditData && (
           <VisitRegistrationForm
             onSubmit={handleEditVisit}
             mode="edit"
-            initialData={{
-              voterId: selectedVisit.voterId,
-              dateTime: moment(selectedVisit.dateTime, moment.ISO_8601).format(
-                'DD/MM/YYYY HH:mm'
-              ),
-              reason: selectedVisit.reason,
-              relatedUserId: selectedVisit.relatedUserId,
-              documents: selectedVisit.documents
-                ? selectedVisit.documents.map((url, index) => ({
-                    uid: `${index}`,
-                    name: `Documento ${index + 1}`,
-                    status: 'done',
-                    url
-                  }))
-                : null,
-              observations: selectedVisit.observations || ''
-            }}
+            initialData={initialEditData}
             ref={formRef}
-            onModalClose={() => handleModalClose('edit')} // Passa a função de fechamento
+            currentStep={currentStep}
+            setCurrentStep={setCurrentStep}
           />
         )}
       </Modal>
 
       <Modal
-        title="Visualizar Visita"
+        title="Visualização de Visita"
         open={isViewModalOpen}
         onCancel={() => handleModalClose('view')}
         footer={null}
         size="default"
+        confirmLoading={isLoadingInitialData}
       >
-        {isViewModalOpen && selectedVisit && (
+        {isViewModalOpen && selectedVisit && initialViewData && (
           <VisitRegistrationForm
             mode="viewOnly"
-            initialData={{
-              voterId: selectedVisit.voterId,
-              dateTime: moment(selectedVisit.dateTime, moment.ISO_8601).format(
-                'DD/MM/YYYY HH:mm'
-              ),
-              reason: selectedVisit.reason,
-              relatedUserId: selectedVisit.relatedUserId,
-              documents: selectedVisit.documents
-            }}
-            onModalClose={() => handleModalClose('view')} // Passa a função de fechamento
+            initialData={initialViewData}
+            currentStep={0}
+            setCurrentStep={() => {}}
           />
         )}
       </Modal>
@@ -247,10 +306,14 @@ const RegistroVisitasView = () => {
       <ConfirmModal
         type="danger"
         title="Confirmação de Exclusão"
-        content="Deseja realmente excluir esta visita? Esta ação é irreversível."
-        visible={isDeleteModalOpen}
+        content={`Deseja excluir a visita de ${
+          selectedVisit?.voterId || 'selecionada'
+        }?`}
+        visible={isConfirmModalOpen}
         onConfirm={handleDeleteVisit}
-        onCancel={() => handleModalClose('delete')}
+        onCancel={() => setIsConfirmModalOpen(false)}
+        confirmText="Sim"
+        cancelText="Não"
       />
     </View>
   )

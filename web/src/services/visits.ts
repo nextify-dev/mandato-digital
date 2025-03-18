@@ -1,211 +1,249 @@
-// src/services/visits.ts
-import { ref, set, get, remove, update } from 'firebase/database'
+import { Visit, VisitStatus, VisitRegistrationFormType } from '@/@types/visit'
+import { db, storage } from '@/lib/firebase'
+import {
+  ref as dbRef,
+  get,
+  set,
+  remove,
+  query,
+  orderByChild,
+  startAt,
+  endAt
+} from 'firebase/database'
 import {
   ref as storageRef,
   uploadBytes,
   getDownloadURL,
   deleteObject,
-  listAll
+  listAll,
+  StorageReference
 } from 'firebase/storage'
-import { db, storage, auth } from '@/lib/firebase'
-import { Visit, VisitRegistrationFormType } from '@/@types/visit'
-import { convertToISODate } from '@/utils/functions/masks'
-import { User } from '@/@types/user'
+import moment from 'moment'
 
 export const visitsService = {
-  async registerVisit(data: VisitRegistrationFormType): Promise<string> {
-    const currentUser = auth.currentUser
-    if (!currentUser) throw new Error('Usuário não autenticado')
+  /**
+   * Obtém um snapshot de uma referência do Realtime Database.
+   */
+  getSnapshot: async (reference: any) => {
+    return await get(reference)
+  },
 
-    const visitId = `visit_${Date.now()}_${Math.random()
-      .toString(36)
-      .substring(2, 8)}`
-    const visitRef = ref(db, `visits/${visitId}`)
+  /**
+   * Recupera a lista de visitas com filtros opcionais.
+   */
+  getVisits: async (
+    filters: Partial<{ voterId: string }>
+  ): Promise<Visit[]> => {
+    const visitsRef = dbRef(db, 'visits')
+    let q = visitsRef
 
-    // Upload de documentos, se houver
-    let documentUrls: string[] | null = null
-    if (
-      data.documents &&
-      Array.isArray(data.documents) &&
-      data.documents.length > 0
-    ) {
-      const uploadPromises = data.documents.map(async (file, index) => {
-        if (!(file instanceof File)) {
-          throw new Error(`Item ${index} não é um arquivo válido`)
-        }
+    if (filters.voterId) {
+      q = query(
+        visitsRef,
+        orderByChild('voterId'),
+        startAt(filters.voterId),
+        endAt(filters.voterId + '\uf8ff')
+      ) as any
+    }
+
+    const visitsSnapshot = await get(q)
+    const visitsData = visitsSnapshot.val() || {}
+
+    const visitsArray = Object.entries(visitsData).map(
+      ([id, data]: [string, any]) =>
+        ({
+          id,
+          ...data,
+          details: {
+            ...data.details
+          }
+        } as Visit)
+    )
+
+    return visitsArray
+  },
+
+  /**
+   * Faz o upload de arquivos para o Storage e retorna suas URLs.
+   */
+  async uploadDocuments(visitId: string, documents: File[]): Promise<string[]> {
+    try {
+      const uploadPromises = documents.map(async (file, index) => {
         const fileRef = storageRef(
           storage,
-          `visits/${visitId}/doc_${index}_${file.name}`
+          `visits/${visitId}/${index}_${file.name}`
         )
         const uploadResult = await uploadBytes(fileRef, file)
-        return getDownloadURL(uploadResult.ref)
+        return await getDownloadURL(uploadResult.ref)
       })
-      documentUrls = await Promise.all(uploadPromises)
-    }
-
-    // Conversão da data para formato ISO
-    const [date, time] = data.dateTime.split(' ')
-    const isoDateTime = `${convertToISODate(date)}T${time}:00Z`
-
-    // Criação do objeto Visit com o campo observations
-    const newVisit: Visit = {
-      id: visitId,
-      voterId: data.voterId,
-      dateTime: isoDateTime,
-      reason: data.reason,
-      relatedUserId: data.relatedUserId,
-      relatedUserRole: await this.getUserRole(data.relatedUserId),
-      documents: documentUrls || null,
-      observations: data.observations || null, // Inclui observações se fornecidas
-      createdAt: new Date().toISOString(),
-      createdBy: currentUser.uid,
-      updatedAt: null,
-      updatedBy: null
-    }
-
-    try {
-      await set(visitRef, newVisit)
-      return visitId
+      return await Promise.all(uploadPromises)
     } catch (error) {
-      console.error('Erro ao registrar visita:', error)
-      throw new Error('Falha ao registrar visita no banco de dados')
+      console.error('Erro ao fazer upload dos documentos:', error)
+      throw new Error('Falha ao carregar documentos no Storage')
     }
   },
 
-  async updateVisit(
-    visitId: string,
-    data: VisitRegistrationFormType
-  ): Promise<void> {
-    const currentUser = auth.currentUser
-    if (!currentUser) throw new Error('Usuário não autenticado')
-
-    const visitRef = ref(db, `visits/${visitId}`)
-
-    // Verifica se a visita existe
-    const snapshot = await get(visitRef)
-    if (!snapshot.exists()) throw new Error('Visita não encontrada')
-
-    const existingVisit = snapshot.val() as Visit
-    const existingDocuments = existingVisit.documents || []
-
-    // Upload de novos documentos e remoção dos antigos, se necessário
-    let documentUrls: string[] | null = existingDocuments
-    if (data.documents && Array.isArray(data.documents)) {
-      // Remove todos os documentos antigos do Storage
+  /**
+   * Remove todos os documentos associados a uma visita no Storage.
+   */
+  async deleteDocuments(visitId: string): Promise<void> {
+    try {
       const folderRef = storageRef(storage, `visits/${visitId}`)
       const listResult = await listAll(folderRef)
-      await Promise.all(listResult.items.map((item) => deleteObject(item)))
-
-      // Faz upload dos novos documentos
-      if (data.documents.length > 0) {
-        const uploadPromises = data.documents.map(async (file, index) => {
-          if (!(file instanceof File)) {
-            throw new Error(`Item ${index} não é um arquivo válido`)
-          }
-          const fileRef = storageRef(
-            storage,
-            `visits/${visitId}/doc_${index}_${file.name}`
+      const deletePromises = listResult.items.map(
+        async (itemRef: StorageReference) => {
+          await deleteObject(itemRef).catch((err) =>
+            console.warn(`Erro ao deletar ${itemRef.fullPath}: ${err.message}`)
           )
-          const uploadResult = await uploadBytes(fileRef, file)
-          return getDownloadURL(uploadResult.ref)
-        })
-        documentUrls = await Promise.all(uploadPromises)
-      } else {
-        documentUrls = null
+        }
+      )
+      await Promise.all(deletePromises)
+    } catch (error) {
+      console.error('Erro ao deletar documentos do Storage:', error)
+      throw new Error('Falha ao remover documentos do Storage')
+    }
+  },
+
+  /**
+   * Cria uma nova visita no Realtime Database e faz upload de documentos, se fornecidos.
+   */
+  createVisit: async (
+    data: VisitRegistrationFormType,
+    userId: string
+  ): Promise<string> => {
+    const visitsRef = dbRef(db, 'visits')
+    const newVisitId = `visit_${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(2, 8)}`
+    const newVisitRef = dbRef(db, `visits/${newVisitId}`)
+
+    let documentUrls: string[] | null = null
+    if (data.documents && data.documents.length > 0) {
+      // Filtra quaisquer elementos undefined e garante que apenas File válidos sejam passados
+      const validDocuments = data.documents.filter(
+        (file): file is File => file !== undefined
+      )
+      if (validDocuments.length > 0) {
+        documentUrls = await visitsService.uploadDocuments(
+          newVisitId,
+          validDocuments
+        )
       }
     }
 
-    // Conversão da data para formato ISO
-    const [date, time] = data.dateTime.split(' ')
-    const isoDateTime = `${convertToISODate(date)}T${time}:00Z`
-
-    // Atualização do objeto Visit com o campo observations
-    const updatedVisit: Partial<Visit> = {
-      voterId: data.voterId,
-      dateTime: isoDateTime,
-      reason: data.reason,
-      relatedUserId: data.relatedUserId,
-      relatedUserRole: await this.getUserRole(data.relatedUserId),
-      documents: documentUrls,
-      observations: data.observations || null, // Inclui observações se fornecidas
-      updatedAt: new Date().toISOString(),
-      updatedBy: currentUser.uid
+    const newVisit: Visit = {
+      id: newVisitId,
+      voterId: data.voterId || '',
+      dateTime: moment(data.dateTime, 'DD/MM/YYYY HH:mm').toISOString(),
+      createdAt: new Date().toISOString(),
+      createdBy: userId,
+      status: data.status || VisitStatus.AGENDADA,
+      details: {
+        reason: data.reason || '',
+        relatedUserId: data.relatedUserId || '',
+        documents: documentUrls,
+        observations: data.observations || null
+      }
     }
 
     try {
-      await update(visitRef, updatedVisit)
+      await set(newVisitRef, newVisit)
+      return newVisitId
     } catch (error) {
-      console.error('Erro ao atualizar visita:', error)
-      throw new Error('Falha ao atualizar visita no banco de dados')
+      console.error('Erro ao criar visita:', error)
+      if (documentUrls) {
+        await visitsService
+          .deleteDocuments(newVisitId)
+          .catch((cleanupError) =>
+            console.warn('Erro ao limpar documentos após falha:', cleanupError)
+          )
+      }
+      throw new Error('Falha ao criar visita')
     }
   },
 
-  async deleteVisit(visitId: string): Promise<void> {
-    const visitRef = ref(db, `visits/${visitId}`)
-
-    // Verifica se a visita existe
+  /**
+   * Atualiza uma visita existente, gerenciando documentos no Storage conforme necessário.
+   */
+  updateVisit: async (
+    id: string,
+    data: Partial<VisitRegistrationFormType>
+  ): Promise<void> => {
+    const visitRef = dbRef(db, `visits/${id}`)
     const snapshot = await get(visitRef)
-    if (!snapshot.exists()) throw new Error('Visita não encontrada')
+    if (!snapshot.exists()) {
+      throw new Error('Visita não encontrada')
+    }
 
-    // Remove documentos do Storage, se existirem
-    const folderRef = storageRef(storage, `visits/${visitId}`)
-    const listResult = await listAll(folderRef)
-    await Promise.all(listResult.items.map((item) => deleteObject(item)))
+    const existingVisit = snapshot.val() as Visit
+    let documentUrls = existingVisit.details.documents || []
 
-    // Remove a visita do Realtime Database
+    if (data.documents !== undefined) {
+      if (documentUrls.length > 0) {
+        await visitsService.deleteDocuments(id)
+        documentUrls = []
+      }
+
+      if (data.documents && data.documents.length > 0) {
+        // Filtra quaisquer elementos undefined e garante que apenas File válidos sejam passados
+        const validDocuments = data.documents.filter(
+          (file): file is File => file !== undefined
+        )
+        if (validDocuments.length > 0) {
+          documentUrls = await visitsService.uploadDocuments(id, validDocuments)
+        }
+      }
+    }
+
+    const updatedVisit: Visit = {
+      ...existingVisit,
+      status: data.status ?? existingVisit.status,
+      details: {
+        ...existingVisit.details,
+        reason: data.reason ?? existingVisit.details.reason,
+        relatedUserId:
+          data.relatedUserId ?? existingVisit.details.relatedUserId,
+        documents: documentUrls.length > 0 ? documentUrls : null,
+        observations: data.observations ?? existingVisit.details.observations
+      }
+    }
+
+    try {
+      await set(visitRef, updatedVisit)
+    } catch (error) {
+      console.error('Erro ao atualizar visita:', error)
+      if (data.documents && documentUrls.length > 0) {
+        await visitsService
+          .deleteDocuments(id)
+          .catch((cleanupError) =>
+            console.warn('Erro ao limpar documentos após falha:', cleanupError)
+          )
+      }
+      throw new Error('Falha ao atualizar visita')
+    }
+  },
+
+  /**
+   * Exclui uma visita e todos os documentos associados no Storage.
+   */
+  deleteVisit: async (id: string): Promise<void> => {
+    const visitRef = dbRef(db, `visits/${id}`)
+    const snapshot = await get(visitRef)
+    if (!snapshot.exists()) {
+      throw new Error('Visita não encontrada')
+    }
+
+    const visit = snapshot.val() as Visit
+
+    if (visit.details.documents && visit.details.documents.length > 0) {
+      await visitsService.deleteDocuments(id)
+    }
+
     try {
       await remove(visitRef)
     } catch (error) {
-      console.error('Erro ao excluir visita:', error)
-      throw new Error('Falha ao excluir visita do banco de dados')
+      console.error('Erro ao deletar visita:', error)
+      throw new Error('Falha ao excluir visita')
     }
-  },
-
-  async getVisitsByCity(cityId: string): Promise<Visit[]> {
-    try {
-      const visitsRef = ref(db, 'visits')
-      const snapshot = await get(visitsRef)
-      const visitsData = snapshot.val() || {}
-
-      const visitsArray = Object.entries(visitsData).map(([id, visit]) => ({
-        id,
-        ...(visit as Omit<Visit, 'id'>)
-      })) as Visit[]
-
-      // Filtra visitas verificando a cidade do eleitor associado
-      const filteredVisits = await Promise.all(
-        visitsArray.map(async (visit) => {
-          const voter = await this.getUserData(visit.voterId)
-          return voter?.cityId === cityId ? visit : null
-        })
-      )
-
-      return filteredVisits
-        .filter((visit): visit is Visit => visit !== null)
-        .sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        ) // Ordena por data de criação (mais recente primeiro)
-    } catch (error) {
-      console.error('Erro ao buscar visitas por cidade:', error)
-      throw new Error('Falha ao buscar visitas')
-    }
-  },
-
-  async getUserData(userId: string): Promise<User | null> {
-    try {
-      const userRef = ref(db, `users/${userId}`)
-      const snapshot = await get(userRef)
-      return snapshot.exists() ? (snapshot.val() as User) : null
-    } catch (error) {
-      console.error('Erro ao buscar dados do usuário:', error)
-      return null
-    }
-  },
-
-  async getUserRole(userId: string): Promise<User['role']> {
-    const user = await this.getUserData(userId)
-    if (!user) throw new Error('Usuário vinculado não encontrado')
-    return user.role
   }
 }

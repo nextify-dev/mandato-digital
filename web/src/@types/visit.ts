@@ -1,84 +1,110 @@
 // src/@types/visit.ts
-import * as yup from 'yup'
-import { UserRole } from '@/@types/user'
 
-// Atualizar o enum para usar chaves sem acentos e em minúsculas
-export enum VisitReason {
-  SOLICITACAO = 'solicitacao',
-  RECLAMACAO = 'reclamacao',
-  APOIO = 'apoio',
-  OUTROS = 'outros'
+import * as yup from 'yup'
+import { UploadFile } from 'antd/lib/upload/interface' // Importa a tipagem do Ant Design
+
+export enum VisitStatus {
+  AGENDADA = 'agendada',
+  CONCLUIDA = 'concluida',
+  CANCELADA = 'cancelada'
 }
 
-// Nova função para formatar o motivo da visita
-export const getVisitReasonData = (
-  reason?: VisitReason
-): FormattedVisitReason => {
-  switch (reason) {
-    case VisitReason.SOLICITACAO:
-      return { label: 'Solicitação' }
-    case VisitReason.RECLAMACAO:
-      return { label: 'Reclamação' }
-    case VisitReason.APOIO:
-      return { label: 'Apoio' }
-    case VisitReason.OUTROS:
-      return { label: 'Outros' }
+export interface FormattedVisitTag {
+  label: string
+  color: string
+}
+
+export const getVisitStatusData = (status?: VisitStatus): FormattedVisitTag => {
+  switch (status) {
+    case VisitStatus.AGENDADA:
+      return { label: 'Agendada', color: '#FFA500' }
+    case VisitStatus.CONCLUIDA:
+      return { label: 'Concluída', color: '#2E8B57' }
+    case VisitStatus.CANCELADA:
+      return { label: 'Cancelada', color: '#808080' }
     default:
-      return { label: 'Desconhecido' }
+      return { label: 'Desconhecido', color: '#808080' }
   }
 }
 
-
-// Interface para o retorno da função getVisitReasonLabel
-export interface FormattedVisitReason {
-  label: string
-}
-
-export interface Visit {
+interface BaseVisit {
   id: string
-  voterId: string // ID do eleitor associado
-  dateTime: string // ISO 8601
-  reason: VisitReason
-  relatedUserId: string // ID do vereador ou cabo eleitoral vinculado
-  relatedUserRole: UserRole // Papel do usuário vinculado (ex.: Vereador, Cabo Eleitoral)
-  documents?: string[] | null // URLs de documentos anexados
-  observations?: string | null // Observações adicionais (opcional)
-  createdAt: string // ISO 8601
-  createdBy: string // ID do usuário que registrou
-  updatedAt?: string | null // ISO 8601
-  updatedBy?: string | null // ID do usuário que atualizou
+  voterId: string
+  dateTime: string // ISO 8601 (ex.: "2025-03-15T00:00:00Z")
+  createdAt: string // ISO 8601 (ex.: "2025-03-15T00:00:00Z")
+  createdBy: string // ID do usuário criador
+  status: VisitStatus
 }
 
-export interface VisitRegistrationForm {
-  voterId: string
-  dateTime: string
-  reason: VisitReason
+export interface VisitDetails {
+  reason: string
   relatedUserId: string
-  documents?: File[] | null
+  documents?: string[] | null // URLs dos documentos no Storage
   observations?: string | null
 }
 
-export const getVisitRegistrationSchema = () => {
+export interface Visit extends BaseVisit {
+  details: VisitDetails
+}
+
+export interface IVisitRegistrationForm {
+  voterId: string
+  dateTime: string // Formato DD/MM/YYYY HH:mm para o formulário
+  status: VisitStatus
+  reason: string
+  relatedUserId: string
+  documents?: File[] | null // Arquivos enviados no formulário
+  observations?: string | null
+}
+
+// Tipo ajustado para suportar UploadFile no contexto de edição/visualização
+export type VisitRegistrationFormType = {
+  voterId: string
+  dateTime: string
+  status: VisitStatus
+  reason: string
+  relatedUserId: string
+  documents?: UploadFile[] | null // Usamos UploadFile para compatibilidade com Ant Design
+  observations?: string | null
+}
+
+export const getVisitRegistrationSchema = (mode: 'create' | 'edit') => {
   return yup.object().shape({
-    voterId: yup.string().required('Selecione um eleitor'),
-    dateTime: yup
+    voterId: yup.string().when(mode, {
+      is: (value: string) => value === 'create',
+      then: () => yup.string().required('Eleitor é obrigatório'),
+      otherwise: () => yup.string().notRequired()
+    }),
+    dateTime: yup.string().when(mode, {
+      is: (value: string) => value === 'create',
+      then: () =>
+        yup
+          .string()
+          .required('Data e horário são obrigatórios')
+          .matches(
+            /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/,
+            'Formato inválido. Use DD/MM/YYYY HH:mm'
+          ),
+      otherwise: () =>
+        yup
+          .string()
+          .matches(
+            /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/,
+            'Formato inválido. Use DD/MM/YYYY HH:mm'
+          )
+          .notRequired()
+    }),
+    status: yup
       .string()
-      .required('Data e horário são obrigatórios')
-      .matches(
-        /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/,
-        'Formato deve ser DD/MM/AAAA HH:MM'
-      ),
-    reason: yup
-      .string()
-      .required('Motivo é obrigatório')
-      .oneOf(Object.values(VisitReason), 'Selecione um motivo válido'),
-    relatedUserId: yup.string().required('Selecione um usuário vinculado'),
-    documents: yup.array().of(yup.mixed()).nullable().optional(),
+      .required('Status é obrigatório')
+      .oneOf(Object.values(VisitStatus), 'Selecione um status válido'),
+    reason: yup.string().required('Motivo é obrigatório'),
+    relatedUserId: yup.string().required('Usuário vinculado é obrigatório'),
+    documents: yup.array().of(yup.mixed<UploadFile>()).nullable().optional(), // Ajustado para UploadFile
     observations: yup.string().nullable().optional()
   })
 }
 
-export type VisitRegistrationFormType = yup.InferType<
+export type VisitRegistrationFormTypeSchema = yup.InferType<
   ReturnType<typeof getVisitRegistrationSchema>
 >
-
