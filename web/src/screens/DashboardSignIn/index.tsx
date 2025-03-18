@@ -69,6 +69,9 @@ const DashboardSignInScreen = () => {
 
   const onFirstAccessSubmit = async (data: UserRegistrationFormType) => {
     const cityId = firstAccessData?.cityId!
+    if (!data.email) {
+      throw new Error('Email é obrigatório para completar o registro.')
+    }
     await completeRegistration(data.email, data, 'firstAccess', cityId)
   }
 

@@ -245,9 +245,8 @@ const CadastroEleitoresView = () => {
         cidade: data.cidade,
         estado: data.estado
       }
-      console.log(profileUpdates)
-      // await updateUser(selectedUser.id, profileUpdates)
-      // setIsEditModalOpen(false)
+      await updateUser(selectedUser.id, profileUpdates)
+      setIsEditModalOpen(false)
     }
   }
 

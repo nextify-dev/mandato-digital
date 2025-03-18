@@ -249,9 +249,7 @@ const CadastroUsuariosView = () => {
         ...profileUpdates,
         role: data.role
       }
-      console.log(updates)
-
-      // await updateUser(selectedUser.id, updates)
+      await updateUser(selectedUser.id, updates)
       setIsEditModalOpen(false)
     }
   }

@@ -642,8 +642,12 @@ const DadosPessoaisStep = ({
   mode,
   isEdition,
   validateEmailUniqueness,
-  validateCpfUniqueness
+  validateCpfUniqueness,
+  creationMode // Adicione este prop ao interface
 }: IUserRegistrationStep) => {
+  const isFromVoter =
+    mode === 'userCreation' && creationMode === 'fromVoter' && !isEdition
+
   return (
     <FormStep visible={visible ? 1 : 0}>
       <Controller
@@ -658,8 +662,10 @@ const DadosPessoaisStep = ({
             <StyledInput
               {...field}
               placeholder="Digite seu email"
-              disabled={isEdition || mode === 'firstAccess'}
-              onBlur={(e) => validateEmailUniqueness!(e.target.value)}
+              disabled={isEdition || mode === 'firstAccess' || isFromVoter}
+              onBlur={(e) =>
+                !isFromVoter && validateEmailUniqueness!(e.target.value)
+              }
             />
           </StyledForm.Item>
         )}
@@ -693,8 +699,10 @@ const DadosPessoaisStep = ({
                 onChange={(e) =>
                   setValue('cpf', applyMask(e.target.value, 'cpf'))
                 }
-                disabled={isEdition || mode === 'firstAccess'}
-                onBlur={(e) => validateCpfUniqueness!(e.target.value)}
+                disabled={isEdition || mode === 'firstAccess' || isFromVoter}
+                onBlur={(e) =>
+                  !isFromVoter && validateCpfUniqueness!(e.target.value)
+                }
               />
             </StyledForm.Item>
           )}

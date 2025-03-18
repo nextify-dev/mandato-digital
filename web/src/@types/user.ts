@@ -240,34 +240,50 @@ export const getUserRegistrationSchema = (
   excludeId?: string
 ) => {
   return yup.object().shape({
-    email: yup
-      .string()
-      .email('E-mail inválido')
-      .required('E-mail é obrigatório')
-      .test(
-        'unique-email',
-        'Este email já está registrado',
-        async (value: string | undefined): Promise<boolean> => {
-          if (!value || mode === 'firstAccess' || isEdition) return true
-          return await authService.checkEmailUniqueness(value, excludeId)
-        }
-      ),
+    email: yup.string().when('creationMode', ([creationMode], schema) => {
+      if (
+        mode === 'userCreation' &&
+        creationMode === 'fromVoter' &&
+        !isEdition
+      ) {
+        return schema.notRequired() // Sem validação no modo fromVoter
+      }
+      return schema
+        .email('E-mail inválido')
+        .required('E-mail é obrigatório')
+        .test(
+          'unique-email',
+          'Este email já está registrado',
+          async (value: string | undefined): Promise<boolean> => {
+            if (!value || mode === 'firstAccess' || isEdition) return true
+            return await authService.checkEmailUniqueness(value, excludeId)
+          }
+        )
+    }),
     nomeCompleto: yup.string().required('Nome completo é obrigatório'),
-    cpf: yup
-      .string()
-      .required('CPF é obrigatório')
-      .matches(
-        /^\d{3}\.\d{3}\.\d{3}-\d{2}$/,
-        'CPF deve estar no formato 000.000.000-00'
-      )
-      .test('cpf-valido', 'CPF inválido', (value) => {
-        if (!value) return false
-        return isValidCpf(value)
-      })
-      .test('unique-cpf', 'Este CPF já está registrado', async (value) => {
-        if (!value || mode === 'firstAccess' || isEdition) return true
-        return await authService.checkCpfUniqueness(value, excludeId)
-      }),
+    cpf: yup.string().when('creationMode', ([creationMode], schema) => {
+      if (
+        mode === 'userCreation' &&
+        creationMode === 'fromVoter' &&
+        !isEdition
+      ) {
+        return schema.notRequired() // Sem validação no modo fromVoter
+      }
+      return schema
+        .required('CPF é obrigatório')
+        .matches(
+          /^\d{3}\.\d{3}\.\d{3}-\d{2}$/,
+          'CPF deve estar no formato 000.000.000-00'
+        )
+        .test('cpf-valido', 'CPF inválido', (value) => {
+          if (!value) return false
+          return isValidCpf(value)
+        })
+        .test('unique-cpf', 'Este CPF já está registrado', async (value) => {
+          if (!value || mode === 'firstAccess' || isEdition) return true
+          return await authService.checkCpfUniqueness(value, excludeId)
+        })
+    }),
     dataNascimento: yup
       .string()
       .required('Data de nascimento é obrigatória')
@@ -370,7 +386,6 @@ export const getUserRegistrationSchema = (
         : yup.string().notRequired()
   })
 }
-
 export type UserRegistrationFormType = yup.InferType<
   ReturnType<typeof getUserRegistrationSchema>
 >

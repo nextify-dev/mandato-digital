@@ -125,6 +125,9 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
 
     setLoading(true)
     try {
+      if (!userData.email) {
+        throw new Error('Email é obrigatório para criar um usuário.')
+      }
       await authService.completeRegistration(
         userData.email,
         userData,
