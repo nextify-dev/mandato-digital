@@ -143,7 +143,7 @@ const CadastroUsuariosView = () => {
               disabled={
                 isCurrentUser ||
                 !user?.permissions.canEditUsers ||
-                record.status !== UserStatus.ATIVO // Só ativo pode ser bloqueado
+                record.status !== UserStatus.ATIVO
               }
             />
             <Button
@@ -161,10 +161,20 @@ const CadastroUsuariosView = () => {
     }
   ]
 
+  // Resetar o formulário ao abrir o modal de criação
+  useEffect(() => {
+    if (isCreateModalOpen && formRef.current) {
+      formRef.current.reset() // Reseta para os defaultValues padrão
+      setCurrentStep(0)
+    }
+  }, [isCreateModalOpen])
+
+  // Resetar o formulário ao abrir o modal de edição com os dados do usuário selecionado
   useEffect(() => {
     if (isEditModalOpen && selectedUser && formRef.current) {
       const initialData = getInitialData(selectedUser)
-      formRef.current.reset(initialData)
+      formRef.current.reset(initialData) // Reseta com os dados do usuário
+      setCurrentStep(0)
     }
   }, [isEditModalOpen, selectedUser, getInitialData])
 
@@ -247,7 +257,8 @@ const CadastroUsuariosView = () => {
       }
       const updates = {
         ...profileUpdates,
-        role: data.role
+        role: data.role,
+        cityId: data.cityId ?? selectedUser.cityId
       }
       await updateUser(selectedUser.id, updates)
       setIsEditModalOpen(false)
@@ -277,10 +288,18 @@ const CadastroUsuariosView = () => {
     if (type === 'confirm') setIsConfirmModalOpen(false)
     if (type === 'delete') setIsDeleteModalOpen(false)
     if (formRef.current) {
-      formRef.current.reset()
+      formRef.current.reset() // Mantém o reset ao fechar, mas agora também reseta ao abrir
       setCurrentStep(0)
     }
     setSelectedUser(null)
+  }
+
+  const handleModalOpen = (type: 'create' | 'edit') => {
+    if (type === 'create') {
+      setIsCreateModalOpen(true)
+    } else if (type === 'edit' && selectedUser) {
+      setIsEditModalOpen(true)
+    }
   }
 
   if (!user?.permissions.canManageCityUsers) {
@@ -328,7 +347,7 @@ const CadastroUsuariosView = () => {
               disabled={user?.role !== UserRole.ADMINISTRADOR_GERAL}
             />
           </S.SearchWrapper>
-          <Button type="primary" onClick={() => setIsCreateModalOpen(true)}>
+          <Button type="primary" onClick={() => handleModalOpen('create')}>
             Novo Cadastro
           </Button>
         </S.HeaderWrapper>

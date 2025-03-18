@@ -153,7 +153,7 @@ const CadastroEleitoresView = () => {
               disabled={
                 isCurrentUser ||
                 !user?.permissions.canEditUsers ||
-                record.status !== UserStatus.ATIVO // Só ativo pode ser bloqueado
+                record.status !== UserStatus.ATIVO
               }
             />
             <Button
@@ -171,10 +171,20 @@ const CadastroEleitoresView = () => {
     }
   ]
 
+  // Resetar o formulário ao abrir o modal de criação
+  useEffect(() => {
+    if (isCreateModalOpen && formRef.current) {
+      formRef.current.reset() // Reseta para os defaultValues padrão
+      setCurrentStep(0)
+    }
+  }, [isCreateModalOpen])
+
+  // Resetar o formulário ao abrir o modal de edição com os dados do eleitor selecionado
   useEffect(() => {
     if (isEditModalOpen && selectedUser && formRef.current) {
       const initialData = getInitialData(selectedUser)
-      formRef.current.reset(initialData)
+      formRef.current.reset(initialData) // Reseta com os dados do eleitor
+      setCurrentStep(0)
     }
   }, [isEditModalOpen, selectedUser, getInitialData])
 
@@ -279,6 +289,14 @@ const CadastroEleitoresView = () => {
     setSelectedUser(null)
   }
 
+  const handleModalOpen = (type: 'create' | 'edit') => {
+    if (type === 'create') {
+      setIsCreateModalOpen(true)
+    } else if (type === 'edit' && selectedUser) {
+      setIsEditModalOpen(true)
+    }
+  }
+
   if (!user?.permissions.canRegisterVoters) {
     return (
       <div>
@@ -320,7 +338,7 @@ const CadastroEleitoresView = () => {
               disabled={user?.role !== UserRole.ADMINISTRADOR_GERAL}
             />
           </S.SearchWrapper>
-          <Button type="primary" onClick={() => setIsCreateModalOpen(true)}>
+          <Button type="primary" onClick={() => handleModalOpen('create')}>
             Novo Cadastro
           </Button>
         </S.HeaderWrapper>

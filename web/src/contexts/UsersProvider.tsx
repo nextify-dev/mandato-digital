@@ -14,6 +14,7 @@ import {
 import { useAuth } from '@/contexts/AuthProvider'
 import { useCities } from '@/contexts/CitiesProvider'
 import { getInitialFormData } from '@/utils/functions/formData'
+import { convertToISODate, removeMask } from '@/utils/functions/masks'
 
 interface UserFilter {
   cityId?: string
@@ -125,20 +126,55 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
 
     setLoading(true)
     try {
-      if (!userData.email) {
-        throw new Error('Email é obrigatório para criar um usuário.')
+      if (mode === 'userCreation' && userData.creationMode === 'fromVoter') {
+        // Caso especial: criação a partir de eleitor é uma atualização
+        if (!userData.voterId) {
+          throw new Error(
+            'ID do eleitor é obrigatório para criação a partir de eleitor.'
+          )
+        }
+        const updates = {
+          role: userData.role,
+          profile: {
+            nomeCompleto: userData.nomeCompleto,
+            cpf: userData.cpf ? removeMask(userData.cpf) : undefined,
+            dataNascimento: convertToISODate(userData.dataNascimento),
+            genero: userData.genero,
+            religiao: userData.religiao || null,
+            foto: userData.foto || null,
+            telefone: userData.telefone ? removeMask(userData.telefone) : null,
+            whatsapp: removeMask(userData.whatsapp),
+            instagram: userData.instagram || null,
+            facebook: userData.facebook || null,
+            cep: removeMask(userData.cep),
+            endereco: userData.endereco,
+            numero: userData.numero,
+            complemento: userData.complemento || null,
+            bairro: userData.bairro,
+            cidade: userData.cidade,
+            estado: userData.estado
+          },
+          status: UserStatus.PENDENTE // ou outro status desejado
+        }
+        await authService.editUser(userData.voterId, updates)
+        messageApi.success('Usuário criado a partir do eleitor com sucesso!')
+      } else {
+        // Criação normal
+        if (!userData.email) {
+          throw new Error('Email é obrigatório para criar um usuário.')
+        }
+        await authService.completeRegistration(
+          userData.email,
+          userData,
+          mode,
+          cityId
+        )
+        messageApi.success(
+          mode === 'userCreation'
+            ? 'Usuário cadastrado com sucesso!'
+            : 'Eleitor cadastrado com sucesso!'
+        )
       }
-      await authService.completeRegistration(
-        userData.email,
-        userData,
-        mode,
-        cityId
-      )
-      messageApi.success(
-        mode === 'userCreation'
-          ? 'Usuário cadastrado com sucesso!'
-          : 'Eleitor cadastrado com sucesso!'
-      )
       await fetchUsersAndVoters()
     } catch (error: any) {
       messageApi.error(error.message)

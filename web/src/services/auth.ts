@@ -160,10 +160,12 @@ export const authService: AuthService = {
       const emailExists = Object.values(users).some(
         (user: any) => user.email === email && user.id !== tempId
       )
-      const cpfExists = Object.values(users).some(
-        (user: any) =>
-          user.profile?.cpf === removeMask(data.cpf) && user.id !== tempId
-      )
+      const cpfExists = data.cpf // Verifica se cpf existe antes de usar
+        ? Object.values(users).some(
+            (user: any) =>
+              user.profile?.cpf === removeMask(data.cpf!) && user.id !== tempId
+          )
+        : false
 
       if (emailExists) throw new Error('Este email já está registrado')
       if (cpfExists) throw new Error('Este CPF já está registrado')
@@ -220,7 +222,7 @@ export const authService: AuthService = {
     const profile: UserProfile = {
       foto: data.foto || null,
       nomeCompleto: data.nomeCompleto,
-      cpf: removeMask(data.cpf),
+      cpf: data.cpf ? removeMask(data.cpf) : '', // Garante que cpf seja string
       dataNascimento: convertToISODate(data.dataNascimento),
       genero: data.genero,
       religiao: data.religiao || null,
