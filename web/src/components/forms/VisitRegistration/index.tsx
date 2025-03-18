@@ -87,7 +87,16 @@ const VisitRegistrationForm = forwardRef<
       if (mode === 'create') {
         reset(defaultValues)
       } else if (mode === 'edit' && initialData) {
-        reset({ ...defaultValues, ...initialData })
+        const formattedDateTime = initialData.dateTime
+          ? moment(initialData.dateTime, moment.ISO_8601).format(
+              'DD/MM/YYYY HH:mm'
+            )
+          : undefined
+        reset({
+          ...defaultValues,
+          ...initialData,
+          dateTime: formattedDateTime
+        })
       }
     }, [mode, initialData, reset])
 
