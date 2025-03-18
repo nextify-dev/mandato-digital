@@ -349,7 +349,7 @@ const GestaoCidadesView = () => {
       </Modal>
 
       <ConfirmModal
-        type="warning"
+        type="danger"
         title="Confirmação de Exclusão"
         content={`Deseja excluir a cidade ${
           selectedCity?.name || 'selecionada'

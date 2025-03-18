@@ -510,10 +510,25 @@ const CreationModeStep = ({
     const selectedVoter = voters?.find((voter) => voter.id === voterId)
     if (selectedVoter) {
       const initialData = getInitialFormData(selectedVoter)
+      // Preservar os valores atuais de creationMode e role
+      const currentCreationMode = creationMode
+      const currentRole = control._formValues.role
+
+      // Aplicar os dados do eleitor
       Object.entries(initialData).forEach(([key, value]) => {
-        setValue(key as keyof UserRegistrationFormType, value)
+        if (key !== 'creationMode' && key !== 'role') {
+          // Evitar sobrescrever creationMode e role
+          setValue(key as keyof UserRegistrationFormType, value)
+        }
       })
-      trigger()
+
+      // Restaurar os valores originais de creationMode e role
+      setValue('creationMode', currentCreationMode)
+      setValue('role', currentRole)
+      setValue('voterId', voterId)
+
+      // Validar apenas os campos da etapa atual
+      trigger(['creationMode', 'role', 'voterId'])
     }
   }
 

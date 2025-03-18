@@ -1,6 +1,4 @@
 // src/screens/DashboardV1/views/GestaoUsuarios.tsx
-
-// src/CadastroUsuariosView.tsx
 import { useState, useRef, useEffect } from 'react'
 import * as S from './styles'
 import { Button, Input, Select, Tag, Avatar } from 'antd'
@@ -50,6 +48,7 @@ const CadastroUsuariosView = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [currentStep, setCurrentStep] = useState(0)
   const formRef = useRef<UseFormReturn<UserRegistrationFormType> | null>(null)
@@ -128,7 +127,7 @@ const CadastroUsuariosView = () => {
               danger
               onClick={() => {
                 setSelectedUser(record)
-                setIsConfirmModalOpen(true)
+                setIsDeleteModalOpen(true)
               }}
               disabled={
                 !user?.permissions.canEditUsers || record.id === user?.id
@@ -139,9 +138,13 @@ const CadastroUsuariosView = () => {
               icon={record.status === 'ativo' ? <LuLockOpen /> : <LuLock />}
               onClick={() => {
                 setSelectedUser(record)
-                toggleUserStatus(record.id)
+                setIsConfirmModalOpen(true)
               }}
-              disabled={isCurrentUser || !user?.permissions.canEditUsers}
+              disabled={
+                isCurrentUser ||
+                !user?.permissions.canEditUsers ||
+                record.status !== UserStatus.ATIVO // Só ativo pode ser bloqueado
+              }
             />
             <Button
               type="link"
@@ -247,6 +250,7 @@ const CadastroUsuariosView = () => {
         role: data.role
       }
       console.log(updates)
+
       // await updateUser(selectedUser.id, updates)
       setIsEditModalOpen(false)
     }
@@ -262,15 +266,18 @@ const CadastroUsuariosView = () => {
   const handleDeleteUser = async () => {
     if (selectedUser) {
       await deleteUser(selectedUser.id)
-      setIsConfirmModalOpen(false)
+      setIsDeleteModalOpen(false)
     }
   }
 
-  const handleModalClose = (type: 'create' | 'edit' | 'view' | 'confirm') => {
+  const handleModalClose = (
+    type: 'create' | 'edit' | 'view' | 'confirm' | 'delete'
+  ) => {
     if (type === 'create') setIsCreateModalOpen(false)
     if (type === 'edit') setIsEditModalOpen(false)
     if (type === 'view') setIsViewModalOpen(false)
     if (type === 'confirm') setIsConfirmModalOpen(false)
+    if (type === 'delete') setIsDeleteModalOpen(false)
     if (formRef.current) {
       formRef.current.reset()
       setCurrentStep(0)
@@ -395,23 +402,20 @@ const CadastroUsuariosView = () => {
 
       <ConfirmModal
         type="warning"
-        title={
-          selectedUser?.status === UserStatus.ATIVO
-            ? 'Confirmação de Bloqueio'
-            : 'Confirmação de Desbloqueio'
-        }
-        content={
-          selectedUser?.status === UserStatus.ATIVO
-            ? 'Deseja realmente bloquear este usuário?'
-            : 'Deseja realmente desbloquear este usuário?'
-        }
+        title="Confirmação de Bloqueio"
+        content="Deseja realmente bloquear este usuário?"
         visible={isConfirmModalOpen}
-        onConfirm={
-          selectedUser?.status === UserStatus.ATIVO
-            ? handleToggleStatus
-            : handleDeleteUser
-        }
+        onConfirm={handleToggleStatus}
         onCancel={() => handleModalClose('confirm')}
+      />
+
+      <ConfirmModal
+        type="danger"
+        title="Confirmação de Exclusão"
+        content="Deseja realmente excluir este usuário? Esta ação é irreversível."
+        visible={isDeleteModalOpen}
+        onConfirm={handleDeleteUser}
+        onCancel={() => handleModalClose('delete')}
       />
     </View>
   )

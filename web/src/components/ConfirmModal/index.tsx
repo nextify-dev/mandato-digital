@@ -11,7 +11,7 @@ import {
 } from '@ant-design/icons'
 
 // Tipos disponíveis para o modal
-export type ModalType = 'success' | 'warning' | 'error'
+export type ModalType = 'success' | 'warning' | 'danger'
 
 // Props do componente
 interface ConfirmModalProps {
@@ -52,7 +52,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
             style={{ fontSize: '24px', color: '#faad14' }}
           />
         )
-      case 'error':
+      case 'danger':
         return (
           <CloseCircleOutlined style={{ fontSize: '24px', color: '#ff4d4f' }} />
         )
