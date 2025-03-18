@@ -1,23 +1,25 @@
 // src/components/forms/VisitRegistrationForm/index.tsx
-import React, { forwardRef, Ref, useEffect, useMemo, useState } from 'react'
+import React, { forwardRef, Ref, useEffect, useState } from 'react'
 import { Controller, UseFormReturn, DefaultValues } from 'react-hook-form'
-import { Select, DatePicker, Upload, Button } from 'antd'
+import { Select, DatePicker, Upload, Button, Input, Steps } from 'antd'
 import { UploadOutlined } from '@ant-design/icons'
 import moment from 'moment'
-import { StyledForm, StyledButton } from '@/utils/styles/antd'
+import { StyledForm, StyledButton, StyledSteps } from '@/utils/styles/antd'
 import { FormStep } from '@/utils/styles/commons'
 import { useModalForm } from '@/hooks/useModalForm'
 import {
   VisitReason,
   VisitRegistrationFormType,
-  getVisitRegistrationSchema
+  getVisitRegistrationSchema,
+  getVisitReasonData,
+  FormattedVisitReason
 } from '@/@types/visit'
 import { useUsers } from '@/contexts/UsersProvider'
 import DynamicDescriptions, {
   DynamicDescriptionsField
 } from '@/components/DynamicDescriptions'
-import { IAdminOption } from '@/data/options'
-import { citiesService } from '@/services/cities'
+
+const { TextArea } = Input
 
 interface VisitRegistrationFormProps {
   onSubmit?: (data: VisitRegistrationFormType) => Promise<void>
@@ -33,89 +35,96 @@ const VisitRegistrationForm = forwardRef<
     { onSubmit, initialData, mode },
     ref: Ref<UseFormReturn<VisitRegistrationFormType>>
   ) => {
-    const { users, voters, allUsers, loading: usersLoading } = useUsers()
+    const { voters, allUsers, loading: usersLoading } = useUsers()
 
-    const [votersOptions, setVotersOptions] = useState<IAdminOption[]>([])
-    const [allUsersOptions, setAllUsersOptions] = useState<IAdminOption[]>([])
+    const [currentStep, setCurrentStep] = useState(0)
 
-    const defaultValues: DefaultValues<VisitRegistrationFormType> = {
-      voterId: '',
-      dateTime: moment().format('DD/MM/YYYY HH:mm'),
-      reason: VisitReason.REQUEST,
-      relatedUserId: '',
-      documents: null
+    interface ExtendedVisitRegistrationFormType
+      extends VisitRegistrationFormType {
+      observations?: string | null
     }
 
-    const formMethods = useModalForm<VisitRegistrationFormType>({
+    const defaultValues: DefaultValues<ExtendedVisitRegistrationFormType> = {
+      voterId: '',
+      dateTime: undefined,
+      reason: undefined,
+      relatedUserId: '',
+      documents: null,
+      observations: null
+    }
+
+    const formMethods = useModalForm<ExtendedVisitRegistrationFormType>({
       schema: getVisitRegistrationSchema(),
-      defaultValues: initialData || defaultValues,
-      onSubmit
+      defaultValues,
+      onSubmit: onSubmit ? (data) => onSubmit(data) : undefined
     })
 
-    React.useImperativeHandle(ref, () => formMethods)
+    React.useImperativeHandle(
+      ref,
+      () =>
+        ({
+          ...formMethods,
+          reset: (values) => formMethods.reset(values ?? defaultValues),
+          getValues: formMethods.getValues,
+          setValue: formMethods.setValue,
+          trigger: formMethods.trigger,
+          control: formMethods.control,
+          formState: formMethods.formState,
+          handleSubmit: formMethods.handleSubmit
+        } as UseFormReturn<VisitRegistrationFormType>)
+    )
 
     const {
       control,
       setValue,
       reset,
-      formState: { errors, isSubmitting, isValid }
+      trigger,
+      formState: { errors, isSubmitting, isValid },
+      getValues
     } = formMethods
 
     useEffect(() => {
-      if (initialData) {
+      if (mode === 'create') {
+        reset(defaultValues)
+      } else if (mode === 'edit' && initialData) {
         reset({ ...defaultValues, ...initialData })
       }
-    }, [initialData, reset])
+    }, [mode, initialData, reset])
 
-    // Função auxiliar para obter o label do motivo da visita
-    const getVisitReasonLabel = (reason: string) => {
-      return (
-        Object.entries(VisitReason).find(([_, value]) => {
-          value === reason
-        }) || reason
-      )
-    }
+    const VOTER_OPTIONS = voters.map((voter) => ({
+      label: `${voter.profile?.nomeCompleto} (${voter.email})`,
+      value: voter.id
+    }))
 
-    useEffect(() => {
-      const fetchUserOptions = async () => {
-        const allUsersData = await Promise.all(
-          [...users, ...voters].map(async (user) => {
-            const cities = await citiesService.getCities({})
-            const city = cities.find((c) => c.id === user.cityId)
-            return {
-              label: `${user.profile?.nomeCompleto || 'Sem Nome'} - ${
-                city?.name || 'N/A'
-              }, ${city?.state || 'N/A'}`,
-              value: user.id
-            }
-          })
-        )
-        const votersData = await Promise.all(
-          voters.map(async (user) => {
-            const cities = await citiesService.getCities({})
-            const city = cities.find((c) => c.id === user.cityId)
-            return {
-              label: `${user.profile?.nomeCompleto || 'Sem Nome'} - ${
-                city?.name || 'N/A'
-              }, ${city?.state || 'N/A'}`,
-              value: user.id
-            }
-          })
-        )
-        setAllUsersOptions(allUsersData)
-        setVotersOptions(votersData)
-      }
-      fetchUserOptions()
-    }, [users, voters])
+    const USER_OPTIONS = allUsers.map((user) => ({
+      label: `${user.profile?.nomeCompleto} (${user.role})`,
+      value: user.id
+    }))
 
-    // Opções para motivos da visita (reason)
     const REASON_OPTIONS = Object.values(VisitReason).map((reason) => ({
-      label: getVisitReasonLabel(reason),
+      label: getVisitReasonData(reason).label, // Usar a label formatada
       value: reason
     }))
 
-    // Definição dos campos para DynamicDescriptions no modo viewOnly
-    const descriptionFields: DynamicDescriptionsField<VisitRegistrationFormType>[] =
+    const steps = [
+      {
+        title: 'Dados Principais',
+        fields: ['voterId', 'dateTime', 'reason', 'relatedUserId'],
+        requiredFields: ['voterId', 'dateTime', 'reason', 'relatedUserId']
+      },
+      {
+        title: 'Detalhes Adicionais',
+        fields: ['documents', 'observations'],
+        requiredFields: []
+      },
+      {
+        title: 'Revisão',
+        fields: [],
+        requiredFields: []
+      }
+    ]
+
+    const descriptionFields: DynamicDescriptionsField<ExtendedVisitRegistrationFormType>[] =
       [
         {
           key: 'voterId',
@@ -133,7 +142,8 @@ const VisitRegistrationForm = forwardRef<
         {
           key: 'reason',
           label: 'Motivo',
-          render: (value) => (value ? getVisitReasonLabel(value) : '-')
+          render: (value) =>
+            value ? getVisitReasonData(value as VisitReason).label : '-'
         },
         {
           key: 'relatedUserId',
@@ -150,13 +160,50 @@ const VisitRegistrationForm = forwardRef<
             Array.isArray(value) && value.length > 0
               ? `${value.length} anexos`
               : 'Nenhum'
+        },
+        {
+          key: 'observations',
+          label: 'Observações',
+          render: (value) => value || '-'
         }
       ]
+
+    const areRequiredFieldsValid = () => {
+      const currentStepRequiredFields = steps[currentStep].requiredFields
+      return currentStepRequiredFields.every((field) => {
+        const value = getValues(
+          field as keyof ExtendedVisitRegistrationFormType
+        )
+        const hasError =
+          !!errors[field as keyof ExtendedVisitRegistrationFormType]
+        return value && !hasError
+      })
+    }
+
+    const validateStep = async () => {
+      const fieldsToValidate = steps[currentStep]
+        .fields as (keyof ExtendedVisitRegistrationFormType)[]
+      return await trigger(fieldsToValidate, { shouldFocus: true })
+    }
+
+    const nextStep = async () => {
+      if ((await validateStep()) && areRequiredFieldsValid()) {
+        setCurrentStep((prev) => prev + 1)
+      }
+    }
+
+    const prevStep = () => setCurrentStep((prev) => prev - 1)
+
+    const handleSubmitClick = async () => {
+      if ((await validateStep()) && areRequiredFieldsValid()) {
+        formMethods.handleSubmit(onSubmit || (() => {}))()
+      }
+    }
 
     if (mode === 'viewOnly') {
       return (
         <DynamicDescriptions
-          data={initialData || {}}
+          data={initialData ?? {}}
           fields={descriptionFields}
           title="Detalhes da Visita"
         />
@@ -164,8 +211,15 @@ const VisitRegistrationForm = forwardRef<
     }
 
     return (
-      <StyledForm onFinish={formMethods.handleSubmit} layout="vertical">
-        <FormStep visible={1}>
+      <StyledForm onFinish={() => {}} layout="vertical">
+        <StyledSteps
+          current={currentStep}
+          items={steps.map((step) => ({ title: step.title }))}
+          labelPlacement="vertical"
+          style={{ marginLeft: 0 }}
+        />
+
+        <FormStep visible={currentStep === 0 ? 1 : 0}>
           <Controller
             name="voterId"
             control={control}
@@ -182,7 +236,7 @@ const VisitRegistrationForm = forwardRef<
                   loading={usersLoading}
                   onChange={(value) => setValue('voterId', value)}
                   value={field.value}
-                  options={votersOptions}
+                  options={VOTER_OPTIONS}
                   optionFilterProp="label"
                   filterOption={(input, option) =>
                     (option?.label as string)
@@ -262,7 +316,7 @@ const VisitRegistrationForm = forwardRef<
                   loading={usersLoading}
                   onChange={(value) => setValue('relatedUserId', value)}
                   value={field.value}
-                  options={allUsersOptions}
+                  options={USER_OPTIONS}
                   optionFilterProp="label"
                   filterOption={(input, option) =>
                     (option?.label as string)
@@ -273,7 +327,9 @@ const VisitRegistrationForm = forwardRef<
               </StyledForm.Item>
             )}
           />
+        </FormStep>
 
+        <FormStep visible={currentStep === 1 ? 1 : 0}>
           <Controller
             name="documents"
             control={control}
@@ -294,9 +350,10 @@ const VisitRegistrationForm = forwardRef<
                   }
                   fileList={field.value?.map((file: any, index: number) => ({
                     uid: `${index}`,
-                    name: file.name || 'Arquivo',
+                    name: file.name || `Documento ${index + 1}`,
                     status: 'done',
-                    originFileObj: file
+                    originFileObj: file.url ? undefined : file,
+                    url: file.url || undefined
                   }))}
                 >
                   <Button icon={<UploadOutlined />}>Anexar Documentos</Button>
@@ -304,17 +361,59 @@ const VisitRegistrationForm = forwardRef<
               </StyledForm.Item>
             )}
           />
+
+          <Controller
+            name="observations"
+            control={control}
+            render={({ field }) => (
+              <StyledForm.Item label="Observações">
+                <TextArea
+                  {...field}
+                  placeholder="Digite observações adicionais (opcional)"
+                  rows={4}
+                  value={field.value ?? ''}
+                  onChange={(e) =>
+                    setValue('observations', e.target.value || null)
+                  }
+                />
+              </StyledForm.Item>
+            )}
+          />
         </FormStep>
 
-        <div style={{ textAlign: 'right' }}>
-          <StyledButton
-            type="primary"
-            htmlType="submit"
-            loading={isSubmitting}
-            disabled={!isValid}
-          >
-            {mode === 'edit' ? 'Atualizar Visita' : 'Registrar Visita'}
-          </StyledButton>
+        <FormStep visible={currentStep === 2 ? 1 : 0}>
+          <DynamicDescriptions
+            data={getValues()}
+            fields={descriptionFields}
+            title="Revisão dos Dados"
+          />
+        </FormStep>
+
+        <div style={{ textAlign: 'right', marginTop: 24 }}>
+          {currentStep > 0 && (
+            <StyledButton style={{ marginRight: 8 }} onClick={prevStep}>
+              Voltar
+            </StyledButton>
+          )}
+          {currentStep < steps.length - 1 ? (
+            <StyledButton
+              type="primary"
+              onClick={nextStep}
+              disabled={!isValid && currentStep === 0}
+            >
+              Próximo
+            </StyledButton>
+          ) : (
+            <StyledButton
+              type="primary"
+              htmlType="submit"
+              loading={isSubmitting}
+              disabled={!isValid}
+              onClick={handleSubmitClick}
+            >
+              {mode === 'edit' ? 'Atualizar Visita' : 'Registrar Visita'}
+            </StyledButton>
+          )}
         </div>
       </StyledForm>
     )

@@ -1,5 +1,4 @@
 // src/screens/DashboardV1/views/RegistroVisitasView.tsx
-
 import { useState, useRef } from 'react'
 import { Button, Input } from 'antd'
 import { LuPlus, LuPen, LuTrash2, LuEye } from 'react-icons/lu'
@@ -17,33 +16,20 @@ import { applyMask } from '@/utils/functions/masks'
 import { TableExtrasWrapper } from '@/utils/styles/commons'
 import { UseFormReturn } from 'react-hook-form'
 import { useUsers } from '@/contexts/UsersProvider'
-import { authService } from '@/services/auth'
 
 const { Search } = Input
 
 const RegistroVisitasView = () => {
   const { visits, loading, registerVisit, updateVisit, deleteVisit } =
     useVisits()
-  const { voters, users } = useUsers()
+  const { allUsers } = useUsers()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null)
   const [voterSearch, setVoterSearch] = useState('')
-  const [allUsers, setAllUsers] = useState<any[]>([])
   const formRef = useRef<UseFormReturn<VisitRegistrationFormType> | null>(null)
-
-  const fetchUsers = async (search: string) => {
-    const snapshot = await authService.getUserData('')
-    const fetchedUsers = snapshot ? Object.values(snapshot) : []
-    const combinedUsers = [...voters, ...users, ...fetchedUsers]
-    setAllUsers(
-      combinedUsers.filter((user: any) =>
-        user.nomeCompleto.toLowerCase().includes(search.toLowerCase())
-      )
-    )
-  }
 
   const getVisitReasonLabel = (reason: string) => {
     return (
@@ -58,7 +44,7 @@ const RegistroVisitasView = () => {
       dataIndex: 'voterId',
       key: 'voterId',
       render: (id: string) =>
-        allUsers.find((u) => u.id === id)?.nomeCompleto || id
+        allUsers.find((u) => u.id === id)?.profile?.nomeCompleto || id
     },
     {
       title: 'Data e Horário',
@@ -78,7 +64,7 @@ const RegistroVisitasView = () => {
       dataIndex: 'relatedUserId',
       key: 'relatedUserId',
       render: (id: string) =>
-        allUsers.find((u) => u.id === id)?.nomeCompleto || id
+        allUsers.find((u) => u.id === id)?.profile?.nomeCompleto || id
     },
     {
       title: 'Ações',
@@ -88,10 +74,7 @@ const RegistroVisitasView = () => {
           <Button
             type="link"
             icon={<LuPen />}
-            onClick={() => {
-              setSelectedVisit(record)
-              setIsEditModalOpen(true)
-            }}
+            onClick={() => handleModalOpen('edit', record)}
           />
           <Button
             type="link"
@@ -118,18 +101,23 @@ const RegistroVisitasView = () => {
 
   const handleSearch = (value: string) => {
     setVoterSearch(value)
-    fetchUsers(value)
   }
 
   const handleCreateVisit = async (data: VisitRegistrationFormType) => {
     await registerVisit(data)
     setIsCreateModalOpen(false)
+    if (formRef.current) {
+      formRef.current.reset() // Reseta após criação
+    }
   }
 
   const handleEditVisit = async (data: VisitRegistrationFormType) => {
     if (selectedVisit) {
       await updateVisit(selectedVisit.id, data)
       setIsEditModalOpen(false)
+      if (formRef.current) {
+        formRef.current.reset() // Reseta após edição
+      }
     }
   }
 
@@ -145,8 +133,40 @@ const RegistroVisitasView = () => {
     if (type === 'edit') setIsEditModalOpen(false)
     if (type === 'view') setIsViewModalOpen(false)
     if (type === 'delete') setIsDeleteModalOpen(false)
-    if (formRef.current) formRef.current.reset()
+    if (formRef.current) {
+      formRef.current.reset() // Reseta ao fechar qualquer modal
+    }
     setSelectedVisit(null)
+  }
+
+  const handleModalOpen = (type: 'create' | 'edit', visit?: Visit) => {
+    if (type === 'create') {
+      setSelectedVisit(null)
+      setIsCreateModalOpen(true)
+      if (formRef.current) {
+        formRef.current.reset() // Reseta para valores padrão ao abrir criação
+      }
+    } else if (type === 'edit' && visit) {
+      setSelectedVisit(visit)
+      setIsEditModalOpen(true)
+      if (formRef.current) {
+        formRef.current.reset({
+          voterId: visit.voterId,
+          dateTime: visit.dateTime.replace('T', ' ').replace('Z', ''),
+          reason: visit.reason,
+          relatedUserId: visit.relatedUserId,
+          documents: visit.documents
+            ? visit.documents.map((url, index) => ({
+                uid: `${index}`,
+                name: `Documento ${index + 1}`,
+                status: 'done',
+                url
+              }))
+            : null,
+          observations: ''
+        }) // Reseta com os dados da visita ao abrir edição
+      }
+    }
   }
 
   return (
@@ -164,7 +184,7 @@ const RegistroVisitasView = () => {
           <Button
             type="primary"
             icon={<LuPlus />}
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={() => handleModalOpen('create')}
           >
             Registrar Visita
           </Button>
@@ -207,10 +227,21 @@ const RegistroVisitasView = () => {
             onSubmit={handleEditVisit}
             mode="edit"
             initialData={{
-              ...selectedVisit,
+              voterId: selectedVisit.voterId,
               dateTime: selectedVisit.dateTime
                 .replace('T', ' ')
-                .replace('Z', '')
+                .replace('Z', ''),
+              reason: selectedVisit.reason,
+              relatedUserId: selectedVisit.relatedUserId,
+              documents: selectedVisit.documents
+                ? selectedVisit.documents.map((url, index) => ({
+                    uid: `${index}`,
+                    name: `Documento ${index + 1}`,
+                    status: 'done',
+                    url
+                  }))
+                : null,
+              observations: ''
             }}
             ref={formRef}
           />
@@ -228,10 +259,13 @@ const RegistroVisitasView = () => {
           <VisitRegistrationForm
             mode="viewOnly"
             initialData={{
-              ...selectedVisit,
+              voterId: selectedVisit.voterId,
               dateTime: selectedVisit.dateTime
                 .replace('T', ' ')
-                .replace('Z', '')
+                .replace('Z', ''),
+              reason: selectedVisit.reason,
+              relatedUserId: selectedVisit.relatedUserId,
+              documents: selectedVisit.documents
             }}
           />
         )}

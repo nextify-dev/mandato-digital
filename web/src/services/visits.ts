@@ -47,7 +47,7 @@ export const visitsService = {
     const [date, time] = data.dateTime.split(' ')
     const isoDateTime = `${convertToISODate(date)}T${time}:00Z`
 
-    // Criação do objeto Visit
+    // Criação do objeto Visit com o campo observations
     const newVisit: Visit = {
       id: visitId,
       voterId: data.voterId,
@@ -56,6 +56,7 @@ export const visitsService = {
       relatedUserId: data.relatedUserId,
       relatedUserRole: await this.getUserRole(data.relatedUserId),
       documents: documentUrls || null,
+      observations: data.observations || null, // Inclui observações se fornecidas
       createdAt: new Date().toISOString(),
       createdBy: currentUser.uid,
       updatedAt: null,
@@ -118,7 +119,7 @@ export const visitsService = {
     const [date, time] = data.dateTime.split(' ')
     const isoDateTime = `${convertToISODate(date)}T${time}:00Z`
 
-    // Atualização do objeto Visit
+    // Atualização do objeto Visit com o campo observations
     const updatedVisit: Partial<Visit> = {
       voterId: data.voterId,
       dateTime: isoDateTime,
@@ -126,6 +127,7 @@ export const visitsService = {
       relatedUserId: data.relatedUserId,
       relatedUserRole: await this.getUserRole(data.relatedUserId),
       documents: documentUrls,
+      observations: data.observations || null, // Inclui observações se fornecidas
       updatedAt: new Date().toISOString(),
       updatedBy: currentUser.uid
     }
