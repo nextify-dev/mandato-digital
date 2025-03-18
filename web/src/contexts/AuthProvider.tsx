@@ -27,7 +27,8 @@ interface IAuthContextData {
   isFirstAccess: boolean
   isFirstAccessEligible: boolean
   emailLocked: boolean
-  firstAccessData: User | undefined // Adicionado ao contexto
+  firstAccessData: User | undefined
+  isEmailUnauthorized: boolean // Nova propriedade adicionada
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   inviteUser: (email: string, role: UserRole, cityId: string) => Promise<void>
@@ -78,6 +79,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [firstAccessData, setFirstAccessData] = useState<User | undefined>(
     undefined
   )
+  const [isEmailUnauthorized, setIsEmailUnauthorized] = useState(false) // Novo estado adicionado
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
@@ -104,6 +106,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const userData = await authService.login(email, password)
       setUser(convertToUserType(userData))
       setIsAuth(userData.status !== UserStatus.PENDENTE)
+      setIsEmailUnauthorized(false) // Reseta ao logar com sucesso
       messageApi.success('Login realizado com sucesso!')
     } catch (error: any) {
       messageApi.error(handleTranslateFbError(error.code) || error.message)
@@ -119,6 +122,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await authService.logout()
       setUser(null)
       setIsAuth(false)
+      setIsEmailUnauthorized(false) // Reseta ao deslogar
     } finally {
       setIsAuthLoading(false)
     }
@@ -155,7 +159,8 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsAuth(true)
       setIsFirstAccess(false)
       setEmailLocked(false)
-      setFirstAccessData(undefined) // Limpa os dados após completar o registro
+      setFirstAccessData(undefined)
+      setIsEmailUnauthorized(false) // Reseta ao completar o registro
       messageApi.success('Cadastro concluído com sucesso!')
     } catch (error: any) {
       messageApi.error(error.message)
@@ -187,20 +192,23 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsFirstAccess(false)
       setEmailLocked(false)
       setFirstAccessData(undefined)
+      setIsEmailUnauthorized(false) // Email registrado, mas não é primeiro acesso
       return
     }
 
     if (!isEligible) {
-      messageApi.error('Seu e-mail não está autorizado')
       setIsFirstAccessEligible(false)
       setIsFirstAccess(false)
       setEmailLocked(false)
       setFirstAccessData(undefined)
+      setIsEmailUnauthorized(true) // Email não autorizado
+      messageApi.error('Seu e-mail não está autorizado')
       return
     }
 
     setIsFirstAccessEligible(true)
-    setFirstAccessData(userData) // Armazena os dados do usuário elegível
+    setFirstAccessData(userData)
+    setIsEmailUnauthorized(false) // Email autorizado para primeiro acesso
     if (isFirstAccess) {
       setEmailLocked(true)
     } else {
@@ -227,7 +235,8 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       isFirstAccess,
       isFirstAccessEligible,
       emailLocked,
-      firstAccessData, // Adicionado ao contexto retornado
+      firstAccessData,
+      isEmailUnauthorized, // Adicionado ao contexto retornado
       login,
       logout,
       inviteUser,
@@ -244,7 +253,8 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       isFirstAccess,
       isFirstAccessEligible,
       emailLocked,
-      firstAccessData // Incluído nas dependências
+      firstAccessData,
+      isEmailUnauthorized // Incluído nas dependências
     ]
   )
 

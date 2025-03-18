@@ -1,21 +1,16 @@
 // src/screens/DashboardSignIn/index.tsx
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import * as S from './styles'
 import { useForm, Controller } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
-import { CheckboxChangeEvent } from 'antd/es/checkbox'
 import UserRegistrationForm from '@/components/forms/UserRegistration'
 import { useAuth } from '@/contexts/AuthProvider'
-import {
-  StyledForm,
-  StyledButton,
-  StyledInput,
-  StyledCheckbox
-} from '@/utils/styles/antd'
+import { StyledForm, StyledButton, StyledInput } from '@/utils/styles/antd'
 import { UserRegistrationFormType } from '@/@types/user'
 import { getInitialFormData } from '@/utils/functions/formData'
+import { LuArrowLeft } from 'react-icons/lu'
 
 interface SignInForm {
   email: string
@@ -39,7 +34,8 @@ const DashboardSignInScreen = () => {
     emailLocked,
     checkFirstAccess,
     setFirstAccess,
-    firstAccessData
+    firstAccessData,
+    isEmailUnauthorized // Nova propriedade adicionada
   } = useAuth()
 
   const [currentStep, setCurrentStep] = useState(0)
@@ -64,7 +60,12 @@ const DashboardSignInScreen = () => {
   const emailValue = watch('email')
 
   const onLoginSubmit = async (data: SignInForm) => {
-    await login(data.email, data.password)
+    if (isFirstAccessEligible && !isFirstAccess) {
+      setFirstAccess(true)
+      setCurrentStep(0)
+    } else if (!isFirstAccess) {
+      await login(data.email, data.password)
+    }
   }
 
   const onFirstAccessSubmit = async (data: UserRegistrationFormType) => {
@@ -73,12 +74,6 @@ const DashboardSignInScreen = () => {
       throw new Error('Email é obrigatório para completar o registro.')
     }
     await completeRegistration(data.email, data, 'firstAccess', cityId)
-  }
-
-  const handleCheckboxChange = (e: CheckboxChangeEvent) => {
-    setFirstAccess(e.target.checked)
-    setValue('email', emailValue)
-    setCurrentStep(0)
   }
 
   const handleEmailBlur = async () => {
@@ -112,70 +107,67 @@ const DashboardSignInScreen = () => {
               currentStep={currentStep}
               setCurrentStep={setCurrentStep}
             />
-            <StyledButton
+            <S.BackToLoginButton
               onClick={handleBackToLogin}
-              style={{ marginTop: '16px' }}
-              block
+              icon={<LuArrowLeft />}
+              size="small"
             >
-              Voltar para Login
-            </StyledButton>
+              Voltar
+            </S.BackToLoginButton>
           </>
         ) : (
           <StyledForm onFinish={handleSubmit(onLoginSubmit)} layout="vertical">
-            <Controller
-              name="email"
-              control={control}
-              render={({ field }) => (
-                <StyledForm.Item
-                  label="Email"
-                  help={errors.email?.message}
-                  validateStatus={errors.email ? 'error' : ''}
-                >
-                  <StyledInput
-                    {...field}
-                    onBlur={handleEmailBlur}
-                    placeholder="Digite seu email"
-                    disabled={emailLocked}
-                  />
-                </StyledForm.Item>
-              )}
-            />
-            <Controller
-              name="password"
-              control={control}
-              render={({ field }) => (
-                <StyledForm.Item
-                  label="Senha"
-                  help={errors.password?.message}
-                  validateStatus={errors.password ? 'error' : ''}
-                >
-                  <StyledInput.Password
-                    {...field}
-                    placeholder="Digite sua senha"
-                  />
-                </StyledForm.Item>
-              )}
-            />
-            <StyledCheckbox
-              checked={isFirstAccess}
-              onChange={handleCheckboxChange}
-              disabled={!isFirstAccessEligible}
-            >
-              Primeiro acesso?
-            </StyledCheckbox>
-            <StyledButton
-              type="primary"
-              htmlType="submit"
-              disabled={!isValid}
-              block
-            >
-              Entrar
-            </StyledButton>
-            <S.ForgotPasswordLink>
-              <Link to="/esqueci-senha">Esqueci minha senha</Link>
-            </S.ForgotPasswordLink>
+            <S.SignInFormContent>
+              <Controller
+                name="email"
+                control={control}
+                render={({ field }) => (
+                  <StyledForm.Item
+                    label="Email"
+                    help={errors.email?.message}
+                    validateStatus={errors.email ? 'error' : ''}
+                  >
+                    <StyledInput
+                      {...field}
+                      onBlur={handleEmailBlur}
+                      placeholder="Digite seu email"
+                      disabled={emailLocked}
+                    />
+                  </StyledForm.Item>
+                )}
+              />
+              <Controller
+                name="password"
+                control={control}
+                render={({ field }) => (
+                  <StyledForm.Item
+                    label="Senha"
+                    help={errors.password?.message}
+                    validateStatus={errors.password ? 'error' : ''}
+                  >
+                    <StyledInput.Password
+                      {...field}
+                      placeholder="Digite sua senha"
+                    />
+                  </StyledForm.Item>
+                )}
+              />
+            </S.SignInFormContent>
+            <S.SignInFormFooter>
+              <StyledButton
+                type="primary"
+                htmlType="submit"
+                disabled={!isValid || isEmailUnauthorized} // Desabilita se o e-mail não estiver autorizado
+                block
+              >
+                {isFirstAccessEligible ? 'Primeiro Acesso' : 'Entrar'}
+              </StyledButton>
+            </S.SignInFormFooter>
           </StyledForm>
         )}
+        <S.ForgotPasswordLink>
+          <Link to="/esqueci-senha">Esqueci minha senha</Link>
+        </S.ForgotPasswordLink>
       </S.SignInContainer>
     </S.DashboardSignInScreen>
   )
