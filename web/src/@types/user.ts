@@ -243,6 +243,7 @@ export interface UserRegistrationForm {
 // Esquema dinâmico de validação baseado no modo
 export const getUserRegistrationSchema = (
   mode: 'firstAccess' | 'voterCreation' | 'userCreation',
+  isEdition: boolean,
   excludeId?: string
 ) => {
   return yup.object().shape({
@@ -254,7 +255,7 @@ export const getUserRegistrationSchema = (
         'unique-email',
         'Este email já está registrado',
         async (value: string | undefined): Promise<boolean> => {
-          if (!value || mode === 'firstAccess') return true
+          if (!value || mode === 'firstAccess' || isEdition) return true
           return await authService.checkEmailUniqueness(value, excludeId)
         }
       ),
@@ -271,7 +272,7 @@ export const getUserRegistrationSchema = (
         return isValidCpf(value)
       })
       .test('unique-cpf', 'Este CPF já está registrado', async (value) => {
-        if (!value || mode === 'firstAccess') return true
+        if (!value || mode === 'firstAccess' || isEdition) return true
         return await authService.checkCpfUniqueness(value, excludeId)
       }),
     dataNascimento: yup

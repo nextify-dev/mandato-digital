@@ -101,10 +101,14 @@ const UserRegistrationForm = forwardRef<
       cityId: initialData?.cityId || undefined
     }
 
-    const excludeId = userId // Usa o userId passado como prop
+    console.log(mode, initialData?.cpf, defaultValues?.cpf)
+
+    const excludeId = userId
+    const isFirstAccessMode = mode === 'firstAccess'
     const formMethods = useModalForm<UserRegistrationFormType>({
       schema: getUserRegistrationSchema(
         mode === 'viewOnly' ? 'voterCreation' : mode,
+        isFirstAccessMode || (!isFirstAccessMode && !!initialData),
         excludeId
       ),
       defaultValues,
@@ -713,7 +717,9 @@ const DadosPessoaisStep = ({
                 onChange={(e) =>
                   setValue('cpf', applyMask(e.target.value, 'cpf'))
                 }
-                disabled={isFirstAccessMode}
+                disabled={
+                  isFirstAccessMode || (!isFirstAccessMode && !!initialData)
+                }
                 onBlur={(e) =>
                   !isFirstAccessMode && validateCpfUniqueness!(e.target.value)
                 }
