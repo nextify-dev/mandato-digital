@@ -1,5 +1,6 @@
 // src/screens/DashboardV1/views/GestaoEleitores.tsx
-import { useState, useRef, useEffect } from 'react'
+
+import { useState, useRef } from 'react'
 import * as S from './styles'
 import { Button, Input, Select, Tag, Avatar } from 'antd'
 import { LuUserPen, LuTrash2, LuLock, LuLockOpen, LuEye } from 'react-icons/lu'
@@ -171,23 +172,6 @@ const CadastroEleitoresView = () => {
     }
   ]
 
-  // Resetar o formulário ao abrir o modal de criação
-  useEffect(() => {
-    if (isCreateModalOpen && formRef.current) {
-      formRef.current.reset() // Reseta para os defaultValues padrão
-      setCurrentStep(0)
-    }
-  }, [isCreateModalOpen])
-
-  // Resetar o formulário ao abrir o modal de edição com os dados do eleitor selecionado
-  useEffect(() => {
-    if (isEditModalOpen && selectedUser && formRef.current) {
-      const initialData = getInitialData(selectedUser)
-      formRef.current.reset(initialData) // Reseta com os dados do eleitor
-      setCurrentStep(0)
-    }
-  }, [isEditModalOpen, selectedUser, getInitialData])
-
   const handleSearch = (value: string) => {
     setFilters({
       ...filters,
@@ -291,9 +275,19 @@ const CadastroEleitoresView = () => {
 
   const handleModalOpen = (type: 'create' | 'edit') => {
     if (type === 'create') {
+      setSelectedUser(null) // Garante que selectedUser seja null para criação
+      setCurrentStep(0)
       setIsCreateModalOpen(true)
+      if (formRef.current) {
+        formRef.current.reset() // Reseta imediatamente para os defaultValues padrão
+      }
     } else if (type === 'edit' && selectedUser) {
+      setCurrentStep(0)
       setIsEditModalOpen(true)
+      if (formRef.current) {
+        const initialData = getInitialData(selectedUser)
+        formRef.current.reset(initialData) // Reseta com os dados do eleitor
+      }
     }
   }
 

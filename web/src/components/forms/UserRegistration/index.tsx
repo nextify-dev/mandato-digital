@@ -89,7 +89,7 @@ const UserRegistrationForm = forwardRef<
           password: mode === 'firstAccess' ? '' : undefined,
           confirmPassword: mode === 'firstAccess' ? '' : undefined,
           observacoes: undefined,
-          role: mode === 'userCreation' ? undefined : UserRole.ELEITOR,
+          role: mode === 'userCreation' ? undefined : undefined, // Removemos UserRole.ELEITOR como padrão
           creationMode: undefined,
           voterId: undefined
         }
@@ -117,8 +117,14 @@ const UserRegistrationForm = forwardRef<
       watch,
       setError,
       clearErrors,
+      reset, // Adicionamos o reset ao destructuring
       formState: { errors, isValid }
     } = formMethods
+
+    // Resetar o formulário quando mode ou initialData mudar
+    useEffect(() => {
+      reset(defaultValues)
+    }, [mode, initialData, reset])
 
     const formData = watch()
     const creationMode = watch('creationMode') as
@@ -410,6 +416,7 @@ const UserRegistrationForm = forwardRef<
             isEdition={isEdition}
             validateEmailUniqueness={validateEmailUniqueness}
             validateCpfUniqueness={validateCpfUniqueness}
+            creationMode={creationMode} // Passamos o creationMode
           />
           <ContatoStep
             control={control}

@@ -1,5 +1,6 @@
 // src/screens/DashboardV1/views/GestaoUsuarios.tsx
-import { useState, useRef, useEffect } from 'react'
+
+import { useState, useRef } from 'react'
 import * as S from './styles'
 import { Button, Input, Select, Tag, Avatar } from 'antd'
 import { LuUserPen, LuTrash2, LuLock, LuLockOpen, LuEye } from 'react-icons/lu'
@@ -161,23 +162,6 @@ const CadastroUsuariosView = () => {
     }
   ]
 
-  // Resetar o formulário ao abrir o modal de criação
-  useEffect(() => {
-    if (isCreateModalOpen && formRef.current) {
-      formRef.current.reset() // Reseta para os defaultValues padrão
-      setCurrentStep(0)
-    }
-  }, [isCreateModalOpen])
-
-  // Resetar o formulário ao abrir o modal de edição com os dados do usuário selecionado
-  useEffect(() => {
-    if (isEditModalOpen && selectedUser && formRef.current) {
-      const initialData = getInitialData(selectedUser)
-      formRef.current.reset(initialData) // Reseta com os dados do usuário
-      setCurrentStep(0)
-    }
-  }, [isEditModalOpen, selectedUser, getInitialData])
-
   const handleSearch = (value: string) => {
     setFilters({
       ...filters,
@@ -288,7 +272,7 @@ const CadastroUsuariosView = () => {
     if (type === 'confirm') setIsConfirmModalOpen(false)
     if (type === 'delete') setIsDeleteModalOpen(false)
     if (formRef.current) {
-      formRef.current.reset() // Mantém o reset ao fechar, mas agora também reseta ao abrir
+      formRef.current.reset()
       setCurrentStep(0)
     }
     setSelectedUser(null)
@@ -296,9 +280,19 @@ const CadastroUsuariosView = () => {
 
   const handleModalOpen = (type: 'create' | 'edit') => {
     if (type === 'create') {
+      setSelectedUser(null) // Garante que selectedUser seja null para criação
+      setCurrentStep(0)
       setIsCreateModalOpen(true)
+      if (formRef.current) {
+        formRef.current.reset() // Reseta imediatamente para os defaultValues padrão
+      }
     } else if (type === 'edit' && selectedUser) {
+      setCurrentStep(0)
       setIsEditModalOpen(true)
+      if (formRef.current) {
+        const initialData = getInitialData(selectedUser)
+        formRef.current.reset(initialData) // Reseta com os dados do usuário
+      }
     }
   }
 

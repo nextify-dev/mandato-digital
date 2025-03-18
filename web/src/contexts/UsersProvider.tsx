@@ -133,28 +133,30 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
             'ID do eleitor é obrigatório para criação a partir de eleitor.'
           )
         }
+        const profileUpdates = {
+          nomeCompleto: userData.nomeCompleto,
+          cpf: userData.cpf ? removeMask(userData.cpf) : undefined,
+          dataNascimento: convertToISODate(userData.dataNascimento),
+          genero: userData.genero,
+          religiao: userData.religiao || null,
+          foto: userData.foto || null,
+          telefone: userData.telefone ? removeMask(userData.telefone) : null,
+          whatsapp: removeMask(userData.whatsapp),
+          instagram: userData.instagram || null,
+          facebook: userData.facebook || null,
+          cep: removeMask(userData.cep),
+          endereco: userData.endereco,
+          numero: userData.numero,
+          complemento: userData.complemento || null,
+          bairro: userData.bairro,
+          cidade: userData.cidade,
+          estado: userData.estado
+        }
+
         const updates = {
+          ...profileUpdates,
           role: userData.role,
-          profile: {
-            nomeCompleto: userData.nomeCompleto,
-            cpf: userData.cpf ? removeMask(userData.cpf) : undefined,
-            dataNascimento: convertToISODate(userData.dataNascimento),
-            genero: userData.genero,
-            religiao: userData.religiao || null,
-            foto: userData.foto || null,
-            telefone: userData.telefone ? removeMask(userData.telefone) : null,
-            whatsapp: removeMask(userData.whatsapp),
-            instagram: userData.instagram || null,
-            facebook: userData.facebook || null,
-            cep: removeMask(userData.cep),
-            endereco: userData.endereco,
-            numero: userData.numero,
-            complemento: userData.complemento || null,
-            bairro: userData.bairro,
-            cidade: userData.cidade,
-            estado: userData.estado
-          },
-          status: UserStatus.PENDENTE // ou outro status desejado
+          cityId: cityId
         }
         await authService.editUser(userData.voterId, updates)
         messageApi.success('Usuário criado a partir do eleitor com sucesso!')

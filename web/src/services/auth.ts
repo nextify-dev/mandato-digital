@@ -186,7 +186,7 @@ export const authService: AuthService = {
     let role: UserRole
     let status: UserStatus
     if (mode === 'firstAccess') {
-      role = data.role || UserRole.ELEITOR
+      role = existingUser!.role // Usa a role do convite original
       status = UserStatus.ATIVO
     } else if (mode === 'voterCreation') {
       role = UserRole.ELEITOR
@@ -222,7 +222,7 @@ export const authService: AuthService = {
     const profile: UserProfile = {
       foto: data.foto || null,
       nomeCompleto: data.nomeCompleto,
-      cpf: data.cpf ? removeMask(data.cpf) : '', // Garante que cpf seja string
+      cpf: data.cpf ? removeMask(data.cpf) : '',
       dataNascimento: convertToISODate(data.dataNascimento),
       genero: data.genero,
       religiao: data.religiao || null,
