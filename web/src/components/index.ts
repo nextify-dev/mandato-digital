@@ -9,6 +9,7 @@ import DynamicDescriptions from './DynamicDescriptions'
 
 import UserRegistrationForm from './forms/UserRegistration'
 import CityRegistrationForm from './forms/CityRegistration'
+import VisitRegistrationForm from './forms/VisitRegistration'
 
 export {
   DynamicDescriptions,
@@ -19,5 +20,6 @@ export {
   UserMenu,
   UserRegistrationForm,
   CityRegistrationForm,
+  VisitRegistrationForm,
   ActiveCity
 }

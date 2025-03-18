@@ -1,3 +1,8 @@
+export interface IAdminOption {
+  label: string
+  value: string
+}
+
 // ============================================== GENDER OPTIONS
 
 export const GENDER_OPTIONS = [

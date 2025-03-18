@@ -29,6 +29,7 @@ interface UserFilter {
 interface UsersContextData {
   users: User[]
   voters: User[]
+  allUsers: User[]
   loading: boolean
   filters: UserFilter
   setFilters: (filters: UserFilter) => void
@@ -54,6 +55,7 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
   const { cities } = useCities()
   const [users, setUsers] = useState<User[]>([])
   const [voters, setVoters] = useState<User[]>([])
+  const [allUsers, setAllUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
   const [filters, setFilters] = useState<UserFilter>({})
 
@@ -114,6 +116,10 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     fetchUsersAndVoters()
   }, [filters, user, cities])
+
+  useEffect(() => {
+    setAllUsers([...voters, ...users])
+  }, [user, voters])
 
   const createUser = async (
     userData: UserRegistrationFormType,
@@ -247,6 +253,7 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
       value={{
         users,
         voters,
+        allUsers,
         loading,
         filters,
         setFilters,
