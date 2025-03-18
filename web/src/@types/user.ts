@@ -1,5 +1,4 @@
 // src/@types/user.ts
-
 import { GENDER_OPTIONS, RELIGION_OPTIONS } from '@/data/options'
 import { authService } from '@/services/auth'
 import { convertToISODate, isValidCpf } from '@/utils/functions/masks'
@@ -10,7 +9,6 @@ export interface FormattedUserTag {
   color: string
 }
 
-// Enums para papéis e status
 export enum UserRole {
   ADMINISTRADOR_GERAL = 'Administrador_Geral',
   ADMINISTRADOR_CIDADE = 'Administrador_da_Cidade',
@@ -20,7 +18,6 @@ export enum UserRole {
   ELEITOR = 'Eleitor'
 }
 
-// Função para converter UserRole em uma label amigável
 export const getRoleData = (role?: UserRole): FormattedUserTag => {
   switch (role) {
     case UserRole.ADMINISTRADOR_GERAL:
@@ -47,7 +44,6 @@ export enum UserStatus {
   PENDENTE = 'pendente'
 }
 
-// Função para converter UserStatus em uma label amigável
 export const getStatusData = (status?: UserStatus): FormattedUserTag => {
   switch (status) {
     case UserStatus.ATIVO:
@@ -63,7 +59,6 @@ export const getStatusData = (status?: UserStatus): FormattedUserTag => {
   }
 }
 
-// Interface base para dados comuns a todos os usuários
 interface BaseUser {
   id: string
   email: string
@@ -74,7 +69,6 @@ interface BaseUser {
   cityId: string
 }
 
-// Interface para informações de perfil (completadas no primeiro acesso ou cadastro)
 export interface UserProfile {
   foto?: string | null
   nomeCompleto: string
@@ -95,7 +89,6 @@ export interface UserProfile {
   estado: string
 }
 
-// Interface para informações de acesso
 interface AccessInfo {
   invitedBy?: string | null
   invitationDate?: string | null
@@ -103,7 +96,6 @@ interface AccessInfo {
   isFirstAccess: boolean
 }
 
-// Interface para permissões específicas por papel
 export interface Permissions {
   canManageAllCities?: boolean
   canManageCityUsers?: boolean
@@ -114,7 +106,6 @@ export interface Permissions {
   canManageCampaigns?: boolean
 }
 
-// Interface principal do usuário
 export interface User extends BaseUser {
   vereadorId?: string | null
   caboEleitoralId?: string | null
@@ -123,7 +114,6 @@ export interface User extends BaseUser {
   permissions: Permissions
 }
 
-// Tipos específicos para cada papel (opcional, para maior especificidade)
 export interface AdministradorGeral extends User {
   role: UserRole.ADMINISTRADOR_GERAL
   permissions: {
@@ -202,7 +192,6 @@ export interface Eleitor extends User {
   }
 }
 
-// Tipo unificado para todos os usuários
 export type UserType =
   | AdministradorGeral
   | AdministradorCidade
@@ -211,7 +200,6 @@ export type UserType =
   | CaboEleitoral
   | Eleitor
 
-// Tipo único para o formulário dinâmico
 export interface UserRegistrationForm {
   email: string
   nomeCompleto: string
@@ -231,7 +219,7 @@ export interface UserRegistrationForm {
   bairro: string
   cidade: string
   estado: string
-  cityId?: string // Novo campo opcional para selecionar a cidade
+  cityId?: string
   password?: string
   confirmPassword?: string
   observacoes?: string
@@ -240,9 +228,14 @@ export interface UserRegistrationForm {
   voterId?: string
 }
 
-// Esquema dinâmico de validação baseado no modo
+export type FormMode =
+  | 'firstAccess'
+  | 'voterCreation'
+  | 'userCreation'
+  | 'viewOnly'
+
 export const getUserRegistrationSchema = (
-  mode: 'firstAccess' | 'voterCreation' | 'userCreation',
+  mode: FormMode,
   isEdition: boolean,
   excludeId?: string
 ) => {
@@ -337,23 +330,17 @@ export const getUserRegistrationSchema = (
             .string()
             .min(8, 'A senha deve ter no mínimo 8 caracteres')
             .required('Senha é obrigatória')
-        : yup
-            .string()
-            .notRequired()
-            .min(8, 'A senha deve ter no mínimo 8 caracteres'),
+        : yup.string().notRequired(),
     confirmPassword:
       mode === 'firstAccess'
         ? yup
             .string()
             .required('Confirmação de senha é obrigatória')
             .oneOf([yup.ref('password')], 'As senhas devem coincidir')
-        : yup
-            .string()
-            .notRequired()
-            .oneOf([yup.ref('password')], 'As senhas devem coincidir'),
+        : yup.string().notRequired(),
     observacoes: yup.string().nullable().optional(),
     role:
-      mode === 'userCreation'
+      mode === 'userCreation' && !isEdition
         ? yup
             .string()
             .required('Cargo é obrigatório')
@@ -363,22 +350,16 @@ export const getUserRegistrationSchema = (
               ),
               'Selecione um cargo válido'
             )
-        : yup
-            .string()
-            .notRequired()
-            .oneOf(Object.values(UserRole), 'Selecione um cargo válido'),
+        : yup.string().optional().oneOf(Object.values(UserRole)),
     creationMode:
-      mode === 'userCreation'
+      mode === 'userCreation' && !isEdition
         ? yup
             .string()
             .required('Modo de criação é obrigatório')
             .oneOf(['fromScratch', 'fromVoter'], 'Modo de criação inválido')
-        : yup
-            .string()
-            .notRequired()
-            .oneOf(['fromScratch', 'fromVoter'], 'Modo de criação inválido'),
+        : yup.string().notRequired().oneOf(['fromScratch', 'fromVoter']),
     voterId:
-      mode === 'userCreation'
+      mode === 'userCreation' && !isEdition
         ? yup
             .string()
             .when('creationMode', ([creationMode], schema) =>
@@ -390,7 +371,6 @@ export const getUserRegistrationSchema = (
   })
 }
 
-// Tipo inferido do esquema dinâmico
 export type UserRegistrationFormType = yup.InferType<
   ReturnType<typeof getUserRegistrationSchema>
 >

@@ -13,7 +13,8 @@ import {
   UserRole,
   UserStatus,
   UserRegistrationFormType,
-  UserProfile
+  UserProfile,
+  FormMode
 } from '@/@types/user'
 import { handleTranslateFbError } from '@/utils/functions/firebaseTranslateErrors'
 import { convertToISODate, removeMask } from '@/utils/functions/masks'
@@ -39,7 +40,7 @@ interface AuthService {
   completeRegistration(
     email: string,
     data: UserRegistrationFormType,
-    mode: 'firstAccess' | 'voterCreation' | 'userCreation',
+    mode: Exclude<FormMode, 'viewOnly'>,
     cityId: string
   ): Promise<User>
   getUserData(uid: string): Promise<User | null>
@@ -146,7 +147,7 @@ export const authService: AuthService = {
   async completeRegistration(
     email: string,
     data: UserRegistrationFormType,
-    mode: 'firstAccess' | 'voterCreation' | 'userCreation',
+    mode: Exclude<FormMode, 'viewOnly'>,
     cityId: string
   ): Promise<User> {
     const snapshot = await get(ref(db, 'users'))

@@ -1,11 +1,11 @@
 // src/contexts/UsersProvider.tsx
-
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { message } from 'antd'
 import { ref, get } from 'firebase/database'
 import { db } from '@/lib/firebase'
 import { authService } from '@/services/auth'
 import {
+  FormMode,
   User,
   UserRegistrationFormType,
   UserRole,
@@ -13,6 +13,7 @@ import {
 } from '@/@types/user'
 import { useAuth } from '@/contexts/AuthProvider'
 import { useCities } from '@/contexts/CitiesProvider'
+import { getInitialFormData } from '@/utils/functions/formData'
 
 interface UserFilter {
   cityId?: string
@@ -33,7 +34,7 @@ interface UsersContextData {
   createUser: (
     userData: UserRegistrationFormType,
     cityId: string,
-    mode: 'userCreation' | 'voterCreation'
+    mode: Exclude<FormMode, 'viewOnly' | 'viewOnly'>
   ) => Promise<void>
   updateUser: (
     userId: string,
@@ -64,7 +65,6 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
       const usersData = snapshot.val() || {}
       const allUsers = Object.values(usersData) as User[]
 
-      // Restringe usuários visíveis com base no papel do usuário logado
       const allowedCityIds =
         user.role === UserRole.ADMINISTRADOR_GERAL
           ? cities.map((city) => city.id)
@@ -117,7 +117,7 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
   const createUser = async (
     userData: UserRegistrationFormType,
     cityId: string,
-    mode: 'userCreation' | 'voterCreation'
+    mode: Exclude<FormMode, 'viewOnly' | 'viewOnly'>
   ) => {
     if (!user || !cities.some((city) => city.id === cityId)) {
       throw new Error('Cidade inválida ou usuário não autenticado')
@@ -198,28 +198,7 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   const getInitialData = (user: User): Partial<UserRegistrationFormType> => {
-    return {
-      email: user.email,
-      nomeCompleto: user.profile?.nomeCompleto || '',
-      cpf: user.profile?.cpf || '',
-      dataNascimento: user.profile?.dataNascimento || '',
-      genero: user.profile?.genero || undefined,
-      religiao: user.profile?.religiao || undefined,
-      foto: user.profile?.foto || null,
-      telefone: user.profile?.telefone || null,
-      whatsapp: user.profile?.whatsapp || '',
-      instagram: user.profile?.instagram || null,
-      facebook: user.profile?.facebook || null,
-      cep: user.profile?.cep || '',
-      endereco: user.profile?.endereco || '',
-      numero: user.profile?.numero || '',
-      complemento: user.profile?.complemento || null,
-      bairro: user.profile?.bairro || '',
-      cidade: user.profile?.cidade || '',
-      estado: user.profile?.estado || '',
-      role: user.role,
-      cityId: user.cityId || undefined
-    }
+    return getInitialFormData(user)
   }
 
   return (

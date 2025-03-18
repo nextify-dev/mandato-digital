@@ -1,5 +1,4 @@
 // src/screens/DashboardSignIn/index.tsx
-
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import * as S from './styles'
@@ -15,8 +14,8 @@ import {
   StyledInput,
   StyledCheckbox
 } from '@/utils/styles/antd'
-import { UserRegistrationFormType, User } from '@/@types/user'
-import { convertToISODate } from '@/utils/functions/masks'
+import { UserRegistrationFormType } from '@/@types/user'
+import { getInitialFormData } from '@/utils/functions/formData'
 
 interface SignInForm {
   email: string
@@ -40,7 +39,7 @@ const DashboardSignInScreen = () => {
     emailLocked,
     checkFirstAccess,
     setFirstAccess,
-    firstAccessData // Adicionado para pegar os dados do primeiro acesso
+    firstAccessData
   } = useAuth()
 
   const [currentStep, setCurrentStep] = useState(0)
@@ -76,11 +75,7 @@ const DashboardSignInScreen = () => {
   const handleCheckboxChange = (e: CheckboxChangeEvent) => {
     setFirstAccess(e.target.checked)
     setValue('email', emailValue)
-    if (e.target.checked) {
-      setCurrentStep(0)
-    } else {
-      setCurrentStep(0) // Reseta o passo ao voltar para o login
-    }
+    setCurrentStep(0)
   }
 
   const handleEmailBlur = async () => {
@@ -89,39 +84,15 @@ const DashboardSignInScreen = () => {
     }
   }
 
-  // Preenche os dados do primeiro acesso quando disponíveis
   const getFirstAccessInitialData = (): Partial<UserRegistrationFormType> => {
-    if (!firstAccessData || !firstAccessData.profile) {
-      return { email: emailValue }
-    }
-    const profile = firstAccessData.profile
-    return {
-      email: firstAccessData.email,
-      nomeCompleto: profile.nomeCompleto || '',
-      cpf: profile.cpf || '',
-      dataNascimento: profile.dataNascimento || '',
-      genero: profile.genero || undefined,
-      religiao: profile.religiao || undefined,
-      foto: profile.foto || null,
-      telefone: profile.telefone || null,
-      whatsapp: profile.whatsapp || '',
-      instagram: profile.instagram || null,
-      facebook: profile.facebook || null,
-      cep: profile.cep || '',
-      endereco: profile.endereco || '',
-      numero: profile.numero || '',
-      complemento: profile.complemento || null,
-      bairro: profile.bairro || '',
-      cidade: profile.cidade || '',
-      estado: profile.estado || '',
-      cityId: firstAccessData.cityId || undefined,
-      role: firstAccessData.role || undefined
-    }
+    return firstAccessData
+      ? getInitialFormData(firstAccessData)
+      : { email: emailValue }
   }
 
   const handleBackToLogin = () => {
     setFirstAccess(false)
-    setValue('email', '') // Limpa o email ao voltar
+    setValue('email', '')
     setValue('password', '')
     setCurrentStep(0)
   }

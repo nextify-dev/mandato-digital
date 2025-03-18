@@ -15,7 +15,8 @@ import {
   UserRegistrationFormType,
   UserType,
   UserRole,
-  UserStatus
+  UserStatus,
+  FormMode
 } from '@/@types/user'
 import { handleTranslateFbError } from '@/utils/functions/firebaseTranslateErrors'
 
@@ -139,7 +140,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const completeRegistration = async (
     email: string,
     data: UserRegistrationFormType,
-    mode: 'firstAccess' | 'voterCreation' | 'userCreation',
+    mode: Exclude<FormMode, 'viewOnly'>,
     cityId: string
   ) => {
     setIsAuthLoading(true)

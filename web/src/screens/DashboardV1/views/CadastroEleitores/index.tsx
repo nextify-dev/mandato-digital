@@ -1,4 +1,6 @@
-import { useState, useRef, useEffect } from 'react' // Adicionado useEffect
+// src/screens/DashboardV1/views/GestaoEleitores.tsx
+
+import { useState, useRef, useEffect } from 'react'
 import * as S from './styles'
 import { Button, Input, Select, Tag, Avatar } from 'antd'
 import { LuUserPen, LuTrash2, LuLock, LuLockOpen, LuEye } from 'react-icons/lu'
@@ -25,6 +27,7 @@ import { StyledAvatar } from '@/utils/styles/antd'
 import { useUsers } from '@/contexts/UsersProvider'
 import { useAuth } from '@/contexts/AuthProvider'
 import { useCities } from '@/contexts/CitiesProvider'
+import { getInitialFormData } from '@/utils/functions/formData'
 
 const { Search } = Input
 
@@ -145,7 +148,7 @@ const CadastroEleitoresView = () => {
               icon={record.status === 'ativo' ? <LuLockOpen /> : <LuLock />}
               onClick={() => {
                 setSelectedUser(record)
-                setIsConfirmModalOpen(true)
+                toggleUserStatus(record.id)
               }}
               disabled={isCurrentUser || !user?.permissions.canEditUsers}
             />
@@ -164,11 +167,10 @@ const CadastroEleitoresView = () => {
     }
   ]
 
-  // Efeito para resetar o formulário ao mudar o selectedUser ou abrir o modal de edição
   useEffect(() => {
     if (isEditModalOpen && selectedUser && formRef.current) {
       const initialData = getInitialData(selectedUser)
-      formRef.current.reset(initialData) // Reseta o formulário com os novos dados
+      formRef.current.reset(initialData)
     }
   }, [isEditModalOpen, selectedUser, getInitialData])
 
@@ -223,7 +225,6 @@ const CadastroEleitoresView = () => {
     if (selectedUser) {
       const profileUpdates: Partial<UserProfile> = {
         nomeCompleto: data.nomeCompleto,
-        cpf: data.cpf,
         dataNascimento: data.dataNascimento,
         genero: data.genero,
         religiao: data.religiao,
@@ -259,12 +260,13 @@ const CadastroEleitoresView = () => {
     }
   }
 
-  const handleModalClose = (type: 'create' | 'edit' | 'view') => {
+  const handleModalClose = (type: 'create' | 'edit' | 'view' | 'confirm') => {
     if (type === 'create') setIsCreateModalOpen(false)
     if (type === 'edit') setIsEditModalOpen(false)
     if (type === 'view') setIsViewModalOpen(false)
+    if (type === 'confirm') setIsConfirmModalOpen(false)
     if (formRef.current) {
-      formRef.current.reset() // Reseta o formulário ao fechar
+      formRef.current.reset()
       setCurrentStep(0)
     }
     setSelectedUser(null)
@@ -355,7 +357,8 @@ const CadastroEleitoresView = () => {
           <UserRegistrationForm
             onSubmit={handleEditVoter}
             mode="voterCreation"
-            initialData={getInitialData(selectedUser)} // Passa os dados iniciais
+            initialData={getInitialData(selectedUser)}
+            userId={selectedUser.id}
             ref={formRef}
             currentStep={currentStep}
             setCurrentStep={setCurrentStep}
@@ -387,18 +390,18 @@ const CadastroEleitoresView = () => {
             ? 'Confirmação de Bloqueio'
             : 'Confirmação de Desbloqueio'
         }
-        content={`Deseja ${
-          selectedUser?.status === UserStatus.ATIVO ? 'bloquear' : 'desbloquear'
-        } o eleitor ${selectedUser?.profile?.nomeCompleto || 'selecionado'}?`}
+        content={
+          selectedUser?.status === UserStatus.ATIVO
+            ? 'Deseja realmente bloquear este eleitor?'
+            : 'Deseja realmente desbloquear este eleitor?'
+        }
         visible={isConfirmModalOpen}
         onConfirm={
           selectedUser?.status === UserStatus.ATIVO
             ? handleToggleStatus
             : handleDeleteVoter
         }
-        onCancel={() => setIsConfirmModalOpen(false)}
-        confirmText="Sim"
-        cancelText="Não"
+        onCancel={() => handleModalClose('confirm')}
       />
     </View>
   )

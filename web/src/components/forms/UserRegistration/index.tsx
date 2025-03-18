@@ -1,5 +1,4 @@
 // src/components/forms/UserRegistration/index.tsx
-
 import React, { useEffect, forwardRef, Ref } from 'react'
 import * as S from './styles'
 import { Steps, Select, Input } from 'antd'
@@ -22,11 +21,11 @@ import {
   getUserRegistrationSchema,
   UserRegistrationFormType,
   getRoleData,
-  User
+  User,
+  FormMode
 } from '@/@types/user'
 import { FormInputsWrapper, FormStep } from '@/utils/styles/commons'
 import { fetchAddressByCep } from '@/utils/functions/geolocation'
-import { auth } from '@/lib/firebase'
 import { useUsers } from '@/contexts/UsersProvider'
 import { useModalForm } from '@/hooks/useModalForm'
 import { DefaultValues } from 'react-hook-form'
@@ -36,10 +35,9 @@ import DynamicDescriptions, {
 import { authService } from '@/services/auth'
 import { useAuth } from '@/contexts/AuthProvider'
 import { useCities } from '@/contexts/CitiesProvider'
+import { getInitialFormData } from '@/utils/functions/formData'
 
 const { TextArea } = Input
-
-type FormMode = 'firstAccess' | 'voterCreation' | 'userCreation' | 'viewOnly'
 
 interface UserRegistrationFormProps {
   onSubmit?: (
@@ -64,58 +62,45 @@ const UserRegistrationForm = forwardRef<
     const { user } = useAuth()
     const { cities } = useCities()
     const [filteredVoters, setFilteredVoters] = React.useState<User[]>([])
+    const isEdition = !!initialData && mode !== 'firstAccess'
 
-    const defaultValues: DefaultValues<UserRegistrationFormType> = {
-      email: initialData?.email || '',
-      nomeCompleto: initialData?.nomeCompleto || '',
-      cpf: (initialData?.cpf && applyMask(initialData?.cpf, 'cpf')) || '',
-      dataNascimento:
-        (initialData?.dataNascimento &&
-          applyMask(initialData?.dataNascimento, 'birthDate')) ||
-        '',
-      // dataNascimento: initialData?.dataNascimento || '',
-      genero: initialData?.genero || undefined,
-      religiao: initialData?.religiao || undefined,
-      foto: initialData?.foto || null,
-      telefone:
-        (initialData?.telefone && applyMask(initialData?.telefone, 'phone')) ||
-        null,
-      whatsapp:
-        (initialData?.whatsapp && applyMask(initialData?.whatsapp, 'phone')) ||
-        '',
-      instagram: initialData?.instagram || null,
-      facebook: initialData?.facebook || null,
-      cep: (initialData?.cep && applyMask(initialData?.cep, 'cep')) || '',
-      endereco: initialData?.endereco || '',
-      numero: initialData?.numero || '',
-      complemento: initialData?.complemento || null,
-      bairro: initialData?.bairro || '',
-      cidade: initialData?.cidade || '',
-      estado: initialData?.estado || '',
-      password: mode === 'firstAccess' ? '' : undefined,
-      confirmPassword: mode === 'firstAccess' ? '' : undefined,
-      observacoes: initialData?.observacoes || undefined,
-      role: mode === 'userCreation' ? undefined : initialData?.role,
-      creationMode: mode === 'userCreation' ? 'fromScratch' : undefined,
-      voterId: undefined,
-      cityId: initialData?.cityId || undefined
-    }
+    const defaultValues: DefaultValues<UserRegistrationFormType> = initialData
+      ? getInitialFormData(initialData)
+      : {
+          email: '',
+          nomeCompleto: '',
+          cpf: '',
+          dataNascimento: '',
+          genero: undefined,
+          religiao: undefined,
+          foto: null,
+          telefone: null,
+          whatsapp: '',
+          instagram: null,
+          facebook: null,
+          cep: '',
+          endereco: '',
+          numero: '',
+          complemento: null,
+          bairro: '',
+          cidade: '',
+          estado: '',
+          cityId: undefined,
+          password: mode === 'firstAccess' ? '' : undefined,
+          confirmPassword: mode === 'firstAccess' ? '' : undefined,
+          observacoes: undefined,
+          role: mode === 'userCreation' ? undefined : UserRole.ELEITOR,
+          creationMode: undefined,
+          voterId: undefined
+        }
 
-    console.log(mode, initialData?.cpf, defaultValues?.cpf)
-
-    const excludeId = userId
-    const isFirstAccessMode = mode === 'firstAccess'
     const formMethods = useModalForm<UserRegistrationFormType>({
-      schema: getUserRegistrationSchema(
-        mode === 'viewOnly' ? 'voterCreation' : mode,
-        isFirstAccessMode || (!isFirstAccessMode && !!initialData),
-        excludeId
-      ),
+      schema: getUserRegistrationSchema(mode, isEdition, userId),
       defaultValues,
       onSubmit: async (data: UserRegistrationFormType) => {
         const cityId =
           user?.role === UserRole.ADMINISTRADOR_GERAL
-            ? formData.cityId ?? user?.cityId
+            ? data.cityId ?? user?.cityId
             : user?.cityId
         if (onSubmit) {
           await onSubmit({ ...data, cityId })
@@ -142,12 +127,12 @@ const UserRegistrationForm = forwardRef<
       | undefined
 
     useEffect(() => {
-      if (mode === 'userCreation') {
-        const currentUserId = auth.currentUser?.uid
+      if (mode === 'userCreation' && !isEdition) {
+        const currentUserId = user?.id
         const voterList = voters.filter((voter) => voter.id !== currentUserId)
         setFilteredVoters(voterList)
       }
-    }, [mode, voters])
+    }, [mode, voters, user, isEdition])
 
     const USER_ROLE_OPTIONS = Object.values(UserRole)
       .filter((role) => role !== UserRole.ELEITOR)
@@ -167,7 +152,7 @@ const UserRegistrationForm = forwardRef<
     }))
 
     const steps = [
-      ...(mode === 'userCreation'
+      ...(mode === 'userCreation' && !isEdition
         ? [
             {
               title: 'Modo de Criação',
@@ -194,8 +179,7 @@ const UserRegistrationForm = forwardRef<
           'nomeCompleto',
           'cpf',
           'dataNascimento',
-          'genero',
-          'religiao'
+          'genero'
         ]
       },
       {
@@ -226,8 +210,11 @@ const UserRegistrationForm = forwardRef<
       },
       {
         title:
-          mode === 'firstAccess' ? 'Revisão e Senha' : 'Revisão e Orientação',
-        fields: mode === 'firstAccess' ? ['password', 'confirmPassword'] : [],
+          mode === 'firstAccess' ? 'Revisão e Senha' : 'Revisão e Observações',
+        fields:
+          mode === 'firstAccess'
+            ? ['password', 'confirmPassword']
+            : ['observacoes'],
         requiredFields:
           mode === 'firstAccess' ? ['password', 'confirmPassword'] : []
       }
@@ -273,7 +260,8 @@ const UserRegistrationForm = forwardRef<
     }
 
     const validateEmailUniqueness = async (email: string) => {
-      const isUnique = await authService.checkEmailUniqueness(email, excludeId)
+      if (isEdition || mode === 'firstAccess') return
+      const isUnique = await authService.checkEmailUniqueness(email, userId)
       if (!isUnique) {
         setError('email', {
           type: 'manual',
@@ -286,7 +274,8 @@ const UserRegistrationForm = forwardRef<
     }
 
     const validateCpfUniqueness = async (cpf: string) => {
-      const isUnique = await authService.checkCpfUniqueness(cpf, excludeId)
+      if (isEdition || mode === 'firstAccess') return
+      const isUnique = await authService.checkCpfUniqueness(cpf, userId)
       if (!isUnique) {
         setError('cpf', {
           type: 'manual',
@@ -359,14 +348,8 @@ const UserRegistrationForm = forwardRef<
 
     const renderViewOnlyMode = () => {
       const viewFields = [
-        ...(mode === 'userCreation'
+        ...(mode === 'userCreation' && initialData?.role !== UserRole.ELEITOR
           ? [
-              {
-                key: 'creationMode',
-                label: 'Modo de Criação',
-                render: (value: string) =>
-                  value === 'fromScratch' ? 'Do zero' : 'A partir de eleitor'
-              },
               {
                 key: 'role',
                 label: 'Cargo',
@@ -402,7 +385,7 @@ const UserRegistrationForm = forwardRef<
           labelPlacement="vertical"
         />
         <S.UserRegistrationFormContent>
-          {mode === 'userCreation' && (
+          {mode === 'userCreation' && !isEdition && (
             <CreationModeStep
               control={control}
               errors={errors}
@@ -421,8 +404,10 @@ const UserRegistrationForm = forwardRef<
             errors={errors}
             setValue={setValue}
             mode={mode}
-            visible={currentStep === (mode === 'userCreation' ? 1 : 0)}
-            initialData={initialData}
+            visible={
+              currentStep === (mode === 'userCreation' && !isEdition ? 1 : 0)
+            }
+            isEdition={isEdition}
             validateEmailUniqueness={validateEmailUniqueness}
             validateCpfUniqueness={validateCpfUniqueness}
           />
@@ -430,14 +415,18 @@ const UserRegistrationForm = forwardRef<
             control={control}
             errors={errors}
             setValue={setValue}
-            visible={currentStep === (mode === 'userCreation' ? 2 : 1)}
+            visible={
+              currentStep === (mode === 'userCreation' && !isEdition ? 2 : 1)
+            }
           />
           <EnderecoStep
             control={control}
             errors={errors}
             setValue={setValue}
             trigger={trigger}
-            visible={currentStep === (mode === 'userCreation' ? 3 : 2)}
+            visible={
+              currentStep === (mode === 'userCreation' && !isEdition ? 3 : 2)
+            }
             isAdminGeral={user?.role === UserRole.ADMINISTRADOR_GERAL}
             cityOptions={CITY_OPTIONS}
           />
@@ -447,7 +436,9 @@ const UserRegistrationForm = forwardRef<
             setValue={setValue}
             formData={formData}
             mode={mode}
-            visible={currentStep === (mode === 'userCreation' ? 4 : 3)}
+            visible={
+              currentStep === (mode === 'userCreation' && !isEdition ? 4 : 3)
+            }
             descriptionFields={descriptionFields}
           />
         </S.UserRegistrationFormContent>
@@ -470,7 +461,7 @@ const UserRegistrationForm = forwardRef<
               onClick={handleSubmitClick}
               disabled={!isValid}
             >
-              {!!initialData ? 'Atualizar Cadastro' : 'Completar Cadastro'}
+              {isEdition ? 'Atualizar Cadastro' : 'Completar Cadastro'}
             </StyledButton>
           )}
         </S.UserRegistrationFormFooter>
@@ -481,8 +472,6 @@ const UserRegistrationForm = forwardRef<
 
 UserRegistrationForm.displayName = 'UserRegistrationForm'
 export default UserRegistrationForm
-
-// STEPS COMPONENTS
 
 interface IUserRegistrationStep {
   control: any
@@ -497,7 +486,7 @@ interface IUserRegistrationStep {
   voters?: User[]
   creationMode?: 'fromScratch' | 'fromVoter' | undefined
   loadingVoters?: boolean
-  initialData?: Partial<UserRegistrationFormType>
+  isEdition?: boolean
   descriptionFields?: DynamicDescriptionsField<UserRegistrationFormType>[]
   validateEmailUniqueness?: (email: string) => Promise<void>
   validateCpfUniqueness?: (cpf: string) => Promise<void>
@@ -519,33 +508,11 @@ const CreationModeStep = ({
 }: IUserRegistrationStep) => {
   const handleVoterSelect = (voterId: string) => {
     const selectedVoter = voters?.find((voter) => voter.id === voterId)
-    if (selectedVoter && selectedVoter.profile) {
-      setValue('email', selectedVoter.email)
-      setValue('nomeCompleto', selectedVoter.profile.nomeCompleto)
-      setValue('cpf', applyMask(selectedVoter.profile.cpf, 'cpf'))
-      setValue(
-        'dataNascimento',
-        applyMask(selectedVoter.profile.dataNascimento, 'birthDate')
-      )
-      setValue('genero', selectedVoter.profile.genero)
-      setValue('religiao', selectedVoter.profile.religiao || undefined)
-      setValue('foto', selectedVoter.profile.foto || null)
-      setValue(
-        'telefone',
-        (selectedVoter.profile.telefone &&
-          applyMask(selectedVoter.profile.telefone, 'phone')) ||
-          null
-      )
-      setValue('whatsapp', applyMask(selectedVoter.profile.whatsapp, 'phone'))
-      setValue('instagram', selectedVoter.profile.instagram || null)
-      setValue('facebook', selectedVoter.profile.facebook || null)
-      setValue('cep', applyMask(selectedVoter.profile.cep, 'cep'))
-      setValue('endereco', selectedVoter.profile.endereco)
-      setValue('numero', selectedVoter.profile.numero)
-      setValue('complemento', selectedVoter.profile.complemento || null)
-      setValue('bairro', selectedVoter.profile.bairro)
-      setValue('cidade', selectedVoter.profile.cidade)
-      setValue('estado', selectedVoter.profile.estado)
+    if (selectedVoter) {
+      const initialData = getInitialFormData(selectedVoter)
+      Object.entries(initialData).forEach(([key, value]) => {
+        setValue(key as keyof UserRegistrationFormType, value)
+      })
       trigger()
     }
   }
@@ -658,12 +625,10 @@ const DadosPessoaisStep = ({
   setValue,
   visible,
   mode,
-  initialData,
+  isEdition,
   validateEmailUniqueness,
   validateCpfUniqueness
 }: IUserRegistrationStep) => {
-  const isFirstAccessMode = mode === 'firstAccess'
-
   return (
     <FormStep visible={visible ? 1 : 0}>
       <Controller
@@ -678,12 +643,8 @@ const DadosPessoaisStep = ({
             <StyledInput
               {...field}
               placeholder="Digite seu email"
-              disabled={
-                isFirstAccessMode || (!isFirstAccessMode && !!initialData)
-              }
-              onBlur={(e) =>
-                !isFirstAccessMode && validateEmailUniqueness!(e.target.value)
-              }
+              disabled={isEdition || mode === 'firstAccess'}
+              onBlur={(e) => validateEmailUniqueness!(e.target.value)}
             />
           </StyledForm.Item>
         )}
@@ -717,12 +678,8 @@ const DadosPessoaisStep = ({
                 onChange={(e) =>
                   setValue('cpf', applyMask(e.target.value, 'cpf'))
                 }
-                disabled={
-                  isFirstAccessMode || (!isFirstAccessMode && !!initialData)
-                }
-                onBlur={(e) =>
-                  !isFirstAccessMode && validateCpfUniqueness!(e.target.value)
-                }
+                disabled={isEdition || mode === 'firstAccess'}
+                onBlur={(e) => validateCpfUniqueness!(e.target.value)}
               />
             </StyledForm.Item>
           )}
@@ -739,12 +696,12 @@ const DadosPessoaisStep = ({
               <StyledInput
                 {...field}
                 placeholder="DD/MM/AAAA"
-                onChange={(e) => {
+                onChange={(e) =>
                   setValue(
                     'dataNascimento',
                     applyMask(e.target.value, 'birthDate')
                   )
-                }}
+                }
               />
             </StyledForm.Item>
           )}
@@ -1088,14 +1045,8 @@ const ReviewStep = ({
   descriptionFields
 }: IUserRegistrationStep) => {
   const reviewFields = [
-    ...(mode === 'userCreation'
+    ...(mode === 'userCreation' && formData.role !== UserRole.ELEITOR
       ? [
-          {
-            key: 'creationMode',
-            label: 'Modo de Criação',
-            render: (value: string) =>
-              value === 'fromScratch' ? 'Do zero' : 'A partir de eleitor'
-          },
           {
             key: 'role',
             label: 'Cargo',
