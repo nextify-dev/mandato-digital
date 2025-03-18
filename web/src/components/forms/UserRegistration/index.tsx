@@ -73,6 +73,7 @@ const UserRegistrationForm = forwardRef<
         (initialData?.dataNascimento &&
           applyMask(initialData?.dataNascimento, 'birthDate')) ||
         '',
+      // dataNascimento: initialData?.dataNascimento || '',
       genero: initialData?.genero || undefined,
       religiao: initialData?.religiao || undefined,
       foto: initialData?.foto || null,
@@ -657,6 +658,8 @@ const DadosPessoaisStep = ({
   validateEmailUniqueness,
   validateCpfUniqueness
 }: IUserRegistrationStep) => {
+  const isFirstAccessMode = mode === 'firstAccess'
+
   return (
     <FormStep visible={visible ? 1 : 0}>
       <Controller
@@ -671,8 +674,12 @@ const DadosPessoaisStep = ({
             <StyledInput
               {...field}
               placeholder="Digite seu email"
-              disabled={mode !== 'firstAccess' && !!initialData}
-              onBlur={(e) => validateEmailUniqueness!(e.target.value)}
+              disabled={
+                isFirstAccessMode || (!isFirstAccessMode && !!initialData)
+              }
+              onBlur={(e) =>
+                !isFirstAccessMode && validateEmailUniqueness!(e.target.value)
+              }
             />
           </StyledForm.Item>
         )}
@@ -706,7 +713,10 @@ const DadosPessoaisStep = ({
                 onChange={(e) =>
                   setValue('cpf', applyMask(e.target.value, 'cpf'))
                 }
-                onBlur={(e) => validateCpfUniqueness!(e.target.value)}
+                disabled={isFirstAccessMode}
+                onBlur={(e) =>
+                  !isFirstAccessMode && validateCpfUniqueness!(e.target.value)
+                }
               />
             </StyledForm.Item>
           )}
@@ -723,12 +733,12 @@ const DadosPessoaisStep = ({
               <StyledInput
                 {...field}
                 placeholder="DD/MM/AAAA"
-                onChange={(e) =>
+                onChange={(e) => {
                   setValue(
                     'dataNascimento',
                     applyMask(e.target.value, 'birthDate')
                   )
-                }
+                }}
               />
             </StyledForm.Item>
           )}

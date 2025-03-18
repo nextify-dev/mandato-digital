@@ -35,6 +35,23 @@ const maskFunctions = {
       .replace(/(-\d{3})\d+?$/, '$1')
   },
   birthDate: (value: string) => {
+    console.log(value)
+    // Regex para verificar se está no formato ISO (YYYY-MM-DD)
+    const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/
+
+    if (isoDateRegex.test(value)) {
+      // Se for formato ISO, converte para DD/MM/AAAA
+      const [year, month, day] = value.split('-').map(Number)
+      if (!day || !month || !year || isNaN(new Date(value).getTime())) {
+        console.error('Data ISO inválida:', value)
+        return 'N/A'
+      }
+      return `${day.toString().padStart(2, '0')}/${month
+        .toString()
+        .padStart(2, '0')}/${year}`
+    }
+
+    // Se não for ISO, aplica a formatação padrão para DD/MM/AAAA
     return value
       .replace(/\D/g, '')
       .replace(/(\d{2})(\d)/, '$1/$2')
@@ -139,9 +156,23 @@ export const sanitizeEmail = (email: string): string => {
 
 // Converte data no formato DD/MM/AAAA para ISO
 export const convertToISODate = (date: string): string => {
+  const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/
+
+  if (isoDateRegex.test(date)) {
+    const isValidDate = !isNaN(new Date(date).getTime())
+    if (isValidDate) {
+      return date
+    }
+    throw new Error('Data ISO inválida fornecida')
+  }
+
   const [day, month, year] = date.split('/').map(Number)
-  return `${year}-${month?.toString().padStart(2, '0')}-${day
-    ?.toString()
+  if (!day || !month || !year) {
+    throw new Error('Formato de data inválido')
+  }
+
+  return `${year}-${month.toString().padStart(2, '0')}-${day
+    .toString()
     .padStart(2, '0')}`
 }
 

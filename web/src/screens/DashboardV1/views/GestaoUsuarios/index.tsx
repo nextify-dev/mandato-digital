@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react' // Adicionado useEffect
 import * as S from './styles'
 import {
   LuUserPen,
@@ -181,6 +181,14 @@ const GestaoUsuariosView = () => {
       width: 180
     }
   ]
+
+  // Efeito para resetar o formulário ao abrir o modal de edição ou mudar o selectedUser
+  useEffect(() => {
+    if (isEditModalOpen && selectedUser && formRef.current) {
+      const initialData = getInitialData(selectedUser)
+      formRef.current.reset(initialData) // Reseta o formulário com os novos dados
+    }
+  }, [isEditModalOpen, selectedUser, getInitialData])
 
   const handleSearch = (value: string) => {
     setFilters({
@@ -385,7 +393,7 @@ const GestaoUsuariosView = () => {
         {isEditModalOpen && selectedUser && (
           <UserRegistrationForm
             onSubmit={handleEditUser}
-            mode="voterCreation"
+            mode="userCreation" // Alterado para userCreation para permitir edição de role
             initialData={getInitialData(selectedUser)}
             userId={selectedUser.id}
             ref={formRef}

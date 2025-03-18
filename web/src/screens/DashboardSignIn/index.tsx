@@ -15,7 +15,8 @@ import {
   StyledInput,
   StyledCheckbox
 } from '@/utils/styles/antd'
-import { UserRegistrationFormType } from '@/@types/user'
+import { UserRegistrationFormType, User } from '@/@types/user'
+import { convertToISODate } from '@/utils/functions/masks'
 
 interface SignInForm {
   email: string
@@ -38,7 +39,8 @@ const DashboardSignInScreen = () => {
     isFirstAccessEligible,
     emailLocked,
     checkFirstAccess,
-    setFirstAccess
+    setFirstAccess,
+    firstAccessData // Adicionado para pegar os dados do primeiro acesso
   } = useAuth()
 
   const [currentStep, setCurrentStep] = useState(0)
@@ -67,12 +69,8 @@ const DashboardSignInScreen = () => {
   }
 
   const onFirstAccessSubmit = async (data: UserRegistrationFormType) => {
-    await completeRegistration(
-      data.email,
-      data,
-      'firstAccess',
-      'default-city-id'
-    )
+    const cityId = firstAccessData?.cityId!
+    await completeRegistration(data.email, data, 'firstAccess', cityId)
   }
 
   const handleCheckboxChange = (e: CheckboxChangeEvent) => {
@@ -80,6 +78,8 @@ const DashboardSignInScreen = () => {
     setValue('email', emailValue)
     if (e.target.checked) {
       setCurrentStep(0)
+    } else {
+      setCurrentStep(0) // Reseta o passo ao voltar para o login
     }
   }
 
@@ -89,17 +89,63 @@ const DashboardSignInScreen = () => {
     }
   }
 
+  // Preenche os dados do primeiro acesso quando disponíveis
+  const getFirstAccessInitialData = (): Partial<UserRegistrationFormType> => {
+    if (!firstAccessData || !firstAccessData.profile) {
+      return { email: emailValue }
+    }
+    const profile = firstAccessData.profile
+    return {
+      email: firstAccessData.email,
+      nomeCompleto: profile.nomeCompleto || '',
+      cpf: profile.cpf || '',
+      dataNascimento: profile.dataNascimento || '',
+      genero: profile.genero || undefined,
+      religiao: profile.religiao || undefined,
+      foto: profile.foto || null,
+      telefone: profile.telefone || null,
+      whatsapp: profile.whatsapp || '',
+      instagram: profile.instagram || null,
+      facebook: profile.facebook || null,
+      cep: profile.cep || '',
+      endereco: profile.endereco || '',
+      numero: profile.numero || '',
+      complemento: profile.complemento || null,
+      bairro: profile.bairro || '',
+      cidade: profile.cidade || '',
+      estado: profile.estado || '',
+      cityId: firstAccessData.cityId || undefined,
+      role: firstAccessData.role || undefined
+    }
+  }
+
+  const handleBackToLogin = () => {
+    setFirstAccess(false)
+    setValue('email', '') // Limpa o email ao voltar
+    setValue('password', '')
+    setCurrentStep(0)
+  }
+
   return (
     <S.DashboardSignInScreen>
       <S.SignInContainer active={isFirstAccess ? 1 : 0}>
         {isFirstAccess ? (
-          <UserRegistrationForm
-            onSubmit={onFirstAccessSubmit}
-            initialData={{ email: emailValue }}
-            mode="firstAccess"
-            currentStep={currentStep}
-            setCurrentStep={setCurrentStep}
-          />
+          <>
+            <UserRegistrationForm
+              onSubmit={onFirstAccessSubmit}
+              initialData={getFirstAccessInitialData()}
+              mode="firstAccess"
+              currentStep={currentStep}
+              setCurrentStep={setCurrentStep}
+            />
+            <StyledButton
+              onClick={handleBackToLogin}
+              style={{ marginTop: '16px' }}
+              block
+            >
+              Voltar para Login
+            </StyledButton>
+          </>
         ) : (
           <StyledForm onFinish={handleSubmit(onLoginSubmit)} layout="vertical">
             <Controller

@@ -1,5 +1,4 @@
-// src/screens/DashboardV1/views/CadastroEleitores/index.tsx
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react' // Adicionado useEffect
 import * as S from './styles'
 import { Button, Input, Select, Tag, Avatar } from 'antd'
 import { LuUserPen, LuTrash2, LuLock, LuLockOpen, LuEye } from 'react-icons/lu'
@@ -165,6 +164,14 @@ const CadastroEleitoresView = () => {
     }
   ]
 
+  // Efeito para resetar o formulário ao mudar o selectedUser ou abrir o modal de edição
+  useEffect(() => {
+    if (isEditModalOpen && selectedUser && formRef.current) {
+      const initialData = getInitialData(selectedUser)
+      formRef.current.reset(initialData) // Reseta o formulário com os novos dados
+    }
+  }, [isEditModalOpen, selectedUser, getInitialData])
+
   const handleSearch = (value: string) => {
     setFilters({
       ...filters,
@@ -204,7 +211,7 @@ const CadastroEleitoresView = () => {
   const handleCreateVoter = async (
     data: UserRegistrationFormType & { cityId?: string }
   ) => {
-    const cityId = data.cityId ?? user?.cityId // Usa o cityId do formulário ou fallback para user.cityId
+    const cityId = data.cityId ?? user?.cityId
     if (!cityId) throw new Error('Nenhuma cidade associada ao usuário')
     await createUser(data, cityId, 'voterCreation')
     setIsCreateModalOpen(false)
@@ -257,7 +264,7 @@ const CadastroEleitoresView = () => {
     if (type === 'edit') setIsEditModalOpen(false)
     if (type === 'view') setIsViewModalOpen(false)
     if (formRef.current) {
-      formRef.current.reset()
+      formRef.current.reset() // Reseta o formulário ao fechar
       setCurrentStep(0)
     }
     setSelectedUser(null)
@@ -348,7 +355,7 @@ const CadastroEleitoresView = () => {
           <UserRegistrationForm
             onSubmit={handleEditVoter}
             mode="voterCreation"
-            initialData={getInitialData(selectedUser)}
+            initialData={getInitialData(selectedUser)} // Passa os dados iniciais
             ref={formRef}
             currentStep={currentStep}
             setCurrentStep={setCurrentStep}

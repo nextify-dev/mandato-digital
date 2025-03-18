@@ -154,16 +154,19 @@ export const authService: AuthService = {
     let tempId: string | undefined
     let existingUser: User | undefined
 
-    const emailExists = Object.values(users).some(
-      (user: any) => user.email === email && user.id !== tempId
-    )
-    const cpfExists = Object.values(users).some(
-      (user: any) =>
-        user.profile?.cpf === removeMask(data.cpf) && user.id !== tempId
-    )
+    // Validação de unicidade apenas para modos que não são 'firstAccess'
+    if (mode !== 'firstAccess') {
+      const emailExists = Object.values(users).some(
+        (user: any) => user.email === email && user.id !== tempId
+      )
+      const cpfExists = Object.values(users).some(
+        (user: any) =>
+          user.profile?.cpf === removeMask(data.cpf) && user.id !== tempId
+      )
 
-    if (emailExists) throw new Error('Este email já está registrado')
-    if (cpfExists) throw new Error('Este CPF já está registrado')
+      if (emailExists) throw new Error('Este email já está registrado')
+      if (cpfExists) throw new Error('Este CPF já está registrado')
+    }
 
     if (mode === 'firstAccess') {
       const tempUserEntry = Object.entries(users).find(
@@ -386,7 +389,6 @@ export const authService: AuthService = {
     }
   },
 
-  // Função de exclusão atualizada
   async deleteUser(uid: string): Promise<void> {
     const currentUser = auth.currentUser
     if (!currentUser) throw new Error('Usuário não autenticado')
@@ -398,7 +400,6 @@ export const authService: AuthService = {
     const targetUserData = await this.getUserData(uid)
     if (!targetUserData) throw new Error('Usuário alvo não encontrado')
 
-    // Verifica permissões
     if (
       !currentUserData.permissions.canEditUsers ||
       (currentUserData.role === UserRole.ADMINISTRADOR_CIDADE &&
@@ -407,7 +408,6 @@ export const authService: AuthService = {
       throw new Error('Permissão insuficiente para excluir este usuário')
     }
 
-    // Impede exclusão de si mesmo ou de usuários com papéis superiores
     if (currentUser.uid === uid) {
       throw new Error('Você não pode excluir sua própria conta')
     }
@@ -418,22 +418,10 @@ export const authService: AuthService = {
       throw new Error('Não é possível excluir um Administrador Geral')
     }
 
-    // Remove apenas do Realtime Database
     const userRef = ref(db, `users/${uid}`)
     await remove(userRef)
-
-    // Espaço reservado para futura lógica de exclusão no Firebase Authentication via backend
-    /*
-    try {
-      // TODO: Implementar chamada ao backend (ex.: Cloud Function) para excluir o usuário no Firebase Authentication
-      // Exemplo: await deleteUserFromAuth({ uid });
-    } catch (error) {
-      console.warn('Erro ao excluir usuário do Firebase Authentication:', error);
-    }
-    */
   },
 
-  // Nova funcionalidade: Bloquear/Suspender usuário
   async blockUser(uid: string): Promise<User> {
     const currentUser = auth.currentUser
     if (!currentUser) throw new Error('Usuário não autenticado')
@@ -445,7 +433,6 @@ export const authService: AuthService = {
     const targetUserData = await this.getUserData(uid)
     if (!targetUserData) throw new Error('Usuário alvo não encontrado')
 
-    // Verifica permissões
     if (
       !currentUserData.permissions.canEditUsers ||
       (currentUserData.role === UserRole.ADMINISTRADOR_CIDADE &&
@@ -454,7 +441,6 @@ export const authService: AuthService = {
       throw new Error('Permissão insuficiente para bloquear este usuário')
     }
 
-    // Impede bloqueio de si mesmo ou de usuários com papéis superiores
     if (currentUser.uid === uid) {
       throw new Error('Você não pode bloquear sua própria conta')
     }
@@ -477,7 +463,6 @@ export const authService: AuthService = {
     return updatedUser
   },
 
-  // Nova funcionalidade: Editar usuário
   async editUser(
     uid: string,
     updatedData: Partial<UserProfile> & {
@@ -496,7 +481,6 @@ export const authService: AuthService = {
     const targetUserData = await this.getUserData(uid)
     if (!targetUserData) throw new Error('Usuário alvo não encontrado')
 
-    // Verifica permissões
     if (
       !currentUserData.permissions.canEditUsers ||
       (currentUserData.role === UserRole.ADMINISTRADOR_CIDADE &&
@@ -505,7 +489,6 @@ export const authService: AuthService = {
       throw new Error('Permissão insuficiente para editar este usuário')
     }
 
-    // Impede edição de papéis superiores por usuários com menos privilégios
     if (
       updatedData.role &&
       updatedData.role === UserRole.ADMINISTRADOR_GERAL &&
@@ -514,7 +497,6 @@ export const authService: AuthService = {
       throw new Error('Não é possível atribuir o papel de Administrador Geral')
     }
 
-    // Atualiza o perfil e/ou papel e/ou status
     const updatedProfile: UserProfile = {
       ...targetUserData.profile!,
       ...(updatedData.nomeCompleto && {

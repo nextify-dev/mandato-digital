@@ -26,6 +26,7 @@ interface IAuthContextData {
   isFirstAccess: boolean
   isFirstAccessEligible: boolean
   emailLocked: boolean
+  firstAccessData: User | undefined // Adicionado ao contexto
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   inviteUser: (email: string, role: UserRole, cityId: string) => Promise<void>
@@ -153,6 +154,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsAuth(true)
       setIsFirstAccess(false)
       setEmailLocked(false)
+      setFirstAccessData(undefined) // Limpa os dados após completar o registro
       messageApi.success('Cadastro concluído com sucesso!')
     } catch (error: any) {
       messageApi.error(error.message)
@@ -197,7 +199,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     setIsFirstAccessEligible(true)
-    setFirstAccessData(userData)
+    setFirstAccessData(userData) // Armazena os dados do usuário elegível
     if (isFirstAccess) {
       setEmailLocked(true)
     } else {
@@ -224,6 +226,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       isFirstAccess,
       isFirstAccessEligible,
       emailLocked,
+      firstAccessData, // Adicionado ao contexto retornado
       login,
       logout,
       inviteUser,
@@ -240,7 +243,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       isFirstAccess,
       isFirstAccessEligible,
       emailLocked,
-      firstAccessData
+      firstAccessData // Incluído nas dependências
     ]
   )
 

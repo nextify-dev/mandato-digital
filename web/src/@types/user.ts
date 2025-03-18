@@ -1,4 +1,5 @@
 // src/@types/user.ts
+
 import { GENDER_OPTIONS, RELIGION_OPTIONS } from '@/data/options'
 import { authService } from '@/services/auth'
 import { convertToISODate, isValidCpf } from '@/utils/functions/masks'
@@ -253,7 +254,7 @@ export const getUserRegistrationSchema = (
         'unique-email',
         'Este email já está registrado',
         async (value: string | undefined): Promise<boolean> => {
-          if (!value) return false
+          if (!value || mode === 'firstAccess') return true
           return await authService.checkEmailUniqueness(value, excludeId)
         }
       ),
@@ -270,7 +271,7 @@ export const getUserRegistrationSchema = (
         return isValidCpf(value)
       })
       .test('unique-cpf', 'Este CPF já está registrado', async (value) => {
-        if (!value) return false
+        if (!value || mode === 'firstAccess') return true
         return await authService.checkCpfUniqueness(value, excludeId)
       }),
     dataNascimento: yup
