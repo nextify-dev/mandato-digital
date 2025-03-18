@@ -1,3 +1,5 @@
+// src/services/cities.ts
+
 import { City, CityStatus } from '@/@types/city'
 import { UserRole } from '@/@types/user'
 import { db } from '@/lib/firebase'

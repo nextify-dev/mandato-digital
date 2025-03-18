@@ -1,6 +1,6 @@
 // src/components/forms/VisitRegistrationForm/index.tsx
 
-import React, { forwardRef, Ref, useEffect, useState } from 'react'
+import React, { forwardRef, Ref, useEffect } from 'react'
 import * as S from './styles'
 import { Controller, UseFormReturn, DefaultValues } from 'react-hook-form'
 import { Select, DatePicker, Upload, Button, Input, message } from 'antd'
@@ -74,14 +74,7 @@ const VisitRegistrationForm = forwardRef<
       if (initialData) {
         reset({
           ...defaultValues,
-          ...initialData,
-          voterId: initialData.voterId || '',
-          dateTime: initialData.dateTime || '',
-          status: initialData.status || VisitStatus.AGENDADA,
-          reason: initialData.reason || '',
-          relatedUserId: initialData.relatedUserId || '',
-          documents: initialData.documents || null,
-          observations: initialData.observations || null
+          ...initialData
         })
       }
     }, [initialData, reset])
@@ -175,7 +168,7 @@ const VisitRegistrationForm = forwardRef<
         {
           key: 'documents',
           label: 'Documentos',
-          render: (value: File[] | null) =>
+          render: (value) =>
             value && value.length > 0 ? `${value.length} anexos` : '-'
         },
         { key: 'observations', label: 'Observações', render: (v) => v ?? '-' }
@@ -222,6 +215,7 @@ const VisitRegistrationForm = forwardRef<
               errors={errors}
               setValue={setValue}
               visible={currentStep === 2}
+              mode={mode}
             />
             <ReviewStep
               control={control}
@@ -436,7 +430,8 @@ const ComplementsStep = ({
   control,
   errors,
   setValue,
-  visible
+  visible,
+  mode
 }: IVisitRegistrationStep) => {
   return (
     <FormStep visible={visible ? 1 : 0}>
@@ -452,19 +447,9 @@ const ComplementsStep = ({
             <Upload
               multiple
               beforeUpload={() => false}
-              onChange={({ fileList }) =>
-                setValue(
-                  'documents',
-                  fileList.map((f) => f.originFileObj as File)
-                )
-              }
-              fileList={field.value?.map((file: any, index: number) => ({
-                uid: `${index}`,
-                name: file.name || `Documento ${index + 1}`,
-                status: 'done',
-                originFileObj: file.url ? undefined : file,
-                url: file.url || undefined
-              }))}
+              onChange={({ fileList }) => setValue('documents', fileList)}
+              fileList={field.value || []}
+              disabled={mode === 'viewOnly'}
             >
               <Button icon={<UploadOutlined />}>Anexar Documentos</Button>
             </Upload>
@@ -486,6 +471,7 @@ const ComplementsStep = ({
               placeholder="Digite observações sobre a visita"
               value={field.value || ''}
               onChange={(e) => setValue('observations', e.target.value || null)}
+              disabled={mode === 'viewOnly'}
             />
           </StyledForm.Item>
         )}

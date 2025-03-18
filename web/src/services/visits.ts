@@ -1,3 +1,5 @@
+// src/services/visits.ts
+
 import { Visit, VisitStatus, VisitRegistrationFormType } from '@/@types/visit'
 import { db, storage } from '@/lib/firebase'
 import {
@@ -18,19 +20,14 @@ import {
   listAll,
   StorageReference
 } from 'firebase/storage'
+import { RcFile } from 'antd/lib/upload' // Importa RcFile para compatibilidade
 import moment from 'moment'
 
 export const visitsService = {
-  /**
-   * Obtém um snapshot de uma referência do Realtime Database.
-   */
   getSnapshot: async (reference: any) => {
     return await get(reference)
   },
 
-  /**
-   * Recupera a lista de visitas com filtros opcionais.
-   */
   getVisits: async (
     filters: Partial<{ voterId: string }>
   ): Promise<Visit[]> => {
@@ -49,7 +46,7 @@ export const visitsService = {
     const visitsSnapshot = await get(q)
     const visitsData = visitsSnapshot.val() || {}
 
-    const visitsArray = Object.entries(visitsData).map(
+    return Object.entries(visitsData).map(
       ([id, data]: [string, any]) =>
         ({
           id,
@@ -59,26 +56,49 @@ export const visitsService = {
           }
         } as Visit)
     )
-
-    return visitsArray
   },
 
   /**
    * Faz o upload de arquivos para o Storage e retorna suas URLs.
+   * Aceita RcFile[] do Ant Design.
    */
-  async uploadDocuments(visitId: string, documents: File[]): Promise<string[]> {
-    try {
-      const uploadPromises = documents.map(async (file, index) => {
-        const fileRef = storageRef(
-          storage,
-          `visits/${visitId}/${index}_${file.name}`
-        )
+  async uploadDocuments(
+    visitId: string,
+    documents: RcFile[]
+  ): Promise<string[]> {
+    if (!documents || documents.length === 0) {
+      return []
+    }
+
+    const uploadPromises = documents.map(async (file, index) => {
+      if (!(file instanceof File)) {
+        // RcFile é um subtipo de File
+        throw new Error(`Item ${index} não é um arquivo válido`)
+      }
+      const fileRef = storageRef(
+        storage,
+        `visits/${visitId}/${index}_${file.name}`
+      )
+      try {
         const uploadResult = await uploadBytes(fileRef, file)
         return await getDownloadURL(uploadResult.ref)
-      })
+      } catch (error) {
+        console.error(`Erro ao fazer upload do arquivo ${file.name}:`, error)
+        throw new Error(`Falha ao carregar o arquivo ${file.name}`)
+      }
+    })
+
+    try {
       return await Promise.all(uploadPromises)
     } catch (error) {
-      console.error('Erro ao fazer upload dos documentos:', error)
+      await visitsService
+        .deleteDocuments(visitId)
+        .catch((cleanupError) =>
+          console.warn(
+            'Erro ao limpar arquivos após falha de upload:',
+            cleanupError
+          )
+        )
       throw new Error('Falha ao carregar documentos no Storage')
     }
   },
@@ -87,31 +107,31 @@ export const visitsService = {
    * Remove todos os documentos associados a uma visita no Storage.
    */
   async deleteDocuments(visitId: string): Promise<void> {
+    const folderRef = storageRef(storage, `visits/${visitId}`)
     try {
-      const folderRef = storageRef(storage, `visits/${visitId}`)
       const listResult = await listAll(folderRef)
+      if (listResult.items.length === 0) return
+
       const deletePromises = listResult.items.map(
         async (itemRef: StorageReference) => {
-          await deleteObject(itemRef).catch((err) =>
-            console.warn(`Erro ao deletar ${itemRef.fullPath}: ${err.message}`)
-          )
+          try {
+            await deleteObject(itemRef)
+          } catch (err) {
+            console.warn(`Erro ao deletar ${itemRef.fullPath}: ${err}`)
+          }
         }
       )
       await Promise.all(deletePromises)
     } catch (error) {
-      console.error('Erro ao deletar documentos do Storage:', error)
+      console.error('Erro ao listar ou deletar documentos do Storage:', error)
       throw new Error('Falha ao remover documentos do Storage')
     }
   },
 
-  /**
-   * Cria uma nova visita no Realtime Database e faz upload de documentos, se fornecidos.
-   */
   createVisit: async (
     data: VisitRegistrationFormType,
     userId: string
   ): Promise<string> => {
-    const visitsRef = dbRef(db, 'visits')
     const newVisitId = `visit_${Date.now()}_${Math.random()
       .toString(36)
       .substring(2, 8)}`
@@ -119,14 +139,13 @@ export const visitsService = {
 
     let documentUrls: string[] | null = null
     if (data.documents && data.documents.length > 0) {
-      // Filtra quaisquer elementos undefined e garante que apenas File válidos sejam passados
-      const validDocuments = data.documents.filter(
-        (file): file is File => file !== undefined
-      )
-      if (validDocuments.length > 0) {
+      const validFiles = data.documents
+        .map((doc) => doc.originFileObj)
+        .filter((file): file is RcFile => file instanceof File)
+      if (validFiles.length > 0) {
         documentUrls = await visitsService.uploadDocuments(
           newVisitId,
-          validDocuments
+          validFiles
         )
       }
     }
@@ -142,7 +161,7 @@ export const visitsService = {
         reason: data.reason || '',
         relatedUserId: data.relatedUserId || '',
         documents: documentUrls,
-        observations: data.observations || null
+        observations: data.observations ?? null // Garante que undefined vire null
       }
     }
 
@@ -150,8 +169,8 @@ export const visitsService = {
       await set(newVisitRef, newVisit)
       return newVisitId
     } catch (error) {
-      console.error('Erro ao criar visita:', error)
-      if (documentUrls) {
+      console.error('Erro ao criar visita no Realtime Database:', error)
+      if (documentUrls && documentUrls.length > 0) {
         await visitsService
           .deleteDocuments(newVisitId)
           .catch((cleanupError) =>
@@ -162,9 +181,6 @@ export const visitsService = {
     }
   },
 
-  /**
-   * Atualiza uma visita existente, gerenciando documentos no Storage conforme necessário.
-   */
   updateVisit: async (
     id: string,
     data: Partial<VisitRegistrationFormType>
@@ -185,12 +201,11 @@ export const visitsService = {
       }
 
       if (data.documents && data.documents.length > 0) {
-        // Filtra quaisquer elementos undefined e garante que apenas File válidos sejam passados
-        const validDocuments = data.documents.filter(
-          (file): file is File => file !== undefined
-        )
-        if (validDocuments.length > 0) {
-          documentUrls = await visitsService.uploadDocuments(id, validDocuments)
+        const validFiles = data.documents
+          .map((doc) => doc.originFileObj)
+          .filter((file): file is RcFile => file instanceof File)
+        if (validFiles.length > 0) {
+          documentUrls = await visitsService.uploadDocuments(id, validFiles)
         }
       }
     }
@@ -204,15 +219,18 @@ export const visitsService = {
         relatedUserId:
           data.relatedUserId ?? existingVisit.details.relatedUserId,
         documents: documentUrls.length > 0 ? documentUrls : null,
-        observations: data.observations ?? existingVisit.details.observations
+        observations:
+          data.observations !== undefined
+            ? data.observations
+            : existingVisit.details.observations // Trata undefined explicitamente
       }
     }
 
     try {
       await set(visitRef, updatedVisit)
     } catch (error) {
-      console.error('Erro ao atualizar visita:', error)
-      if (data.documents && documentUrls.length > 0) {
+      console.error('Erro ao atualizar visita no Realtime Database:', error)
+      if (data.documents !== undefined && documentUrls.length > 0) {
         await visitsService
           .deleteDocuments(id)
           .catch((cleanupError) =>
@@ -223,9 +241,6 @@ export const visitsService = {
     }
   },
 
-  /**
-   * Exclui uma visita e todos os documentos associados no Storage.
-   */
   deleteVisit: async (id: string): Promise<void> => {
     const visitRef = dbRef(db, `visits/${id}`)
     const snapshot = await get(visitRef)
@@ -234,7 +249,6 @@ export const visitsService = {
     }
 
     const visit = snapshot.val() as Visit
-
     if (visit.details.documents && visit.details.documents.length > 0) {
       await visitsService.deleteDocuments(id)
     }

@@ -22,6 +22,7 @@ import { UseFormReturn } from 'react-hook-form'
 import { useVisits } from '@/contexts/VisitsProvider'
 import { useAuth } from '@/contexts/AuthProvider'
 import { useUsers } from '@/contexts/UsersProvider'
+import moment from 'moment'
 
 const { Search } = Input
 
@@ -63,7 +64,8 @@ const RegistroVisitasView = () => {
       title: 'Data e Horário',
       dataIndex: 'dateTime',
       key: 'dateTime',
-      sorter: (a: Visit, b: Visit) => a.dateTime.localeCompare(b.dateTime)
+      sorter: (a: Visit, b: Visit) => a.dateTime.localeCompare(b.dateTime),
+      render: (dateTime: string) => moment(dateTime).format('DD/MM/YYYY HH:mm')
     },
     {
       title: 'Status',
@@ -130,11 +132,8 @@ const RegistroVisitasView = () => {
         setIsLoadingInitialData(true)
         try {
           const data = await getInitialData(selectedVisit)
-          if (isEditModalOpen) {
-            setInitialEditData(data)
-          } else if (isViewModalOpen) {
-            setInitialViewData(data)
-          }
+          if (isEditModalOpen) setInitialEditData(data)
+          else if (isViewModalOpen) setInitialViewData(data)
         } catch (error) {
           console.error('Erro ao buscar dados iniciais:', error)
         } finally {
@@ -142,7 +141,6 @@ const RegistroVisitasView = () => {
         }
       }
     }
-
     fetchInitialData()
   }, [selectedVisit, isEditModalOpen, isViewModalOpen, getInitialData])
 

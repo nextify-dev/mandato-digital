@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthProvider'
 import { db } from '@/lib/firebase'
 import { ref, onValue, get } from 'firebase/database'
 import { User } from '@/@types/user'
+import moment from 'moment'
 
 interface VisitsContextData {
   visits: Visit[]
@@ -42,16 +43,7 @@ export const VisitsProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     const visitsRef = ref(db, 'visits')
-    const usersRef = ref(db, 'users')
     setLoading(true)
-
-    const updateVisits = async () => {
-      const snapshot = await get(visitsRef)
-      const visitsData = snapshot.val() || {}
-      const visitsArray = await processVisitsData(visitsData, filters)
-      setVisits(visitsArray)
-      setLoading(false)
-    }
 
     const unsubscribeVisits = onValue(
       visitsRef,
@@ -69,39 +61,19 @@ export const VisitsProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     )
 
-    const unsubscribeUsers = onValue(usersRef, () => {
-      updateVisits()
-    })
-
-    updateVisits().catch((error) => {
-      messageApi.error(
-        'Erro ao carregar visitas iniciais, tente reiniciar a página ou contacte um administrador'
-      )
-      setLoading(false)
-    })
-
-    return () => {
-      unsubscribeVisits()
-      unsubscribeUsers()
-    }
+    return () => unsubscribeVisits()
   }, [filters, messageApi])
 
   const processVisitsData = async (
     visitsData: { [key: string]: any },
     filters: Partial<VisitFilters>
   ): Promise<Visit[]> => {
-    const usersRef = ref(db, 'users')
-    const usersSnapshot = await visitsService.getSnapshot(usersRef)
-    const usersData = (usersSnapshot.val() || {}) as { [key: string]: User }
-
     let visitsArray = Object.entries(visitsData).map(
       ([id, data]: [string, any]) =>
         ({
           id,
           ...data,
-          details: {
-            ...data.details
-          }
+          details: { ...data.details }
         } as Visit)
     )
 
@@ -176,9 +148,7 @@ export const VisitsProvider: React.FC<{ children: React.ReactNode }> = ({
     return {
       voterId: visit.voterId,
       dateTime: visit.dateTime
-        ? require('moment')(visit.dateTime, require('moment').ISO_8601).format(
-            'DD/MM/YYYY HH:mm'
-          )
+        ? moment(visit.dateTime).format('DD/MM/YYYY HH:mm')
         : '',
       status: visit.status,
       reason: visit.details.reason,
@@ -187,7 +157,7 @@ export const VisitsProvider: React.FC<{ children: React.ReactNode }> = ({
         ? visit.details.documents.map((url, index) => ({
             uid: `${index}`,
             name: `Documento ${index + 1}`,
-            status: 'done',
+            status: 'done' as const,
             url
           }))
         : null,

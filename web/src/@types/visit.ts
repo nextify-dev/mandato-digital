@@ -1,7 +1,7 @@
 // src/@types/visit.ts
 
 import * as yup from 'yup'
-import { UploadFile } from 'antd/lib/upload/interface' // Importa a tipagem do Ant Design
+import { UploadFile } from 'antd/lib/upload/interface'
 
 export enum VisitStatus {
   AGENDADA = 'agendada',
@@ -47,36 +47,26 @@ export interface Visit extends BaseVisit {
   details: VisitDetails
 }
 
-export interface IVisitRegistrationForm {
+// Tipo para o formulário, usando UploadFile para compatibilidade com Ant Design
+export interface VisitRegistrationFormType {
   voterId: string
-  dateTime: string // Formato DD/MM/YYYY HH:mm para o formulário
+  dateTime: string // Formato DD/MM/YYYY HH:mm
   status: VisitStatus
   reason: string
   relatedUserId: string
-  documents?: File[] | null // Arquivos enviados no formulário
-  observations?: string | null
-}
-
-// Tipo ajustado para suportar UploadFile no contexto de edição/visualização
-export type VisitRegistrationFormType = {
-  voterId: string
-  dateTime: string
-  status: VisitStatus
-  reason: string
-  relatedUserId: string
-  documents?: UploadFile[] | null // Usamos UploadFile para compatibilidade com Ant Design
+  documents?: UploadFile[] | null // UploadFile para o formulário
   observations?: string | null
 }
 
 export const getVisitRegistrationSchema = (mode: 'create' | 'edit') => {
   return yup.object().shape({
-    voterId: yup.string().when(mode, {
-      is: (value: string) => value === 'create',
+    voterId: yup.string().when('mode', {
+      is: () => mode === 'create',
       then: () => yup.string().required('Eleitor é obrigatório'),
       otherwise: () => yup.string().notRequired()
     }),
-    dateTime: yup.string().when(mode, {
-      is: (value: string) => value === 'create',
+    dateTime: yup.string().when('mode', {
+      is: () => mode === 'create',
       then: () =>
         yup
           .string()
@@ -100,7 +90,7 @@ export const getVisitRegistrationSchema = (mode: 'create' | 'edit') => {
       .oneOf(Object.values(VisitStatus), 'Selecione um status válido'),
     reason: yup.string().required('Motivo é obrigatório'),
     relatedUserId: yup.string().required('Usuário vinculado é obrigatório'),
-    documents: yup.array().of(yup.mixed<UploadFile>()).nullable().optional(), // Ajustado para UploadFile
+    documents: yup.array().of(yup.mixed<UploadFile>()).nullable().optional(),
     observations: yup.string().nullable().optional()
   })
 }
