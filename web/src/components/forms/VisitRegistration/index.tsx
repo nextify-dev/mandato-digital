@@ -25,6 +25,7 @@ interface VisitRegistrationFormProps {
   onSubmit?: (data: VisitRegistrationFormType) => Promise<void>
   initialData?: Partial<VisitRegistrationFormType>
   mode: 'create' | 'edit' | 'viewOnly'
+  onModalClose?: () => void // Nova prop para detectar fechamento do modal
 }
 
 const VisitRegistrationForm = forwardRef<
@@ -32,11 +33,10 @@ const VisitRegistrationForm = forwardRef<
   VisitRegistrationFormProps
 >(
   (
-    { onSubmit, initialData, mode },
+    { onSubmit, initialData, mode, onModalClose },
     ref: Ref<UseFormReturn<VisitRegistrationFormType>>
   ) => {
-    const { voters, allUsers, loading: usersLoading } = useUsers()
-
+    const { voters, users, allUsers, loading: usersLoading } = useUsers()
     const [currentStep, setCurrentStep] = useState(0)
 
     interface ExtendedVisitRegistrationFormType
@@ -87,31 +87,32 @@ const VisitRegistrationForm = forwardRef<
       if (mode === 'create') {
         reset(defaultValues)
       } else if (mode === 'edit' && initialData) {
-        const formattedDateTime = initialData.dateTime
-          ? moment(initialData.dateTime, moment.ISO_8601).format(
-              'DD/MM/YYYY HH:mm'
-            )
-          : undefined
-        reset({
-          ...defaultValues,
-          ...initialData,
-          dateTime: formattedDateTime
-        })
+        reset({ ...defaultValues, ...initialData })
+        trigger()
       }
     }, [mode, initialData, reset])
+
+    // Reset ao fechar o modal
+    useEffect(() => {
+      return () => {
+        if (onModalClose) {
+          reset(defaultValues) // Sempre reseta para os valores padrão ao fechar
+        }
+      }
+    }, [onModalClose, reset])
 
     const VOTER_OPTIONS = voters.map((voter) => ({
       label: `${voter.profile?.nomeCompleto} (${voter.email})`,
       value: voter.id
     }))
 
-    const USER_OPTIONS = allUsers.map((user) => ({
+    const USER_OPTIONS = users.map((user) => ({
       label: `${user.profile?.nomeCompleto} (${user.role})`,
       value: user.id
     }))
 
     const REASON_OPTIONS = Object.values(VisitReason).map((reason) => ({
-      label: getVisitReasonData(reason).label, // Usar a label formatada
+      label: getVisitReasonData(reason).label,
       value: reason
     }))
 
@@ -227,7 +228,7 @@ const VisitRegistrationForm = forwardRef<
           labelPlacement="vertical"
           style={{ marginLeft: 0 }}
         />
-
+        {/* O restante do JSX permanece igual */}
         <FormStep visible={currentStep === 0 ? 1 : 0}>
           <Controller
             name="voterId"

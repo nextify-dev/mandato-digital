@@ -10,6 +10,25 @@ export enum VisitReason {
   OUTROS = 'outros'
 }
 
+// Nova função para formatar o motivo da visita
+export const getVisitReasonData = (
+  reason?: VisitReason
+): FormattedVisitReason => {
+  switch (reason) {
+    case VisitReason.SOLICITACAO:
+      return { label: 'Solicitação' }
+    case VisitReason.RECLAMACAO:
+      return { label: 'Reclamação' }
+    case VisitReason.APOIO:
+      return { label: 'Apoio' }
+    case VisitReason.OUTROS:
+      return { label: 'Outros' }
+    default:
+      return { label: 'Desconhecido' }
+  }
+}
+
+
 // Interface para o retorno da função getVisitReasonLabel
 export interface FormattedVisitReason {
   label: string
@@ -63,20 +82,3 @@ export type VisitRegistrationFormType = yup.InferType<
   ReturnType<typeof getVisitRegistrationSchema>
 >
 
-// Nova função para formatar o motivo da visita
-export const getVisitReasonData = (
-  reason?: VisitReason
-): FormattedVisitReason => {
-  switch (reason) {
-    case VisitReason.SOLICITACAO:
-      return { label: 'Solicitação' }
-    case VisitReason.RECLAMACAO:
-      return { label: 'Reclamação' }
-    case VisitReason.APOIO:
-      return { label: 'Apoio' }
-    case VisitReason.OUTROS:
-      return { label: 'Outros' }
-    default:
-      return { label: 'Desconhecido' }
-  }
-}
