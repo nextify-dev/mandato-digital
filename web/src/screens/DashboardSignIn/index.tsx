@@ -98,6 +98,9 @@ const DashboardSignInScreen = () => {
   return (
     <S.DashboardSignInScreen>
       <S.SignInContainer active={isFirstAccess ? 1 : 0}>
+        <S.SignInFormLogo>
+          <img src="/logos/logo_mandato_full.png" alt="" />
+        </S.SignInFormLogo>
         {isFirstAccess ? (
           <>
             <UserRegistrationForm

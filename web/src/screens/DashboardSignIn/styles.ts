@@ -14,6 +14,20 @@ export const DashboardSignInScreen = styled(Screen)`
   padding: 20px;
 `
 
+export const SignInFormLogo = styled.div`
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 25px;
+
+  img {
+    height: 50px;
+  }
+`
+
 export const SignInContainer = styled.div<{ active: number }>`
   position: relative;
   width: 100%;
