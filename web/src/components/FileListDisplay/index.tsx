@@ -62,7 +62,6 @@ const FileListDisplay: React.FC<FileListDisplayProps> = ({
   useEffect(() => {
     if (files && files.length > 0) {
       const infos = files.map((file) => {
-        console.log(file)
         const extension =
           file.name.split('.').pop()?.toLowerCase() || 'desconhecido'
         const type = file.type || 'other'

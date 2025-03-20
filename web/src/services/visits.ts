@@ -28,7 +28,6 @@ export const visitsService = {
     userId: string,
     userCityId: string
   ): Promise<string> => {
-    console.log('DATA CHEGANDO NO SERVICE', data.documents)
     const newVisitId = `visit_${Date.now()}_${Math.random()
       .toString(36)
       .substring(2, 8)}`
@@ -92,7 +91,6 @@ export const visitsService = {
     id: string,
     data: Partial<VisitRegistrationFormType>
   ): Promise<void> => {
-    console.log('DATA CHEGANDO NO SERVICE', data.documents)
     const existingVisit = (await fetchFromDatabase<Visit>(
       `visits/${id}`,
       undefined,

@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react'
 import * as S from './styles'
-import { LuPen, LuTrash2, LuEye, LuHistory } from 'react-icons/lu' // Adicionado LuHistory
-import { Button, Input, Tag, Select, Collapse } from 'antd'
+import { LuPen, LuTrash2, LuEye, LuHistory } from 'react-icons/lu'
+import { Button, Input, Tag, Select } from 'antd'
 import { UseFormReturn } from 'react-hook-form'
 import moment from 'moment'
 import {
@@ -13,6 +13,7 @@ import {
   ConfirmModal,
   DemandRegistrationForm
 } from '@/components'
+import DemandasUpdates from '@/components/DemandasUpdates' // Importação do novo componente
 import { TableExtrasWrapper } from '@/utils/styles/commons'
 import { useDemands } from '@/contexts/DemandsProvider'
 import { useAuth } from '@/contexts/AuthProvider'
@@ -21,14 +22,12 @@ import {
   Demand,
   DemandStatus,
   getDemandStatusData,
-  DemandRegistrationFormType,
-  DemandUpdate
+  DemandRegistrationFormType
 } from '@/@types/demand'
 import { useCities } from '@/contexts/CitiesProvider'
 import { UserRole } from '@/@types/user'
 
 const { Search } = Input
-const { Panel } = Collapse
 
 const DemandasEleitoraisView = () => {
   const { user } = useAuth()
@@ -48,7 +47,7 @@ const DemandasEleitoraisView = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false) // Novo estado para o modal de histórico
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [selectedDemand, setSelectedDemand] = useState<Demand | null>(null)
   const [currentStep, setCurrentStep] = useState(0)
   const [initialEditData, setInitialEditData] =
@@ -142,7 +141,7 @@ const DemandasEleitoraisView = () => {
           />
         </TableExtrasWrapper>
       ),
-      width: 200 // Aumentei a largura para acomodar o novo botão
+      width: 200
     }
   ]
 
@@ -242,32 +241,6 @@ const DemandasEleitoraisView = () => {
       await deleteDemand(selectedDemand.id)
       setIsConfirmModalOpen(false)
     }
-  }
-
-  const renderUpdates = (updates: DemandUpdate[] | null | undefined) => {
-    if (!updates || updates.length === 0)
-      return 'Nenhuma atualização registrada.'
-    return (
-      <Collapse>
-        {updates.map((update, index) => (
-          <Panel
-            header={`Atualização ${index + 1} - ${moment(
-              update.updatedAt
-            ).format('DD/MM/YYYY HH:mm')}`}
-            key={index}
-          >
-            <p>
-              <b>Atualizado por:</b>{' '}
-              {allUsers.find((u) => u.id === update.updatedBy)?.profile
-                ?.nomeCompleto || update.updatedBy}
-            </p>
-            <p>
-              <b>Novo Status:</b> {getDemandStatusData(update.newStatus).label}
-            </p>
-          </Panel>
-        ))}
-      </Collapse>
-    )
   }
 
   return (
@@ -386,15 +359,10 @@ const DemandasEleitoraisView = () => {
         destroyOnClose
       >
         {isHistoryModalOpen && selectedDemand && (
-          <div style={{ padding: 16 }}>
-            <p>
-              <b>Descrição:</b> {selectedDemand.description}
-            </p>
-            <p>
-              <b>Histórico de Atualizações:</b>
-            </p>
-            {renderUpdates(selectedDemand.details?.updates)}
-          </div>
+          <DemandasUpdates
+            description={selectedDemand.description}
+            updates={selectedDemand.details?.updates}
+          />
         )}
       </Modal>
 

@@ -8,6 +8,7 @@ import FileUploadCard from './FileUploadCard'
 
 import DynamicDescriptions from './DynamicDescriptions'
 import FileListDisplay from './FileListDisplay'
+import DemandasUpdates from './DemandasUpdates'
 
 import UserRegistrationForm from './forms/UserRegistration'
 import CityRegistrationForm from './forms/CityRegistration'
@@ -27,5 +28,6 @@ export {
   DemandRegistrationForm,
   ActiveCity,
   FileListDisplay,
-  FileUploadCard
+  FileUploadCard,
+  DemandasUpdates
 }

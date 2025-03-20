@@ -249,7 +249,7 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
     return getInitialFormData(user)
   }
 
-  const getUserById = (userId: string): User | null => {
+  const getUserById = (userId?: string): User | null => {
     return allUsers.find((user) => user.id === userId) || null
   }
 

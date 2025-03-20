@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   Checkbox,
+  Collapse,
   Descriptions,
   Form,
   Input,
@@ -437,4 +438,13 @@ export const StyledCard = styled(Card)`
 
   /* ${font('regular')} */
   /* ${backgroundColor('colorPrimary')} */
+`
+
+export const StyledCollapse = styled(Collapse)`
+  .ant-collapse-header {
+    .ant-collapse-header-text {
+      ${font('xs')}
+      margin:  auto 0;
+    }
+  }
 `
