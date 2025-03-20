@@ -7,6 +7,8 @@ import { color } from '@/utils/styles/colors'
 
 export const VisitRegistrationFormContent = styled.div`
   display: flex;
+  flex-direction: column;
+  row-gap: 20px;
   width: 100%;
 `
 

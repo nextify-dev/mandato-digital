@@ -20,7 +20,7 @@ import {
   listAll,
   StorageReference
 } from 'firebase/storage'
-import { RcFile } from 'antd/lib/upload' // Importa RcFile para compatibilidade
+import { RcFile, UploadFile } from 'antd/lib/upload/interface'
 import moment from 'moment'
 
 export const visitsService = {
@@ -72,8 +72,7 @@ export const visitsService = {
 
     const uploadPromises = documents.map(async (file, index) => {
       if (!(file instanceof File)) {
-        // RcFile é um subtipo de File
-        throw new Error(`Item ${index} não é um arquivo válido`)
+        throw new Error(`Item ${index} não é um arquivo válido: ${file}`)
       }
       const fileRef = storageRef(
         storage,
@@ -81,7 +80,8 @@ export const visitsService = {
       )
       try {
         const uploadResult = await uploadBytes(fileRef, file)
-        return await getDownloadURL(uploadResult.ref)
+        const downloadURL = await getDownloadURL(uploadResult.ref)
+        return downloadURL
       } catch (error) {
         console.error(`Erro ao fazer upload do arquivo ${file.name}:`, error)
         throw new Error(`Falha ao carregar o arquivo ${file.name}`)
@@ -89,8 +89,10 @@ export const visitsService = {
     })
 
     try {
-      return await Promise.all(uploadPromises)
+      const urls = await Promise.all(uploadPromises)
+      return urls
     } catch (error) {
+      // Em caso de erro, limpa os arquivos já enviados
       await visitsService
         .deleteDocuments(visitId)
         .catch((cleanupError) =>
@@ -99,7 +101,7 @@ export const visitsService = {
             cleanupError
           )
         )
-      throw new Error('Falha ao carregar documentos no Storage')
+      throw new Error('Falha ao carregar documentos no Storage: ' + error)
     }
   },
 
@@ -137,15 +139,23 @@ export const visitsService = {
       .substring(2, 8)}`
     const newVisitRef = dbRef(db, `visits/${newVisitId}`)
 
-    let documentUrls: string[] | null = null
+    // Processa os documentos: apenas arquivos com originFileObj são considerados
+    let documentUrls: string[] = []
     if (data.documents && data.documents.length > 0) {
-      const validFiles = data.documents
-        .map((doc) => doc.originFileObj)
+      const filesToUpload = data.documents
+        .map((doc: UploadFile) => doc.originFileObj)
         .filter((file): file is RcFile => file instanceof File)
-      if (validFiles.length > 0) {
+
+      if (filesToUpload.length !== data.documents.length) {
+        throw new Error(
+          'Todos os documentos devem ter originFileObj. Reanexe os arquivos existentes.'
+        )
+      }
+
+      if (filesToUpload.length > 0) {
         documentUrls = await visitsService.uploadDocuments(
           newVisitId,
-          validFiles
+          filesToUpload
         )
       }
     }
@@ -160,7 +170,7 @@ export const visitsService = {
       details: {
         reason: data.reason || '',
         relatedUserId: data.relatedUserId || '',
-        documents: documentUrls,
+        documents: documentUrls.length > 0 ? documentUrls : null,
         observations: data.observations ?? null // Garante que undefined vire null
       }
     }
@@ -177,7 +187,7 @@ export const visitsService = {
             console.warn('Erro ao limpar documentos após falha:', cleanupError)
           )
       }
-      throw new Error('Falha ao criar visita')
+      throw new Error('Falha ao criar visita: ' + error)
     }
   },
 
@@ -192,22 +202,36 @@ export const visitsService = {
     }
 
     const existingVisit = snapshot.val() as Visit
-    let documentUrls = existingVisit.details.documents || []
+    let documentUrls: string[] = []
 
     if (data.documents !== undefined) {
-      if (documentUrls.length > 0) {
+      // Remove os documentos antigos do Storage
+      if (
+        existingVisit.details.documents &&
+        existingVisit.details.documents.length > 0
+      ) {
         await visitsService.deleteDocuments(id)
-        documentUrls = []
       }
 
+      // Processa os documentos: apenas arquivos com originFileObj são considerados
       if (data.documents && data.documents.length > 0) {
-        const validFiles = data.documents
-          .map((doc) => doc.originFileObj)
+        const filesToUpload = data.documents
+          .map((doc: UploadFile) => doc.originFileObj)
           .filter((file): file is RcFile => file instanceof File)
-        if (validFiles.length > 0) {
-          documentUrls = await visitsService.uploadDocuments(id, validFiles)
+
+        if (filesToUpload.length !== data.documents.length) {
+          throw new Error(
+            'Todos os documentos devem ter originFileObj. Reanexe os arquivos existentes.'
+          )
+        }
+
+        if (filesToUpload.length > 0) {
+          documentUrls = await visitsService.uploadDocuments(id, filesToUpload)
         }
       }
+    } else {
+      // Se data.documents não foi fornecido, mantém os documentos existentes
+      documentUrls = existingVisit.details.documents || []
     }
 
     const updatedVisit: Visit = {
@@ -237,7 +261,7 @@ export const visitsService = {
             console.warn('Erro ao limpar documentos após falha:', cleanupError)
           )
       }
-      throw new Error('Falha ao atualizar visita')
+      throw new Error('Falha ao atualizar visita: ' + error)
     }
   },
 

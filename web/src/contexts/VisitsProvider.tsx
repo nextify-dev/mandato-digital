@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { message } from 'antd'
 import { Visit, VisitRegistrationFormType, VisitStatus } from '@/@types/visit'
+import { UploadFile } from 'antd/lib/upload/interface'
 import { visitsService } from '@/services/visits'
 import { useAuth } from '@/contexts/AuthProvider'
 import { db } from '@/lib/firebase'
@@ -145,6 +146,48 @@ export const VisitsProvider: React.FC<{ children: React.ReactNode }> = ({
   const getInitialData = async (
     visit: Visit
   ): Promise<Partial<VisitRegistrationFormType>> => {
+    const extractFileInfo = (url: string, index: number) => {
+      const cleanUrl = url.split('?')[0]
+      const segments = cleanUrl.split('/')
+      let lastSegment = segments.pop() || ''
+      const pathSegments = lastSegment.split('%2F')
+      let fileNameEncoded = pathSegments.pop() || `Documento ${index + 1}`
+      const fileName = decodeURIComponent(fileNameEncoded)
+      const extensionMatch = fileName.match(/\.([^.]+)$/)
+      const extension = extensionMatch
+        ? extensionMatch[1].toLowerCase()
+        : 'desconhecido'
+      const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp']
+      const videoExtensions = ['mp4', 'webm', 'ogg', 'mov']
+      const documentExtensions = ['pdf', 'doc', 'docx', 'txt']
+      const spreadsheetExtensions = ['xls', 'xlsx', 'csv']
+      let type: string
+      if (imageExtensions.includes(extension)) {
+        type = 'image'
+      } else if (videoExtensions.includes(extension)) {
+        type = 'video'
+      } else if (documentExtensions.includes(extension)) {
+        type = 'document'
+      } else if (spreadsheetExtensions.includes(extension)) {
+        type = 'spreadsheet'
+      } else {
+        type = 'other'
+      }
+
+      return {
+        uid: `${index}`,
+        name: fileName,
+        status: 'done' as const,
+        url,
+        type,
+        extension
+      }
+    }
+
+    const documents = visit.details.documents
+      ? visit.details.documents.map((url, index) => extractFileInfo(url, index))
+      : null
+
     return {
       voterId: visit.voterId,
       dateTime: visit.dateTime
@@ -153,14 +196,7 @@ export const VisitsProvider: React.FC<{ children: React.ReactNode }> = ({
       status: visit.status,
       reason: visit.details.reason,
       relatedUserId: visit.details.relatedUserId,
-      documents: visit.details.documents
-        ? visit.details.documents.map((url, index) => ({
-            uid: `${index}`,
-            name: `Documento ${index + 1}`,
-            status: 'done' as const,
-            url
-          }))
-        : null,
+      documents,
       observations: visit.details.observations || null
     }
   }

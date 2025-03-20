@@ -1,9 +1,14 @@
 // src/screens/DashboardV1/views/RegistroVisitasView.tsx
 
 import { useState, useRef, useEffect } from 'react'
+
 import * as S from './styles'
-import { Button, Input, Tag, Select } from 'antd'
 import { LuPen, LuTrash2, LuEye } from 'react-icons/lu'
+
+import { Button, Input, Tag, Select } from 'antd'
+import { UseFormReturn } from 'react-hook-form'
+import moment from 'moment'
+
 import {
   View,
   Table,
@@ -11,18 +16,16 @@ import {
   ConfirmModal,
   VisitRegistrationForm
 } from '@/components'
+import { TableExtrasWrapper } from '@/utils/styles/commons'
+import { useVisits } from '@/contexts/VisitsProvider'
+import { useAuth } from '@/contexts/AuthProvider'
+import { useUsers } from '@/contexts/UsersProvider'
 import {
   Visit,
   VisitStatus,
   getVisitStatusData,
   VisitRegistrationFormType
 } from '@/@types/visit'
-import { TableExtrasWrapper } from '@/utils/styles/commons'
-import { UseFormReturn } from 'react-hook-form'
-import { useVisits } from '@/contexts/VisitsProvider'
-import { useAuth } from '@/contexts/AuthProvider'
-import { useUsers } from '@/contexts/UsersProvider'
-import moment from 'moment'
 
 const { Search } = Input
 
@@ -100,7 +103,6 @@ const RegistroVisitasView = () => {
             onClick={() => {
               setSelectedVisit(record)
               setIsEditModalOpen(true)
-              setCurrentStep(0)
             }}
           />
           <Button
@@ -132,8 +134,13 @@ const RegistroVisitasView = () => {
         setIsLoadingInitialData(true)
         try {
           const data = await getInitialData(selectedVisit)
-          if (isEditModalOpen) setInitialEditData(data)
-          else if (isViewModalOpen) setInitialViewData(data)
+          if (isEditModalOpen) {
+            setInitialEditData(data)
+            setCurrentStep(0) // Sempre inicia no step 0 ao abrir
+          } else if (isViewModalOpen) {
+            setInitialViewData(data)
+            setCurrentStep(0) // Sempre inicia no step 0 ao abrir
+          }
         } catch (error) {
           console.error('Erro ao buscar dados iniciais:', error)
         } finally {
@@ -143,6 +150,22 @@ const RegistroVisitasView = () => {
     }
     fetchInitialData()
   }, [selectedVisit, isEditModalOpen, isViewModalOpen, getInitialData])
+
+  // Reset completo ao fechar qualquer modal
+  const handleModalClose = (type: 'create' | 'edit' | 'view') => {
+    if (type === 'create') setIsCreateModalOpen(false)
+    if (type === 'edit') setIsEditModalOpen(false)
+    if (type === 'view') setIsViewModalOpen(false)
+
+    // Resetar formulário e estado
+    if (formRef.current) {
+      formRef.current.reset()
+    }
+    setCurrentStep(0)
+    setSelectedVisit(null)
+    setInitialEditData(null)
+    setInitialViewData(null)
+  }
 
   const handleSearch = (value: string) => {
     setFilters({ ...filters, voterId: value })
@@ -173,15 +196,17 @@ const RegistroVisitasView = () => {
   ]
 
   const handleCreateVisit = async (data: VisitRegistrationFormType) => {
+    console.log(data)
     await createVisit(data)
-    setIsCreateModalOpen(false)
+    handleModalClose('create')
   }
 
   const handleEditVisit = async (data: VisitRegistrationFormType) => {
+    console.log(data)
     if (selectedVisit) {
       const { voterId, dateTime, ...editableData } = data
       await updateVisit(selectedVisit.id, editableData)
-      setIsEditModalOpen(false)
+      handleModalClose('edit')
     }
   }
 
@@ -190,19 +215,6 @@ const RegistroVisitasView = () => {
       await deleteVisit(selectedVisit.id)
       setIsConfirmModalOpen(false)
     }
-  }
-
-  const handleModalClose = (type: 'create' | 'edit' | 'view') => {
-    if (type === 'create') setIsCreateModalOpen(false)
-    if (type === 'edit') setIsEditModalOpen(false)
-    if (type === 'view') setIsViewModalOpen(false)
-    if (formRef.current) {
-      formRef.current.reset()
-      setCurrentStep(0)
-    }
-    setSelectedVisit(null)
-    setInitialEditData(null)
-    setInitialViewData(null)
   }
 
   return (
@@ -251,6 +263,7 @@ const RegistroVisitasView = () => {
         onCancel={() => handleModalClose('create')}
         footer={null}
         size="default"
+        destroyOnClose // Garante que o modal seja destruído ao fechar
       >
         {isCreateModalOpen && (
           <VisitRegistrationForm
@@ -270,6 +283,7 @@ const RegistroVisitasView = () => {
         footer={null}
         size="default"
         confirmLoading={isLoadingInitialData}
+        destroyOnClose // Garante que o modal seja destruído ao fechar
       >
         {isEditModalOpen && selectedVisit && initialEditData && (
           <VisitRegistrationForm
@@ -290,6 +304,7 @@ const RegistroVisitasView = () => {
         footer={null}
         size="default"
         confirmLoading={isLoadingInitialData}
+        destroyOnClose // Garante que o modal seja destruído ao fechar
       >
         {isViewModalOpen && selectedVisit && initialViewData && (
           <VisitRegistrationForm

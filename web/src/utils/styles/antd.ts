@@ -5,6 +5,7 @@ import {
   Alert,
   Avatar,
   Button,
+  Card,
   Checkbox,
   Descriptions,
   Form,
@@ -403,4 +404,14 @@ export const StyledAvatar = styled(Avatar)`
 
   ${font('regular')}
   ${backgroundColor('colorPrimary')}
+`
+
+export const StyledCard = styled(Card)`
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+  padding: 10px;
+
+  /* ${font('regular')} */
+  /* ${backgroundColor('colorPrimary')} */
 `

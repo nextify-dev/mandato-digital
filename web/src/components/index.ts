@@ -6,6 +6,7 @@ import ConfirmModal from './ConfirmModal'
 import UserMenu from './UserMenu'
 
 import DynamicDescriptions from './DynamicDescriptions'
+import FileListDisplay from './FileListDisplay'
 
 import UserRegistrationForm from './forms/UserRegistration'
 import CityRegistrationForm from './forms/CityRegistration'
@@ -21,5 +22,6 @@ export {
   UserRegistrationForm,
   CityRegistrationForm,
   VisitRegistrationForm,
-  ActiveCity
+  ActiveCity,
+  FileListDisplay
 }

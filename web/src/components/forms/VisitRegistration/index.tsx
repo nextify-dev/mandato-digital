@@ -1,6 +1,6 @@
 // src/components/forms/VisitRegistrationForm/index.tsx
 
-import React, { forwardRef, Ref, useEffect } from 'react'
+import React, { forwardRef, Ref, useEffect, useCallback, useState } from 'react'
 import * as S from './styles'
 import { Controller, UseFormReturn, DefaultValues } from 'react-hook-form'
 import { Select, DatePicker, Upload, Button, Input, message } from 'antd'
@@ -19,8 +19,38 @@ import DynamicDescriptions, {
   DynamicDescriptionsField
 } from '@/components/DynamicDescriptions'
 import { useUsers } from '@/contexts/UsersProvider'
+import FileListDisplay from '@/components/FileListDisplay'
+import { UploadFile, RcFile } from 'antd/lib/upload/interface'
+import { getAuth } from 'firebase/auth'
 
 const { TextArea } = Input
+
+// Função para converter uma URL em File
+const urlToFile = async (url: string, fileName: string): Promise<RcFile> => {
+  const auth = getAuth()
+  const user = auth.currentUser
+  let headers: HeadersInit = {}
+
+  if (user) {
+    const token = await user.getIdToken()
+    headers = {
+      Authorization: `Bearer ${token}`
+    }
+  }
+
+  const response = await fetch(url, { headers })
+  if (!response.ok) {
+    throw new Error(
+      `Falha ao baixar o arquivo da URL ${url}: ${response.statusText}`
+    )
+  }
+  const blob = await response.blob()
+  const file = new File([blob], fileName, { type: blob.type }) as RcFile
+  file.uid = `rc-upload-${Date.now()}-${Math.random()
+    .toString(36)
+    .substring(2, 8)}`
+  return file
+}
 
 type FormMode = 'create' | 'edit' | 'viewOnly'
 
@@ -42,6 +72,7 @@ const VisitRegistrationForm = forwardRef<
   ) => {
     const [messageApi, contextHolder] = message.useMessage()
     const { voters, allUsers, loading: usersLoading } = useUsers()
+    const [fileList, setFileList] = useState<UploadFile[]>([])
 
     const defaultValues: DefaultValues<VisitRegistrationFormType> = {
       voterId: '',
@@ -70,14 +101,56 @@ const VisitRegistrationForm = forwardRef<
       formState: { errors, isValid }
     } = formMethods
 
+    // Carrega os arquivos existentes como File objects
     useEffect(() => {
-      if (initialData) {
-        reset({
-          ...defaultValues,
-          ...initialData
-        })
+      const loadFiles = async () => {
+        if (initialData?.documents) {
+          const updatedFileList = await Promise.all(
+            initialData.documents.map(async (doc, index) => {
+              if (doc.url && doc.status === 'done' && !doc.originFileObj) {
+                try {
+                  const file = await urlToFile(doc.url, doc.name)
+                  return {
+                    ...doc,
+                    originFileObj: file,
+                    uid: doc.uid || `rc-upload-${Date.now()}-${index}`,
+                    status: 'done' as const
+                  } as UploadFile
+                } catch (error) {
+                  console.error(
+                    `Erro ao carregar o arquivo ${doc.name}:`,
+                    error
+                  )
+                  messageApi.error(
+                    `Erro ao carregar o arquivo ${doc.name}. Reanexe o arquivo manualmente.`
+                  )
+                  return doc as UploadFile
+                }
+              }
+              return doc as UploadFile
+            })
+          )
+          setFileList(updatedFileList)
+          setValue('documents', updatedFileList)
+        }
       }
-    }, [initialData, reset])
+
+      if (mode === 'edit' || mode === 'viewOnly') {
+        loadFiles()
+      }
+    }, [initialData, mode, setValue, messageApi])
+
+    // Resetar formulário ao abrir com initialData ou ao mudar de modo
+    useEffect(() => {
+      if (mode === 'create') {
+        reset(defaultValues)
+        setFileList([])
+        setCurrentStep(0)
+      } else if (initialData && (mode === 'edit' || mode === 'viewOnly')) {
+        reset({ ...defaultValues, ...initialData })
+        setCurrentStep(0)
+      }
+    }, [initialData, mode, reset, setCurrentStep])
 
     const formData = watch()
 
@@ -111,32 +184,62 @@ const VisitRegistrationForm = forwardRef<
       { title: 'Revisão', fields: [], requiredFields: [] }
     ]
 
-    const areRequiredFieldsValid = () => {
-      const currentStepRequiredFields = steps[currentStep].requiredFields
-      return currentStepRequiredFields.every((field) => {
-        const value = formData[field as keyof VisitRegistrationFormType]
-        const hasError = !!errors[field as keyof VisitRegistrationFormType]
-        return value && !hasError
-      })
-    }
+    // Validação robusta de campos obrigatórios por passo
+    const areRequiredFieldsValid = useCallback(
+      (stepIndex: number) => {
+        const requiredFields = steps[stepIndex].requiredFields
+        return requiredFields.every((field) => {
+          const value = formData[field as keyof VisitRegistrationFormType]
+          const hasError = !!errors[field as keyof VisitRegistrationFormType]
+          return value !== undefined && value !== '' && !hasError
+        })
+      },
+      [formData, errors]
+    )
 
-    const validateStep = async () => {
-      const fieldsToValidate = steps[currentStep]
-        .fields as (keyof VisitRegistrationFormType)[]
-      return await trigger(fieldsToValidate, { shouldFocus: true })
-    }
+    // Validação de um passo específico
+    const validateStep = useCallback(
+      async (stepIndex: number) => {
+        const fieldsToValidate = steps[stepIndex]
+          .fields as (keyof VisitRegistrationFormType)[]
+        const isStepValid = await trigger(fieldsToValidate, {
+          shouldFocus: true
+        })
+        return isStepValid && areRequiredFieldsValid(stepIndex)
+      },
+      [trigger, areRequiredFieldsValid]
+    )
+
+    // Validação completa de todos os passos antes do envio
+    const validateAllSteps = useCallback(async () => {
+      const validations = await Promise.all(
+        steps.map((_, index) => validateStep(index))
+      )
+      const allStepsValid = validations.every((valid) => valid)
+      if (!allStepsValid) {
+        messageApi.error('Por favor, corrija os erros antes de enviar.')
+      }
+      return allStepsValid
+    }, [validateStep, messageApi])
 
     const nextStep = async () => {
-      if ((await validateStep()) && areRequiredFieldsValid()) {
+      if (await validateStep(currentStep)) {
         setCurrentStep((prev) => prev + 1)
+      } else {
+        messageApi.error('Preencha todos os campos obrigatórios corretamente.')
       }
     }
 
     const prevStep = () => setCurrentStep((prev) => prev - 1)
 
     const handleSubmitClick = async () => {
-      if ((await validateStep()) && areRequiredFieldsValid()) {
-        formMethods.handleSubmit(onSubmit!)()
+      if (await validateAllSteps()) {
+        // Garante que os documentos enviados ao backend incluam o fileList atualizado
+        const updatedValues = {
+          ...formData,
+          documents: fileList
+        }
+        await onSubmit?.(updatedValues)
       }
     }
 
@@ -175,11 +278,13 @@ const VisitRegistrationForm = forwardRef<
       ]
 
     const renderViewOnlyMode = () => (
-      <DynamicDescriptions
-        data={initialData ?? {}}
-        fields={descriptionFields}
-        title="Detalhes da Visita"
-      />
+      <S.VisitRegistrationFormContent>
+        <DynamicDescriptions
+          data={initialData ?? {}}
+          fields={descriptionFields}
+        />
+        <FileListDisplay files={initialData?.documents || []} />
+      </S.VisitRegistrationFormContent>
     )
 
     if (mode === 'viewOnly') return renderViewOnlyMode()
@@ -214,6 +319,8 @@ const VisitRegistrationForm = forwardRef<
               control={control}
               errors={errors}
               setValue={setValue}
+              setFileList={setFileList}
+              fileList={fileList}
               visible={currentStep === 2}
               mode={mode}
             />
@@ -234,7 +341,7 @@ const VisitRegistrationForm = forwardRef<
               <StyledButton
                 type="primary"
                 onClick={nextStep}
-                disabled={!areRequiredFieldsValid()}
+                disabled={!areRequiredFieldsValid(currentStep)}
               >
                 Próximo
               </StyledButton>
@@ -269,6 +376,8 @@ interface IVisitRegistrationStep {
   userOptions?: { label: string; value: string }[]
   usersLoading?: boolean
   descriptionFields?: DynamicDescriptionsField<VisitRegistrationFormType>[]
+  fileList?: UploadFile[]
+  setFileList?: React.Dispatch<React.SetStateAction<UploadFile[]>>
 }
 
 const BasicDataStep = ({
@@ -430,6 +539,8 @@ const ComplementsStep = ({
   control,
   errors,
   setValue,
+  setFileList,
+  fileList,
   visible,
   mode
 }: IVisitRegistrationStep) => {
@@ -447,8 +558,11 @@ const ComplementsStep = ({
             <Upload
               multiple
               beforeUpload={() => false}
-              onChange={({ fileList }) => setValue('documents', fileList)}
-              fileList={field.value || []}
+              onChange={({ fileList }) => {
+                setFileList?.(fileList)
+                setValue('documents', fileList)
+              }}
+              fileList={fileList || []}
               disabled={mode === 'viewOnly'}
             >
               <Button icon={<UploadOutlined />}>Anexar Documentos</Button>
