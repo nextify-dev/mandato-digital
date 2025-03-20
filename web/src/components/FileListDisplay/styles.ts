@@ -1,7 +1,7 @@
 // src/components/FileListDisplay/styles.ts
 
 import styled from 'styled-components'
-import { Card } from 'antd'
+import { Card, List } from 'antd'
 
 import { Screen } from '@/utils/styles/commons'
 import { color } from '@/utils/styles/colors'
@@ -11,6 +11,13 @@ export const FileListDisplay = styled.div`
   display: flex;
   flex-direction: column;
   row-gap: 10px;
+  margin-top: 10px;
+
+  .ant-list-items {
+    display: flex;
+    flex-direction: column;
+    row-gap: 6px;
+  }
 `
 
 export const FileListDisplayTitle = styled.h2`

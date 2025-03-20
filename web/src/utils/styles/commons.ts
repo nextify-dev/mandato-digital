@@ -57,6 +57,25 @@ export const FormStep = styled.div<{ visible: number }>`
   flex-direction: column;
   row-gap: 10px;
   width: 100%;
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 5px;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+    border-radius: 10px;
+    z-index: 1000;
+  }
+
+  &::-webkit-scrollbar-track {
+    border-radius: 10px;
+    ${backgroundColor('colorBorderSecondary')}
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border-radius: 10px;
+    ${backgroundColor('colorBorder')}
+  }
 `
 
 export const FormInputsWrapper = styled.div`

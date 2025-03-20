@@ -30,16 +30,17 @@ export const getVisitStatusData = (status?: VisitStatus): FormattedVisitTag => {
 interface BaseVisit {
   id: string
   voterId: string
-  dateTime: string // ISO 8601 (ex.: "2025-03-15T00:00:00Z")
-  createdAt: string // ISO 8601 (ex.: "2025-03-15T00:00:00Z")
-  createdBy: string // ID do usuário criador
+  cityId: string
+  dateTime: string
+  createdAt: string
+  createdBy: string
   status: VisitStatus
 }
 
 export interface VisitDetails {
   reason: string
   relatedUserId: string
-  documents?: string[] | null // URLs dos documentos no Storage
+  documents?: string[] | null
   observations?: string | null
 }
 
@@ -47,14 +48,14 @@ export interface Visit extends BaseVisit {
   details: VisitDetails
 }
 
-// Tipo para o formulário, usando UploadFile para compatibilidade com Ant Design
 export interface VisitRegistrationFormType {
   voterId: string
-  dateTime: string // Formato DD/MM/YYYY HH:mm
+  cityId?: string
+  dateTime: string
   status: VisitStatus
   reason: string
   relatedUserId: string
-  documents?: UploadFile[] | null // UploadFile para o formulário
+  documents?: UploadFile[] | null
   observations?: string | null
 }
 
@@ -65,6 +66,7 @@ export const getVisitRegistrationSchema = (mode: 'create' | 'edit') => {
       then: () => yup.string().required('Eleitor é obrigatório'),
       otherwise: () => yup.string().notRequired()
     }),
+    cityId: yup.string().optional(),
     dateTime: yup.string().when('mode', {
       is: () => mode === 'create',
       then: () =>

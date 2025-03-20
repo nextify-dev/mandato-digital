@@ -6,9 +6,10 @@ import { Visit, VisitRegistrationFormType, VisitStatus } from '@/@types/visit'
 import { UploadFile } from 'antd/lib/upload/interface'
 import { visitsService } from '@/services/visits'
 import { useAuth } from '@/contexts/AuthProvider'
-import { db } from '@/lib/firebase'
-import { ref, onValue, get } from 'firebase/database'
-import { User } from '@/@types/user'
+import {
+  listenToDatabase,
+  extractFileInfoFromUrl
+} from '@/utils/functions/firebaseUtils'
 import moment from 'moment'
 
 interface VisitsContextData {
@@ -29,6 +30,7 @@ interface VisitFilters {
   voterId: string
   status?: VisitStatus
   relatedUserId?: string
+  cityId?: string
 }
 
 const VisitsContext = createContext<VisitsContextData>({} as VisitsContextData)
@@ -43,15 +45,32 @@ export const VisitsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [filters, setFilters] = useState<Partial<VisitFilters>>({})
 
   useEffect(() => {
-    const visitsRef = ref(db, 'visits')
     setLoading(true)
-
-    const unsubscribeVisits = onValue(
-      visitsRef,
-      async (snapshot) => {
-        const visitsData = snapshot.val() || {}
-        const visitsArray = await processVisitsData(visitsData, filters)
-        setVisits(visitsArray)
+    const unsubscribe = listenToDatabase<Visit>(
+      'visits',
+      (visitsArray) => {
+        let filteredVisits = visitsArray
+        if (filters.voterId) {
+          filteredVisits = filteredVisits.filter(
+            (visit) => visit.voterId === filters.voterId
+          )
+        }
+        if (filters.status) {
+          filteredVisits = filteredVisits.filter(
+            (visit) => visit.status === filters.status
+          )
+        }
+        if (filters.relatedUserId) {
+          filteredVisits = filteredVisits.filter(
+            (visit) => visit.details.relatedUserId === filters.relatedUserId
+          )
+        }
+        if (filters.cityId) {
+          filteredVisits = filteredVisits.filter(
+            (visit) => visit.cityId === filters.cityId
+          )
+        }
+        setVisits(filteredVisits)
         setLoading(false)
       },
       (error) => {
@@ -62,40 +81,8 @@ export const VisitsProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     )
 
-    return () => unsubscribeVisits()
+    return unsubscribe
   }, [filters, messageApi])
-
-  const processVisitsData = async (
-    visitsData: { [key: string]: any },
-    filters: Partial<VisitFilters>
-  ): Promise<Visit[]> => {
-    let visitsArray = Object.entries(visitsData).map(
-      ([id, data]: [string, any]) =>
-        ({
-          id,
-          ...data,
-          details: { ...data.details }
-        } as Visit)
-    )
-
-    if (filters.voterId) {
-      visitsArray = visitsArray.filter(
-        (visit) => visit.voterId === filters.voterId
-      )
-    }
-    if (filters.status) {
-      visitsArray = visitsArray.filter(
-        (visit) => visit.status === filters.status
-      )
-    }
-    if (filters.relatedUserId) {
-      visitsArray = visitsArray.filter(
-        (visit) => visit.details.relatedUserId === filters.relatedUserId
-      )
-    }
-
-    return visitsArray
-  }
 
   const createVisit = async (
     data: VisitRegistrationFormType
@@ -103,7 +90,11 @@ export const VisitsProvider: React.FC<{ children: React.ReactNode }> = ({
     setLoading(true)
     try {
       if (!user) throw new Error('Usuário não autenticado')
-      const newVisitId = await visitsService.createVisit(data, user.id)
+      const newVisitId = await visitsService.createVisit(
+        data,
+        user.id,
+        user.cityId || ''
+      )
       messageApi.success('Visita criada com sucesso!')
       setLoading(false)
       return newVisitId
@@ -146,50 +137,15 @@ export const VisitsProvider: React.FC<{ children: React.ReactNode }> = ({
   const getInitialData = async (
     visit: Visit
   ): Promise<Partial<VisitRegistrationFormType>> => {
-    const extractFileInfo = (url: string, index: number) => {
-      const cleanUrl = url.split('?')[0]
-      const segments = cleanUrl.split('/')
-      let lastSegment = segments.pop() || ''
-      const pathSegments = lastSegment.split('%2F')
-      let fileNameEncoded = pathSegments.pop() || `Documento ${index + 1}`
-      const fileName = decodeURIComponent(fileNameEncoded)
-      const extensionMatch = fileName.match(/\.([^.]+)$/)
-      const extension = extensionMatch
-        ? extensionMatch[1].toLowerCase()
-        : 'desconhecido'
-      const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp']
-      const videoExtensions = ['mp4', 'webm', 'ogg', 'mov']
-      const documentExtensions = ['pdf', 'doc', 'docx', 'txt']
-      const spreadsheetExtensions = ['xls', 'xlsx', 'csv']
-      let type: string
-      if (imageExtensions.includes(extension)) {
-        type = 'image'
-      } else if (videoExtensions.includes(extension)) {
-        type = 'video'
-      } else if (documentExtensions.includes(extension)) {
-        type = 'document'
-      } else if (spreadsheetExtensions.includes(extension)) {
-        type = 'spreadsheet'
-      } else {
-        type = 'other'
-      }
-
-      return {
-        uid: `${index}`,
-        name: fileName,
-        status: 'done' as const,
-        url,
-        type,
-        extension
-      }
-    }
-
     const documents = visit.details.documents
-      ? visit.details.documents.map((url, index) => extractFileInfo(url, index))
+      ? visit.details.documents.map((url, index) =>
+          extractFileInfoFromUrl(url, index)
+        )
       : null
 
     return {
       voterId: visit.voterId,
+      cityId: visit.cityId,
       dateTime: visit.dateTime
         ? moment(visit.dateTime).format('DD/MM/YYYY HH:mm')
         : '',

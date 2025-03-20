@@ -1,14 +1,11 @@
 // src/screens/DashboardV1/views/RegistroVisitasView.tsx
 
 import { useState, useRef, useEffect } from 'react'
-
 import * as S from './styles'
 import { LuPen, LuTrash2, LuEye } from 'react-icons/lu'
-
 import { Button, Input, Tag, Select } from 'antd'
 import { UseFormReturn } from 'react-hook-form'
 import moment from 'moment'
-
 import {
   View,
   Table,
@@ -26,12 +23,13 @@ import {
   getVisitStatusData,
   VisitRegistrationFormType
 } from '@/@types/visit'
+import { useCities } from '@/contexts/CitiesProvider'
 
 const { Search } = Input
 
 const RegistroVisitasView = () => {
   const { user } = useAuth()
-  const { allUsers } = useUsers()
+  const { allUsers, getUserById } = useUsers()
   const {
     visits,
     loading,
@@ -42,6 +40,7 @@ const RegistroVisitasView = () => {
     deleteVisit,
     getInitialData
   } = useVisits()
+  const { cities } = useCities()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
@@ -62,6 +61,12 @@ const RegistroVisitasView = () => {
       key: 'voterId',
       render: (id: string) =>
         allUsers.find((u) => u.id === id)?.profile?.nomeCompleto || id
+    },
+    {
+      title: 'Cidade',
+      dataIndex: 'cityId',
+      key: 'cityId',
+      render: (id: string) => cities.find((city) => city.id === id)?.name || id
     },
     {
       title: 'Data e Horário',
@@ -136,10 +141,10 @@ const RegistroVisitasView = () => {
           const data = await getInitialData(selectedVisit)
           if (isEditModalOpen) {
             setInitialEditData(data)
-            setCurrentStep(0) // Sempre inicia no step 0 ao abrir
+            setCurrentStep(0)
           } else if (isViewModalOpen) {
             setInitialViewData(data)
-            setCurrentStep(0) // Sempre inicia no step 0 ao abrir
+            setCurrentStep(0)
           }
         } catch (error) {
           console.error('Erro ao buscar dados iniciais:', error)
@@ -151,13 +156,11 @@ const RegistroVisitasView = () => {
     fetchInitialData()
   }, [selectedVisit, isEditModalOpen, isViewModalOpen, getInitialData])
 
-  // Reset completo ao fechar qualquer modal
   const handleModalClose = (type: 'create' | 'edit' | 'view') => {
     if (type === 'create') setIsCreateModalOpen(false)
     if (type === 'edit') setIsEditModalOpen(false)
     if (type === 'view') setIsViewModalOpen(false)
 
-    // Resetar formulário e estado
     if (formRef.current) {
       formRef.current.reset()
     }
@@ -182,6 +185,10 @@ const RegistroVisitasView = () => {
     setFilters({ ...filters, relatedUserId: value || undefined })
   }
 
+  const handleCityFilter = (value: string) => {
+    setFilters({ ...filters, cityId: value || undefined })
+  }
+
   const STATUS_FILTERED_OPTIONS = Object.values(VisitStatus).map((status) => ({
     label: getVisitStatusData(status).label,
     value: status
@@ -195,14 +202,20 @@ const RegistroVisitasView = () => {
     }))
   ]
 
+  const CITY_FILTERED_OPTIONS = [
+    { label: 'Todas', value: '' },
+    ...cities.map((city) => ({
+      label: city.name,
+      value: city.id
+    }))
+  ]
+
   const handleCreateVisit = async (data: VisitRegistrationFormType) => {
-    console.log(data)
     await createVisit(data)
     handleModalClose('create')
   }
 
   const handleEditVisit = async (data: VisitRegistrationFormType) => {
-    console.log(data)
     if (selectedVisit) {
       const { voterId, dateTime, ...editableData } = data
       await updateVisit(selectedVisit.id, editableData)
@@ -226,6 +239,12 @@ const RegistroVisitasView = () => {
               placeholder="Pesquisar por eleitor"
               onSearch={handleSearch}
               style={{ width: 300 }}
+            />
+            <Select
+              placeholder="Filtrar por cidade"
+              options={CITY_FILTERED_OPTIONS}
+              onChange={handleCityFilter}
+              style={{ width: 150 }}
             />
             <Select
               placeholder="Filtrar por status"
@@ -263,7 +282,7 @@ const RegistroVisitasView = () => {
         onCancel={() => handleModalClose('create')}
         footer={null}
         size="default"
-        destroyOnClose // Garante que o modal seja destruído ao fechar
+        destroyOnClose
       >
         {isCreateModalOpen && (
           <VisitRegistrationForm
@@ -283,7 +302,7 @@ const RegistroVisitasView = () => {
         footer={null}
         size="default"
         confirmLoading={isLoadingInitialData}
-        destroyOnClose // Garante que o modal seja destruído ao fechar
+        destroyOnClose
       >
         {isEditModalOpen && selectedVisit && initialEditData && (
           <VisitRegistrationForm
@@ -304,7 +323,7 @@ const RegistroVisitasView = () => {
         footer={null}
         size="default"
         confirmLoading={isLoadingInitialData}
-        destroyOnClose // Garante que o modal seja destruído ao fechar
+        destroyOnClose
       >
         {isViewModalOpen && selectedVisit && initialViewData && (
           <VisitRegistrationForm
@@ -319,9 +338,11 @@ const RegistroVisitasView = () => {
       <ConfirmModal
         type="danger"
         title="Confirmação de Exclusão"
-        content={`Deseja excluir a visita de ${
-          selectedVisit?.voterId || 'selecionada'
-        }?`}
+        content={`Deseja excluir a visita ${
+          selectedVisit?.voterId
+            ? `de ${getUserById(selectedVisit?.voterId)?.profile?.nomeCompleto}`
+            : 'selecionada'
+        }? Essa ação não poderá ser desfeita.`}
         visible={isConfirmModalOpen}
         onConfirm={handleDeleteVisit}
         onCancel={() => setIsConfirmModalOpen(false)}

@@ -45,6 +45,7 @@ interface UsersContextData {
   deleteUser: (userId: string) => Promise<void>
   toggleUserStatus: (userId: string) => Promise<void>
   getInitialData: (user: User) => Partial<UserRegistrationFormType>
+  getUserById: (userId: string) => User | null
 }
 
 const UsersContext = createContext<UsersContextData>({} as UsersContextData)
@@ -248,6 +249,10 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
     return getInitialFormData(user)
   }
 
+  const getUserById = (userId: string): User | null => {
+    return allUsers.find((user) => user.id === userId) || null
+  }
+
   return (
     <UsersContext.Provider
       value={{
@@ -261,7 +266,8 @@ export const UsersProvider = ({ children }: { children: React.ReactNode }) => {
         updateUser,
         deleteUser,
         toggleUserStatus,
-        getInitialData
+        getInitialData,
+        getUserById
       }}
     >
       {contextHolder}

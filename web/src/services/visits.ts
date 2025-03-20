@@ -1,149 +1,41 @@
 // src/services/visits.ts
 
 import { Visit, VisitStatus, VisitRegistrationFormType } from '@/@types/visit'
-import { db, storage } from '@/lib/firebase'
-import {
-  ref as dbRef,
-  get,
-  set,
-  remove,
-  query,
-  orderByChild,
-  startAt,
-  endAt
-} from 'firebase/database'
-import {
-  ref as storageRef,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject,
-  listAll,
-  StorageReference
-} from 'firebase/storage'
-import { RcFile, UploadFile } from 'antd/lib/upload/interface'
+import { RcFile } from 'antd/lib/upload/interface'
 import moment from 'moment'
+import {
+  fetchFromDatabase,
+  saveToDatabase,
+  deleteFromDatabase,
+  uploadFilesToStorage,
+  deleteFilesFromStorage
+} from '@/utils/functions/firebaseUtils'
+import { deleteObject, listAll, ref } from 'firebase/storage'
+import { storage } from '@/lib/firebase'
 
 export const visitsService = {
-  getSnapshot: async (reference: any) => {
-    return await get(reference)
-  },
-
-  getVisits: async (
-    filters: Partial<{ voterId: string }>
-  ): Promise<Visit[]> => {
-    const visitsRef = dbRef(db, 'visits')
-    let q = visitsRef
-
-    if (filters.voterId) {
-      q = query(
-        visitsRef,
-        orderByChild('voterId'),
-        startAt(filters.voterId),
-        endAt(filters.voterId + '\uf8ff')
-      ) as any
-    }
-
-    const visitsSnapshot = await get(q)
-    const visitsData = visitsSnapshot.val() || {}
-
-    return Object.entries(visitsData).map(
-      ([id, data]: [string, any]) =>
-        ({
-          id,
-          ...data,
-          details: {
-            ...data.details
-          }
-        } as Visit)
-    )
-  },
-
-  /**
-   * Faz o upload de arquivos para o Storage e retorna suas URLs.
-   * Aceita RcFile[] do Ant Design.
-   */
-  async uploadDocuments(
-    visitId: string,
-    documents: RcFile[]
-  ): Promise<string[]> {
-    if (!documents || documents.length === 0) {
-      return []
-    }
-
-    const uploadPromises = documents.map(async (file, index) => {
-      if (!(file instanceof File)) {
-        throw new Error(`Item ${index} não é um arquivo válido: ${file}`)
-      }
-      const fileRef = storageRef(
-        storage,
-        `visits/${visitId}/${index}_${file.name}`
-      )
-      try {
-        const uploadResult = await uploadBytes(fileRef, file)
-        const downloadURL = await getDownloadURL(uploadResult.ref)
-        return downloadURL
-      } catch (error) {
-        console.error(`Erro ao fazer upload do arquivo ${file.name}:`, error)
-        throw new Error(`Falha ao carregar o arquivo ${file.name}`)
-      }
-    })
-
-    try {
-      const urls = await Promise.all(uploadPromises)
-      return urls
-    } catch (error) {
-      // Em caso de erro, limpa os arquivos já enviados
-      await visitsService
-        .deleteDocuments(visitId)
-        .catch((cleanupError) =>
-          console.warn(
-            'Erro ao limpar arquivos após falha de upload:',
-            cleanupError
-          )
-        )
-      throw new Error('Falha ao carregar documentos no Storage: ' + error)
-    }
-  },
-
-  /**
-   * Remove todos os documentos associados a uma visita no Storage.
-   */
-  async deleteDocuments(visitId: string): Promise<void> {
-    const folderRef = storageRef(storage, `visits/${visitId}`)
-    try {
-      const listResult = await listAll(folderRef)
-      if (listResult.items.length === 0) return
-
-      const deletePromises = listResult.items.map(
-        async (itemRef: StorageReference) => {
-          try {
-            await deleteObject(itemRef)
-          } catch (err) {
-            console.warn(`Erro ao deletar ${itemRef.fullPath}: ${err}`)
-          }
-        }
-      )
-      await Promise.all(deletePromises)
-    } catch (error) {
-      console.error('Erro ao listar ou deletar documentos do Storage:', error)
-      throw new Error('Falha ao remover documentos do Storage')
-    }
+  getVisits: async (filters?: { voterId: string }): Promise<Visit[]> => {
+    return fetchFromDatabase<Visit>(
+      'visits',
+      filters ? { key: 'voterId', value: filters.voterId } : undefined
+    ) as Promise<Visit[]>
   },
 
   createVisit: async (
     data: VisitRegistrationFormType,
-    userId: string
+    userId: string,
+    userCityId: string
   ): Promise<string> => {
+    console.log('DATA CHEGANDO NO SERVICE', data.documents)
     const newVisitId = `visit_${Date.now()}_${Math.random()
       .toString(36)
       .substring(2, 8)}`
-    const newVisitRef = dbRef(db, `visits/${newVisitId}`)
+    const storagePath = `visits/${newVisitId}`
 
-    // Processa os documentos: apenas arquivos com originFileObj são considerados
     let documentUrls: string[] = []
     if (data.documents && data.documents.length > 0) {
       const filesToUpload = data.documents
-        .map((doc: UploadFile) => doc.originFileObj)
+        .map((doc) => doc.originFileObj)
         .filter((file): file is RcFile => file instanceof File)
 
       if (filesToUpload.length !== data.documents.length) {
@@ -153,16 +45,22 @@ export const visitsService = {
       }
 
       if (filesToUpload.length > 0) {
-        documentUrls = await visitsService.uploadDocuments(
-          newVisitId,
-          filesToUpload
-        )
+        try {
+          await deleteFilesFromStorage(storagePath)
+        } catch (error) {
+          throw new Error(
+            `Falha ao limpar arquivos antigos no Storage: ${error}`
+          )
+        }
+
+        documentUrls = await uploadFilesToStorage(storagePath, filesToUpload)
       }
     }
 
     const newVisit: Visit = {
       id: newVisitId,
       voterId: data.voterId || '',
+      cityId: data.cityId || userCityId,
       dateTime: moment(data.dateTime, 'DD/MM/YYYY HH:mm').toISOString(),
       createdAt: new Date().toISOString(),
       createdBy: userId,
@@ -171,23 +69,20 @@ export const visitsService = {
         reason: data.reason || '',
         relatedUserId: data.relatedUserId || '',
         documents: documentUrls.length > 0 ? documentUrls : null,
-        observations: data.observations ?? null // Garante que undefined vire null
+        observations: data.observations ?? null
       }
     }
 
     try {
-      await set(newVisitRef, newVisit)
+      await saveToDatabase('visits', newVisit)
       return newVisitId
     } catch (error) {
-      console.error('Erro ao criar visita no Realtime Database:', error)
-      if (documentUrls && documentUrls.length > 0) {
-        await visitsService
-          .deleteDocuments(newVisitId)
-          .catch((cleanupError) =>
-            console.warn('Erro ao limpar documentos após falha:', cleanupError)
-          )
+      if (documentUrls.length > 0) {
+        await deleteFilesFromStorage(storagePath).catch((cleanupError) =>
+          console.warn('Erro ao limpar arquivos após falha:', cleanupError)
+        )
       }
-      throw new Error('Falha ao criar visita: ' + error)
+      throw new Error(`Falha ao criar visita: ${error}`)
     }
   },
 
@@ -195,47 +90,97 @@ export const visitsService = {
     id: string,
     data: Partial<VisitRegistrationFormType>
   ): Promise<void> => {
-    const visitRef = dbRef(db, `visits/${id}`)
-    const snapshot = await get(visitRef)
-    if (!snapshot.exists()) {
+    console.log('DATA CHEGANDO NO SERVICE', data.documents)
+    const existingVisit = (await fetchFromDatabase<Visit>(
+      `visits/${id}`,
+      undefined,
+      true
+    )) as Visit
+
+    if (!existingVisit) {
       throw new Error('Visita não encontrada')
     }
 
-    const existingVisit = snapshot.val() as Visit
+    const storagePath = `visits/${id}`
     let documentUrls: string[] = []
 
     if (data.documents !== undefined) {
-      // Remove os documentos antigos do Storage
+      // Identifica os arquivos existentes no banco
+      const existingDocuments = existingVisit.details.documents || []
+
+      // Identifica os arquivos que ainda estão no fileList (não foram removidos)
+      const filesToKeep = (data.documents || []).filter(
+        (doc) => doc.url && existingDocuments.includes(doc.url)
+      )
+      const urlsToKeep = filesToKeep.map((doc) => doc.url!)
+
+      // Identifica os arquivos que foram removidos
+      const urlsToDelete = existingDocuments.filter(
+        (url) => !urlsToKeep.includes(url)
+      )
+
+      // Identifica os novos arquivos a serem enviados
+      const newFilesToUpload = (data.documents || [])
+        .filter((doc) => !doc.url) // Arquivos sem URL são novos
+        .map((doc) => doc.originFileObj)
+        .filter((file): file is RcFile => file instanceof File)
+
       if (
-        existingVisit.details.documents &&
-        existingVisit.details.documents.length > 0
+        newFilesToUpload.length > 0 &&
+        newFilesToUpload.length !==
+          (data.documents || []).filter((doc) => !doc.url).length
       ) {
-        await visitsService.deleteDocuments(id)
+        throw new Error(
+          'Todos os novos documentos devem ter originFileObj. Reanexe os arquivos existentes.'
+        )
       }
 
-      // Processa os documentos: apenas arquivos com originFileObj são considerados
-      if (data.documents && data.documents.length > 0) {
-        const filesToUpload = data.documents
-          .map((doc: UploadFile) => doc.originFileObj)
-          .filter((file): file is RcFile => file instanceof File)
-
-        if (filesToUpload.length !== data.documents.length) {
+      // Remove os arquivos que não estão mais no fileList
+      if (urlsToDelete.length > 0) {
+        try {
+          const folderRef = ref(storage, storagePath)
+          const listResult = await listAll(folderRef)
+          const deletePromises = listResult.items
+            .filter((itemRef) => {
+              const fileName = itemRef.name
+              const fileUrl = `https://firebasestorage.googleapis.com/v0/b/mandatodigital-19990.firebasestorage.app/o/${encodeURIComponent(
+                storagePath
+              )}%2F${encodeURIComponent(fileName)}?alt=media`
+              return urlsToDelete.some((url) => url.includes(fileName))
+            })
+            .map(async (itemRef) => {
+              try {
+                await deleteObject(itemRef)
+              } catch (err) {
+                throw new Error(`Erro ao deletar ${itemRef.fullPath}: ${err}`)
+              }
+            })
+          await Promise.all(deletePromises)
+        } catch (error) {
           throw new Error(
-            'Todos os documentos devem ter originFileObj. Reanexe os arquivos existentes.'
+            `Falha ao excluir arquivos antigos no Storage: ${error}`
           )
         }
-
-        if (filesToUpload.length > 0) {
-          documentUrls = await visitsService.uploadDocuments(id, filesToUpload)
-        }
       }
+
+      // Faz o upload dos novos arquivos
+      let newDocumentUrls: string[] = []
+      if (newFilesToUpload.length > 0) {
+        newDocumentUrls = await uploadFilesToStorage(
+          storagePath,
+          newFilesToUpload
+        )
+      }
+
+      // Combina as URLs dos arquivos mantidos com as URLs dos novos arquivos
+      documentUrls = [...urlsToKeep, ...newDocumentUrls]
     } else {
-      // Se data.documents não foi fornecido, mantém os documentos existentes
       documentUrls = existingVisit.details.documents || []
     }
 
     const updatedVisit: Visit = {
       ...existingVisit,
+      cityId: data.cityId ?? existingVisit.cityId,
       status: data.status ?? existingVisit.status,
       details: {
         ...existingVisit.details,
@@ -246,42 +191,44 @@ export const visitsService = {
         observations:
           data.observations !== undefined
             ? data.observations
-            : existingVisit.details.observations // Trata undefined explicitamente
+            : existingVisit.details.observations
       }
     }
 
     try {
-      await set(visitRef, updatedVisit)
+      await saveToDatabase('visits', updatedVisit)
     } catch (error) {
-      console.error('Erro ao atualizar visita no Realtime Database:', error)
       if (data.documents !== undefined && documentUrls.length > 0) {
-        await visitsService
-          .deleteDocuments(id)
-          .catch((cleanupError) =>
-            console.warn('Erro ao limpar documentos após falha:', cleanupError)
-          )
+        await deleteFilesFromStorage(storagePath).catch((cleanupError) =>
+          console.warn('Erro ao limpar arquivos após falha:', cleanupError)
+        )
       }
-      throw new Error('Falha ao atualizar visita: ' + error)
+      throw new Error(`Falha ao atualizar visita: ${error}`)
     }
   },
 
   deleteVisit: async (id: string): Promise<void> => {
-    const visitRef = dbRef(db, `visits/${id}`)
-    const snapshot = await get(visitRef)
-    if (!snapshot.exists()) {
+    const existingVisit = (await fetchFromDatabase<Visit>(
+      `visits/${id}`,
+      undefined,
+      true
+    )) as Visit
+
+    if (!existingVisit) {
       throw new Error('Visita não encontrada')
     }
 
-    const visit = snapshot.val() as Visit
-    if (visit.details.documents && visit.details.documents.length > 0) {
-      await visitsService.deleteDocuments(id)
+    if (
+      existingVisit.details.documents &&
+      existingVisit.details.documents.length > 0
+    ) {
+      try {
+        await deleteFilesFromStorage(`visits/${id}`)
+      } catch (error) {
+        throw new Error(`Falha ao excluir arquivos no Storage: ${error}`)
+      }
     }
 
-    try {
-      await remove(visitRef)
-    } catch (error) {
-      console.error('Erro ao deletar visita:', error)
-      throw new Error('Falha ao excluir visita')
-    }
+    await deleteFromDatabase(`visits/${id}`)
   }
 }

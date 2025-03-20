@@ -19,38 +19,14 @@ import DynamicDescriptions, {
   DynamicDescriptionsField
 } from '@/components/DynamicDescriptions'
 import { useUsers } from '@/contexts/UsersProvider'
+import { useAuth } from '@/contexts/AuthProvider'
 import FileListDisplay from '@/components/FileListDisplay'
-import { UploadFile, RcFile } from 'antd/lib/upload/interface'
-import { getAuth } from 'firebase/auth'
+import { UploadFile } from 'antd/lib/upload/interface'
+import { urlToRcFile } from '@/utils/functions/firebaseUtils'
+import { UserRole } from '@/@types/user'
+import { useCities } from '@/contexts/CitiesProvider'
 
 const { TextArea } = Input
-
-// Função para converter uma URL em File
-const urlToFile = async (url: string, fileName: string): Promise<RcFile> => {
-  const auth = getAuth()
-  const user = auth.currentUser
-  let headers: HeadersInit = {}
-
-  if (user) {
-    const token = await user.getIdToken()
-    headers = {
-      Authorization: `Bearer ${token}`
-    }
-  }
-
-  const response = await fetch(url, { headers })
-  if (!response.ok) {
-    throw new Error(
-      `Falha ao baixar o arquivo da URL ${url}: ${response.statusText}`
-    )
-  }
-  const blob = await response.blob()
-  const file = new File([blob], fileName, { type: blob.type }) as RcFile
-  file.uid = `rc-upload-${Date.now()}-${Math.random()
-    .toString(36)
-    .substring(2, 8)}`
-  return file
-}
 
 type FormMode = 'create' | 'edit' | 'viewOnly'
 
@@ -71,11 +47,15 @@ const VisitRegistrationForm = forwardRef<
     ref: Ref<UseFormReturn<VisitRegistrationFormType>>
   ) => {
     const [messageApi, contextHolder] = message.useMessage()
+    const { user } = useAuth()
     const { voters, allUsers, loading: usersLoading } = useUsers()
+    const { cities } = useCities()
     const [fileList, setFileList] = useState<UploadFile[]>([])
 
     const defaultValues: DefaultValues<VisitRegistrationFormType> = {
       voterId: '',
+      cityId:
+        user?.role === UserRole.ADMINISTRADOR_GERAL ? '' : user?.cityId || '',
       dateTime: '',
       status: VisitStatus.AGENDADA,
       reason: '',
@@ -101,28 +81,29 @@ const VisitRegistrationForm = forwardRef<
       formState: { errors, isValid }
     } = formMethods
 
-    // Carrega os arquivos existentes como File objects
     useEffect(() => {
       const loadFiles = async () => {
         if (initialData?.documents) {
           const updatedFileList = await Promise.all(
             initialData.documents.map(async (doc, index) => {
-              if (doc.url && doc.status === 'done' && !doc.originFileObj) {
+              if (doc.url && doc.status === 'done') {
                 try {
-                  const file = await urlToFile(doc.url, doc.name)
+                  const file = await urlToRcFile(doc.url, doc.name)
                   return {
                     ...doc,
                     originFileObj: file,
                     uid: doc.uid || `rc-upload-${Date.now()}-${index}`,
-                    status: 'done' as const
+                    status: 'done' as const,
+                    name: doc.name,
+                    type: doc.type
                   } as UploadFile
                 } catch (error) {
                   console.error(
-                    `Erro ao carregar o arquivo ${doc.name}:`,
+                    `Erro ao processar o arquivo ${doc.name}:`,
                     error
                   )
                   messageApi.error(
-                    `Erro ao carregar o arquivo ${doc.name}. Reanexe o arquivo manualmente.`
+                    `Erro ao processar o arquivo ${doc.name}. Reanexe o arquivo manualmente.`
                   )
                   return doc as UploadFile
                 }
@@ -132,15 +113,17 @@ const VisitRegistrationForm = forwardRef<
           )
           setFileList(updatedFileList)
           setValue('documents', updatedFileList)
+        } else {
+          setFileList([])
+          setValue('documents', null)
         }
       }
 
       if (mode === 'edit' || mode === 'viewOnly') {
         loadFiles()
       }
-    }, [initialData, mode, setValue, messageApi])
+    }, [initialData, mode, setValue])
 
-    // Resetar formulário ao abrir com initialData ou ao mudar de modo
     useEffect(() => {
       if (mode === 'create') {
         reset(defaultValues)
@@ -164,12 +147,24 @@ const VisitRegistrationForm = forwardRef<
       value: user.id
     }))
 
+    const CITY_OPTIONS = cities.map((city) => ({
+      label: city.name,
+      value: city.id
+    }))
+
     const steps = [
       {
         title: 'Dados Básicos',
-        fields: ['voterId', 'dateTime', 'status'],
+        fields:
+          user?.role === UserRole.ADMINISTRADOR_GERAL
+            ? ['voterId', 'cityId', 'dateTime', 'status']
+            : ['voterId', 'dateTime', 'status'],
         requiredFields:
-          mode === 'edit' ? ['status'] : ['voterId', 'dateTime', 'status']
+          mode === 'edit'
+            ? ['status']
+            : user?.role === UserRole.ADMINISTRADOR_GERAL
+            ? ['voterId', 'cityId', 'dateTime', 'status']
+            : ['voterId', 'dateTime', 'status']
       },
       {
         title: 'Detalhes',
@@ -184,7 +179,6 @@ const VisitRegistrationForm = forwardRef<
       { title: 'Revisão', fields: [], requiredFields: [] }
     ]
 
-    // Validação robusta de campos obrigatórios por passo
     const areRequiredFieldsValid = useCallback(
       (stepIndex: number) => {
         const requiredFields = steps[stepIndex].requiredFields
@@ -197,7 +191,6 @@ const VisitRegistrationForm = forwardRef<
       [formData, errors]
     )
 
-    // Validação de um passo específico
     const validateStep = useCallback(
       async (stepIndex: number) => {
         const fieldsToValidate = steps[stepIndex]
@@ -210,7 +203,6 @@ const VisitRegistrationForm = forwardRef<
       [trigger, areRequiredFieldsValid]
     )
 
-    // Validação completa de todos os passos antes do envio
     const validateAllSteps = useCallback(async () => {
       const validations = await Promise.all(
         steps.map((_, index) => validateStep(index))
@@ -234,7 +226,6 @@ const VisitRegistrationForm = forwardRef<
 
     const handleSubmitClick = async () => {
       if (await validateAllSteps()) {
-        // Garante que os documentos enviados ao backend incluam o fileList atualizado
         const updatedValues = {
           ...formData,
           documents: fileList
@@ -252,6 +243,12 @@ const VisitRegistrationForm = forwardRef<
             allUsers.find((u) => u.id === value)?.profile?.nomeCompleto ||
             value ||
             '-'
+        },
+        {
+          key: 'cityId',
+          label: 'Cidade',
+          render: (value) =>
+            cities.find((city) => city.id === value)?.name || value || '-'
         },
         { key: 'dateTime', label: 'Data e Horário' },
         {
@@ -278,13 +275,13 @@ const VisitRegistrationForm = forwardRef<
       ]
 
     const renderViewOnlyMode = () => (
-      <S.VisitRegistrationFormContent>
+      <FormStep visible={1}>
         <DynamicDescriptions
           data={initialData ?? {}}
           fields={descriptionFields}
         />
         <FileListDisplay files={initialData?.documents || []} />
-      </S.VisitRegistrationFormContent>
+      </FormStep>
     )
 
     if (mode === 'viewOnly') return renderViewOnlyMode()
@@ -305,7 +302,9 @@ const VisitRegistrationForm = forwardRef<
               visible={currentStep === 0}
               mode={mode}
               voterOptions={VOTER_OPTIONS}
+              cityOptions={CITY_OPTIONS}
               usersLoading={usersLoading}
+              isAdminGeral={user?.role === UserRole.ADMINISTRADOR_GERAL}
             />
             <DetailsStep
               control={control}
@@ -365,6 +364,8 @@ const VisitRegistrationForm = forwardRef<
 
 VisitRegistrationForm.displayName = 'VisitRegistrationForm'
 
+export default VisitRegistrationForm
+
 interface IVisitRegistrationStep {
   control: any
   errors: any
@@ -373,11 +374,13 @@ interface IVisitRegistrationStep {
   visible: boolean
   mode?: FormMode
   voterOptions?: { label: string; value: string }[]
+  cityOptions?: { label: string; value: string }[]
   userOptions?: { label: string; value: string }[]
   usersLoading?: boolean
   descriptionFields?: DynamicDescriptionsField<VisitRegistrationFormType>[]
   fileList?: UploadFile[]
   setFileList?: React.Dispatch<React.SetStateAction<UploadFile[]>>
+  isAdminGeral?: boolean
 }
 
 const BasicDataStep = ({
@@ -387,7 +390,9 @@ const BasicDataStep = ({
   visible,
   mode,
   voterOptions,
-  usersLoading
+  cityOptions,
+  usersLoading,
+  isAdminGeral
 }: IVisitRegistrationStep) => {
   const VISIT_STATUS_OPTIONS = Object.values(VisitStatus).map((status) => ({
     label: getVisitStatusData(status).label,
@@ -396,28 +401,48 @@ const BasicDataStep = ({
 
   return (
     <FormStep visible={visible ? 1 : 0}>
-      <FormInputsWrapper>
+      <Controller
+        name="voterId"
+        control={control}
+        render={({ field }) => (
+          <StyledForm.Item
+            label="Eleitor"
+            help={errors.voterId?.message}
+            validateStatus={errors.voterId ? 'error' : ''}
+          >
+            <Select
+              {...field}
+              placeholder="Selecione o eleitor"
+              options={voterOptions}
+              showSearch
+              filterOption={(input, option) =>
+                (option?.label ?? '')
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+              onChange={(value) => setValue('voterId', value)}
+              value={field.value}
+              disabled={mode === 'edit'}
+              loading={usersLoading}
+            />
+          </StyledForm.Item>
+        )}
+      />
+      {isAdminGeral && (
         <Controller
-          name="voterId"
+          name="cityId"
           control={control}
           render={({ field }) => (
             <StyledForm.Item
-              label="Eleitor"
-              help={errors.voterId?.message}
-              validateStatus={errors.voterId ? 'error' : ''}
-              style={{ width: '50%' }}
+              label="Cidade"
+              help={errors.cityId?.message}
+              validateStatus={errors.cityId ? 'error' : ''}
             >
               <Select
                 {...field}
-                placeholder="Selecione o eleitor"
-                options={voterOptions}
-                showSearch
-                filterOption={(input, option) =>
-                  (option?.label ?? '')
-                    .toLowerCase()
-                    .includes(input.toLowerCase())
-                }
-                onChange={(value) => setValue('voterId', value)}
+                placeholder="Selecione a cidade"
+                options={cityOptions}
+                onChange={(value) => setValue('cityId', value)}
                 value={field.value}
                 disabled={mode === 'edit'}
                 loading={usersLoading}
@@ -425,6 +450,8 @@ const BasicDataStep = ({
             </StyledForm.Item>
           )}
         />
+      )}
+      <FormInputsWrapper>
         <Controller
           name="dateTime"
           control={control}
@@ -433,7 +460,7 @@ const BasicDataStep = ({
               label="Data e Horário"
               help={errors.dateTime?.message}
               validateStatus={errors.dateTime ? 'error' : ''}
-              style={{ width: '30%' }}
+              style={{ width: '65%' }}
             >
               <DatePicker
                 format="DD/MM/YYYY HH:mm"
@@ -460,7 +487,7 @@ const BasicDataStep = ({
               label="Status"
               help={errors.status?.message}
               validateStatus={errors.status ? 'error' : ''}
-              style={{ width: '20%' }}
+              style={{ width: '35%' }}
             >
               <Select
                 {...field}
@@ -606,5 +633,3 @@ const ReviewStep = ({
     <DynamicDescriptions data={formData} fields={descriptionFields || []} />
   </FormStep>
 )
-
-export default VisitRegistrationForm
