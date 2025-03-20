@@ -21,6 +21,7 @@ interface CitiesContextData {
   getInitialData: (
     city: City
   ) => Promise<Partial<CityRegistrationFormTypeExtended>>
+  getCityById: (cityId?: string) => City | null
 }
 
 interface CityRegistrationFormTypeExtended extends CityRegistrationFormType {
@@ -231,6 +232,10 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }
 
+  const getCityById = (cityId?: string): City | null => {
+    return cities.find((city) => city.id === cityId) || null
+  }
+
   return (
     <CitiesContext.Provider
       value={{
@@ -241,7 +246,8 @@ export const CitiesProvider: React.FC<{ children: React.ReactNode }> = ({
         createCity,
         updateCity,
         deleteCity,
-        getInitialData
+        getInitialData,
+        getCityById
       }}
     >
       {contextHolder}

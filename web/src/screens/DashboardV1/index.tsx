@@ -36,7 +36,7 @@ const DashboardV1 = () => {
           </S.DashboardLogo>
         </S.DashboardSideMenuHeader>
         <S.DashboardSideMenuWrapper>
-          <ActiveCity cityId={user?.cityId} />
+          <ActiveCity cityId={user?.cityId} menuClosed={!sideMenuOpened} />
           <S.DashboardMenu
             mode="inline"
             selectedKeys={activeMenu ? [activeMenu.menuId] : []}

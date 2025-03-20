@@ -45,7 +45,7 @@ interface UsersContextData {
   deleteUser: (userId: string) => Promise<void>
   toggleUserStatus: (userId: string) => Promise<void>
   getInitialData: (user: User) => Partial<UserRegistrationFormType>
-  getUserById: (userId: string) => User | null
+  getUserById: (userId?: string) => User | null
 }
 
 const UsersContext = createContext<UsersContextData>({} as UsersContextData)
