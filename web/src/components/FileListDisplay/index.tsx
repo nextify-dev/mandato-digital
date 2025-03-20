@@ -6,7 +6,7 @@ import { List, Image, Button, Tooltip, message, Input, Checkbox } from 'antd'
 import { UploadFile } from 'antd/lib/upload/interface'
 import { LuDownload } from 'react-icons/lu'
 import { StyledTooltip } from '@/utils/styles/antd'
-import { getTypeLabel } from '@/utils/functions/firebaseUtils'
+import { getTypeLabel } from '@/utils/functions/storageUtils'
 
 interface FileListDisplayProps {
   files?: UploadFile[] | null
@@ -30,6 +30,8 @@ const FileListDisplay: React.FC<FileListDisplayProps> = ({
   const [downloading, setDownloading] = useState<string | null>(null) // Estado para indicar qual arquivo está sendo baixado
   const [searchTerm, setSearchTerm] = useState<string>('') // Termo de pesquisa
   const [messageApi, contextHolder] = message.useMessage()
+
+  // console.log(files)
 
   useEffect(() => {
     if (files && files.length > 0) {

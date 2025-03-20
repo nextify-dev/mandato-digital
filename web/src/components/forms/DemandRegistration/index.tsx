@@ -34,7 +34,7 @@ import {
   uploadFilesToStorage,
   getTypeLabel,
   urlToRcFile
-} from '@/utils/functions/firebaseUtils'
+} from '@/utils/functions/storageUtils'
 import {
   FileCard,
   FileDetails,
@@ -610,7 +610,7 @@ const DocumentsStep = ({
 
       setValue('documents', fileList)
       onSuccess?.(null, new XMLHttpRequest())
-      messageApi.success(`Arquivo "${fileName}" carregado com sucesso!`)
+      // messageApi.success(`Arquivo "${fileName}" carregado com sucesso!`)
     } catch (error) {
       setFileList?.((prev) =>
         prev.map((item) =>

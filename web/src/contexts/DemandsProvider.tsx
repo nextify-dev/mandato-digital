@@ -10,10 +10,8 @@ import {
 import { UploadFile } from 'antd/lib/upload/interface'
 import { demandsService } from '@/services/demands'
 import { useAuth } from '@/contexts/AuthProvider'
-import {
-  listenToDatabase,
-  extractFileInfoFromUrl
-} from '@/utils/functions/firebaseUtils'
+import { listenToDatabase } from '@/utils/functions/databaseUtils'
+import { extractFileInfoFromUrl } from '@/utils/functions/storageUtils'
 import { UserRole } from '@/@types/user'
 
 interface DemandsContextData {
@@ -177,7 +175,6 @@ export const DemandsProvider: React.FC<{ children: React.ReactNode }> = ({
   const getInitialData = async (
     demand: Demand
   ): Promise<Partial<DemandRegistrationFormType>> => {
-    // Verifica se demand.details existe, caso contrário, inicializa com valores padrão
     const details = demand.details ?? { documents: null, updates: null }
 
     const documents = details.documents

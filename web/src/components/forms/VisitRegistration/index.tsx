@@ -39,7 +39,7 @@ import {
   urlToRcFile,
   uploadFilesToStorage,
   getTypeLabel
-} from '@/utils/functions/firebaseUtils'
+} from '@/utils/functions/storageUtils'
 import { getRoleData, UserRole } from '@/@types/user'
 import { useCities } from '@/contexts/CitiesProvider'
 import { RcFile } from 'antd/es/upload'
@@ -657,7 +657,7 @@ const ComplementsStep = ({
       setValue('documents', fileList)
 
       onSuccess?.(null, new XMLHttpRequest())
-      messageApi.success(`Arquivo "${fileName}" carregado com sucesso!`)
+      // messageApi.success(`Arquivo "${fileName}" carregado com sucesso!`)
     } catch (error) {
       // Atualiza o fileList com o estado "error"
       setFileList?.((prev) =>

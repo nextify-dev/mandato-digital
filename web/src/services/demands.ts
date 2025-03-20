@@ -10,12 +10,13 @@ import moment from 'moment'
 import {
   fetchFromDatabase,
   saveToDatabase,
-  deleteFromDatabase,
+  deleteFromDatabase
+} from '@/utils/functions/databaseUtils'
+import {
   uploadFilesToStorage,
-  deleteFilesFromStorage
-} from '@/utils/functions/firebaseUtils'
-import { deleteObject, listAll, ref } from 'firebase/storage'
-import { storage } from '@/lib/firebase'
+  deleteFilesFromStorage,
+  deleteSpecificFilesFromStorage
+} from '@/utils/functions/storageUtils'
 
 export const demandsService = {
   getDemands: async (filters?: { voterId: string }): Promise<Demand[]> => {
@@ -53,6 +54,7 @@ export const demandsService = {
       }
 
       if (filesToUpload.length > 0) {
+        // Não há arquivos antigos para limpar em uma criação, mas garantimos que o caminho esteja limpo
         try {
           await deleteFilesFromStorage(storagePath)
         } catch (error) {
@@ -113,7 +115,7 @@ export const demandsService = {
     let documentUrls: string[] = []
 
     if (data.documents !== undefined) {
-      const existingDocuments = existingDemand.details.documents || []
+      const existingDocuments = existingDemand.details?.documents || []
       const filesToKeep = (data.documents || []).filter(
         (doc) => doc.url && existingDocuments.includes(doc.url)
       )
@@ -136,26 +138,10 @@ export const demandsService = {
         )
       }
 
+      // Deletar arquivos que não estão mais na lista
       if (urlsToDelete.length > 0) {
         try {
-          const folderRef = ref(storage, storagePath)
-          const listResult = await listAll(folderRef)
-          const deletePromises = listResult.items
-            .filter((itemRef) => {
-              const fileName = itemRef.name
-              const fileUrl = `https://firebasestorage.googleapis.com/v0/b/mandatodigital-19990.firebasestorage.app/o/${encodeURIComponent(
-                storagePath
-              )}%2F${encodeURIComponent(fileName)}?alt=media`
-              return urlsToDelete.some((url) => url.includes(fileName))
-            })
-            .map(async (itemRef) => {
-              try {
-                await deleteObject(itemRef)
-              } catch (err) {
-                throw new Error(`Erro ao deletar ${itemRef.fullPath}: ${err}`)
-              }
-            })
-          await Promise.all(deletePromises)
+          await deleteSpecificFilesFromStorage(storagePath, urlsToDelete)
         } catch (error) {
           throw new Error(
             `Falha ao excluir arquivos antigos no Storage: ${error}`
@@ -163,6 +149,7 @@ export const demandsService = {
         }
       }
 
+      // Fazer upload dos novos arquivos
       let newDocumentUrls: string[] = []
       if (newFilesToUpload.length > 0) {
         newDocumentUrls = await uploadFilesToStorage(
@@ -171,9 +158,11 @@ export const demandsService = {
         )
       }
 
+      // Combinar URLs mantidas com as novas
       documentUrls = [...urlsToKeep, ...newDocumentUrls]
     } else {
-      documentUrls = existingDemand.details.documents || []
+      // Se documents não foi alterado, mantém os documentos existentes
+      documentUrls = existingDemand.details?.documents || []
     }
 
     const newUpdate =
@@ -195,8 +184,8 @@ export const demandsService = {
         ...existingDemand.details,
         documents: documentUrls.length > 0 ? documentUrls : null,
         updates: newUpdate
-          ? [...(existingDemand.details.updates || []), newUpdate]
-          : existingDemand.details.updates
+          ? [...(existingDemand.details?.updates || []), newUpdate]
+          : existingDemand.details?.updates
       }
     }
 
@@ -224,7 +213,7 @@ export const demandsService = {
     }
 
     if (
-      existingDemand.details.documents &&
+      existingDemand.details?.documents &&
       existingDemand.details.documents.length > 0
     ) {
       try {

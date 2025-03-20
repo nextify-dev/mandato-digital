@@ -4,12 +4,14 @@ import { Visit, VisitStatus, VisitRegistrationFormType } from '@/@types/visit'
 import { RcFile } from 'antd/lib/upload/interface'
 import moment from 'moment'
 import {
-  fetchFromDatabase,
-  saveToDatabase,
-  deleteFromDatabase,
   uploadFilesToStorage,
   deleteFilesFromStorage
-} from '@/utils/functions/firebaseUtils'
+} from '@/utils/functions/storageUtils'
+import {
+  fetchFromDatabase,
+  saveToDatabase,
+  deleteFromDatabase
+} from '@/utils/functions/databaseUtils'
 import { deleteObject, listAll, ref } from 'firebase/storage'
 import { storage } from '@/lib/firebase'
 

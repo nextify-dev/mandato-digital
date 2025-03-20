@@ -6,11 +6,9 @@ import { Visit, VisitRegistrationFormType, VisitStatus } from '@/@types/visit'
 import { UploadFile } from 'antd/lib/upload/interface'
 import { visitsService } from '@/services/visits'
 import { useAuth } from '@/contexts/AuthProvider'
-import {
-  listenToDatabase,
-  extractFileInfoFromUrl
-} from '@/utils/functions/firebaseUtils'
+import { extractFileInfoFromUrl } from '@/utils/functions/storageUtils'
 import moment from 'moment'
+import { listenToDatabase } from '@/utils/functions/databaseUtils'
 
 interface VisitsContextData {
   visits: Visit[]
