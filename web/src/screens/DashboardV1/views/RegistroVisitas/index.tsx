@@ -29,7 +29,7 @@ const { Search } = Input
 
 const RegistroVisitasView = () => {
   const { user } = useAuth()
-  const { allUsers, getUserById } = useUsers()
+  const { users, allUsers, getUserById } = useUsers()
   const {
     visits,
     loading,
@@ -196,7 +196,7 @@ const RegistroVisitasView = () => {
 
   const USER_FILTERED_OPTIONS = [
     { label: 'Todos', value: '' },
-    ...allUsers.map((user) => ({
+    ...users.map((user) => ({
       label: `${user.profile?.nomeCompleto} (${user.role})`,
       value: user.id
     }))
@@ -291,6 +291,7 @@ const RegistroVisitasView = () => {
             ref={formRef}
             currentStep={currentStep}
             setCurrentStep={setCurrentStep}
+            loading={isLoadingInitialData || loading}
           />
         )}
       </Modal>
@@ -301,7 +302,6 @@ const RegistroVisitasView = () => {
         onCancel={() => handleModalClose('edit')}
         footer={null}
         size="default"
-        confirmLoading={isLoadingInitialData}
         destroyOnClose
       >
         {isEditModalOpen && selectedVisit && initialEditData && (
@@ -312,6 +312,7 @@ const RegistroVisitasView = () => {
             ref={formRef}
             currentStep={currentStep}
             setCurrentStep={setCurrentStep}
+            loading={isLoadingInitialData || loading}
           />
         )}
       </Modal>
@@ -322,7 +323,6 @@ const RegistroVisitasView = () => {
         onCancel={() => handleModalClose('view')}
         footer={null}
         size="default"
-        confirmLoading={isLoadingInitialData}
         destroyOnClose
       >
         {isViewModalOpen && selectedVisit && initialViewData && (

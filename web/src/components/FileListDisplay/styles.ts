@@ -4,7 +4,7 @@ import styled from 'styled-components'
 import { Card, List } from 'antd'
 
 import { Screen } from '@/utils/styles/commons'
-import { color } from '@/utils/styles/colors'
+import { color, textColor } from '@/utils/styles/colors'
 import { font } from '@/utils/styles/fonts'
 
 export const FileListDisplay = styled.div`
@@ -61,9 +61,10 @@ export const FilePreview = styled.div`
 `
 
 export const FileExtension = styled.div`
-  font-size: 18px;
-  font-weight: bold;
-  color: #666;
+  ${font('xxs')}
+  ${textColor('colorTextLabel')}
+
+  font-weight: 600;
 `
 
 export const FileDetails = styled.div`
@@ -71,6 +72,13 @@ export const FileDetails = styled.div`
   flex: 1;
   flex-direction: column;
   row-gap: 5px;
+`
+
+export const FileOptions = styled.div`
+  display: flex;
+  align-items: center;
+  height: 100%;
+  column-gap: 5px;
 `
 
 export const FileDetailsName = styled.p`

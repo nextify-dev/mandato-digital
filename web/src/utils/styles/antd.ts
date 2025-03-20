@@ -15,7 +15,8 @@ import {
   Result,
   Steps,
   Table,
-  theme
+  theme,
+  Tooltip
 } from 'antd'
 
 import { font } from './fonts'
@@ -404,6 +405,13 @@ export const StyledAvatar = styled(Avatar)`
 
   ${font('regular')}
   ${backgroundColor('colorPrimary')}
+`
+
+export const StyledTooltip = styled(Tooltip)`
+  /* padding-top: 2px;
+
+  ${font('regular')}
+  ${backgroundColor('colorPrimary')} */
 `
 
 export const StyledCard = styled(Card)`

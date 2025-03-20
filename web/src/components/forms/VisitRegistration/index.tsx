@@ -36,6 +36,7 @@ interface VisitRegistrationFormProps {
   mode: FormMode
   currentStep: number
   setCurrentStep: React.Dispatch<React.SetStateAction<number>>
+  loading?: boolean
 }
 
 const VisitRegistrationForm = forwardRef<
@@ -43,12 +44,12 @@ const VisitRegistrationForm = forwardRef<
   VisitRegistrationFormProps
 >(
   (
-    { onSubmit, initialData, mode, currentStep, setCurrentStep },
+    { onSubmit, initialData, mode, currentStep, setCurrentStep, loading },
     ref: Ref<UseFormReturn<VisitRegistrationFormType>>
   ) => {
     const [messageApi, contextHolder] = message.useMessage()
     const { user } = useAuth()
-    const { voters, allUsers, loading: usersLoading } = useUsers()
+    const { users, voters, allUsers, loading: usersLoading } = useUsers()
     const { cities } = useCities()
     const [fileList, setFileList] = useState<UploadFile[]>([])
 
@@ -142,7 +143,7 @@ const VisitRegistrationForm = forwardRef<
       value: voter.id
     }))
 
-    const USER_OPTIONS = allUsers.map((user) => ({
+    const USER_OPTIONS = users.map((user) => ({
       label: `${user.profile?.nomeCompleto} (${user.role})`,
       value: user.id
     }))
@@ -340,7 +341,8 @@ const VisitRegistrationForm = forwardRef<
               <StyledButton
                 type="primary"
                 onClick={nextStep}
-                disabled={!areRequiredFieldsValid(currentStep)}
+                loading={loading}
+                disabled={!areRequiredFieldsValid(currentStep) || loading}
               >
                 Próximo
               </StyledButton>
@@ -349,7 +351,8 @@ const VisitRegistrationForm = forwardRef<
               <StyledButton
                 type="primary"
                 onClick={handleSubmitClick}
-                disabled={!isValid}
+                loading={loading}
+                disabled={!isValid || loading}
               >
                 {mode === 'edit' ? 'Atualizar Visita' : 'Criar Visita'}
               </StyledButton>

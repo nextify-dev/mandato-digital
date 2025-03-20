@@ -20,6 +20,28 @@ export interface DynamicDescriptionsProps<T> extends DescriptionsProps {
   fields: DynamicDescriptionsField<T>[]
 }
 
+// Função auxiliar para verificar se o valor é "copiável"
+const isCopyableValue = (value: any): boolean => {
+  if (value === undefined || value === null) {
+    return false
+  }
+
+  if (typeof value === 'object') {
+    return false
+  }
+
+  const stringValue = String(value)
+
+  if (
+    stringValue === '[object Object]' ||
+    stringValue === '[object Object],[object Object]'
+  ) {
+    return false
+  }
+
+  return typeof value === 'string' || typeof value === 'number'
+}
+
 const DynamicDescriptions = <T,>({
   data,
   fields,
@@ -45,17 +67,19 @@ const DynamicDescriptions = <T,>({
         const value = data[key as keyof T]
         const displayValue = render ? render(value) : value ?? '-'
 
+        const canCopy = isCopyableValue(value)
+
         return (
           <StyledDescriptions.Item key={key as string} label={label}>
             <S.DescriptionContent
-              onMouseEnter={() => value && setHoveredKey(key as string)}
+              onMouseEnter={() => canCopy && setHoveredKey(key as string)}
               onMouseLeave={() => setHoveredKey(null)}
             >
               {React.isValidElement(displayValue)
                 ? displayValue
                 : String(displayValue)}
               {hoveredKey === key &&
-                value &&
+                canCopy &&
                 !React.isValidElement(displayValue) && (
                   <S.CopyButton
                     icon={<CopyOutlined />}
