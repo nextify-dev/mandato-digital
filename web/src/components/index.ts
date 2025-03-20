@@ -6,6 +6,11 @@ import ConfirmModal from './ConfirmModal'
 import UserMenu from './UserMenu'
 import FileUploadCard from './FileUploadCard'
 
+import MapComponent from './MapComponent'
+import FiltersPanel from './FiltersPanel'
+import SideCard from './SideCard'
+import Legend from './Legend'
+
 import DynamicDescriptions from './DynamicDescriptions'
 import FileListDisplay from './FileListDisplay'
 import DemandasUpdates from './DemandasUpdates'
@@ -29,5 +34,9 @@ export {
   ActiveCity,
   FileListDisplay,
   FileUploadCard,
-  DemandasUpdates
+  DemandasUpdates,
+  MapComponent,
+  FiltersPanel,
+  SideCard,
+  Legend
 }
