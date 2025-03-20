@@ -33,7 +33,7 @@ import DynamicDescriptions, {
 } from '@/components/DynamicDescriptions'
 import { useUsers } from '@/contexts/UsersProvider'
 import { useAuth } from '@/contexts/AuthProvider'
-import FileListDisplay from '@/components/FileListDisplay'
+import { FileListDisplay, FileUploadCard } from '@/components'
 import { UploadFile, UploadProps } from 'antd/lib/upload/interface'
 import {
   urlToRcFile,
@@ -43,14 +43,6 @@ import {
 import { getRoleData, UserRole } from '@/@types/user'
 import { useCities } from '@/contexts/CitiesProvider'
 import { RcFile } from 'antd/es/upload'
-import {
-  FileCard,
-  FileDetails,
-  FileDetailsName,
-  FileDetailsType,
-  FileOptions,
-  FilePreview
-} from '@/components/FileListDisplay/styles'
 
 const { TextArea } = Input
 
@@ -690,43 +682,43 @@ const ComplementsStep = ({
   }
 
   // Função para renderizar a pré-visualização do arquivo, semelhante ao FileListDisplay
-  const renderFilePreview = (file: UploadFile) => {
-    const extension =
-      file.name.split('.').pop()?.toLowerCase() || 'desconhecido'
-    const type = file.type || 'other'
+  // const renderFilePreview = (file: UploadFile) => {
+  //   const extension =
+  //     file.name.split('.').pop()?.toLowerCase() || 'desconhecido'
+  //   const type = file.type || 'other'
 
-    if (file.status === 'uploading') {
-      return (
-        <Progress
-          percent={file.percent || 0}
-          size="small"
-          style={{ width: 100 }}
-        />
-      )
-    }
+    // if (file.status === 'uploading') {
+    //   return (
+    //     <Progress
+    //       percent={file.percent || 0}
+    //       size="small"
+    //       style={{ width: 100 }}
+    //     />
+    //   )
+    // }
 
-    if (file.status === 'error') {
-      return <span style={{ color: 'red' }}>Erro</span>
-    }
+  //   if (file.status === 'error') {
+  //     return <span style={{ color: 'red' }}>Erro</span>
+  //   }
 
-    if (type === 'image' && file.url) {
-      return (
-        <img
-          src={file.url}
-          alt={file.name}
-          style={{ width: 50, height: 50, objectFit: 'cover' }}
-        />
-      )
-    } else if (type === 'video' && file.url) {
-      return (
-        <video controls muted style={{ width: 50, height: 50 }}>
-          <source src={file.url} type={`video/${extension}`} />
-        </video>
-      )
-    } else {
-      return <span style={{ fontSize: 12, color: '#888' }}>.{extension}</span>
-    }
-  }
+  //   if (type === 'image' && file.url) {
+  //     return (
+  //       <img
+  //         src={file.url}
+  //         alt={file.name}
+  //         style={{ width: 50, height: 50, objectFit: 'cover' }}
+  //       />
+  //     )
+  //   } else if (type === 'video' && file.url) {
+  //     return (
+  //       <video controls muted style={{ width: 50, height: 50 }}>
+  //         <source src={file.url} type={`video/${extension}`} />
+  //       </video>
+  //     )
+  //   } else {
+  //     return <span style={{ fontSize: 12, color: '#888' }}>.{extension}</span>
+  //   }
+  // }
 
   return (
     <FormStep visible={visible ? 1 : 0}>
@@ -753,28 +745,33 @@ const ComplementsStep = ({
               }}
               // Renderização personalizada para cada item da lista
               itemRender={(originNode, file, fileList) => (
-                <FileCard>
-                  <FilePreview style={{ marginRight: 8 }}>
-                    {renderFilePreview(file)}
-                  </FilePreview>
-                  <FileDetails>
-                    <FileDetailsName>{file.name}</FileDetailsName>
-                    <FileDetailsType>
-                      <b>Tipo do Arquivo:</b> {getTypeLabel(file.type)}
-                    </FileDetailsType>
-                  </FileDetails>
-                  <FileOptions>
-                    {mode !== 'viewOnly' && (
-                      <Button
-                        icon={<DeleteOutlined />}
-                        size="small"
-                        danger
-                        onClick={() => handleRemove(file)}
-                        style={{ marginLeft: 8 }}
-                      />
-                    )}
-                  </FileOptions>
-                </FileCard>
+                <FileUploadCard
+                  file={file}
+                  mode={mode}
+                  handleRemove={handleRemove}
+                />
+                // <FileCard>
+                //   <FilePreview style={{ marginRight: 8 }}>
+                //     {renderFilePreview(file)}
+                //   </FilePreview>
+                //   <FileDetails>
+                //     <FileDetailsName>{file.name}</FileDetailsName>
+                //     <FileDetailsType>
+                //       <b>Tipo do Arquivo:</b> {getTypeLabel(file.type)}
+                //     </FileDetailsType>
+                //   </FileDetails>
+                //   <FileOptions>
+                //     {mode !== 'viewOnly' && (
+                //       <Button
+                //         icon={<DeleteOutlined />}
+                //         size="small"
+                //         danger
+                //         onClick={() => handleRemove(file)}
+                //         style={{ marginLeft: 8 }}
+                //       />
+                //     )}
+                //   </FileOptions>
+                // </FileCard>
               )}
             >
               <Button icon={<UploadOutlined />} disabled={mode === 'viewOnly'}>

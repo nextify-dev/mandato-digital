@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import * as S from './styles'
-import { List, Image, Button, Tooltip, message, Input, Checkbox } from 'antd'
+import { List, Image, Button, Checkbox } from 'antd'
 import { UploadFile } from 'antd/lib/upload/interface'
 import { LuDownload } from 'react-icons/lu'
 import { StyledTooltip } from '@/utils/styles/antd'
@@ -14,10 +14,11 @@ interface FileListDisplayProps {
 }
 
 interface FileInfo {
-  url: string
+  url?: string // URL do Storage (para arquivos já salvos) ou URL temporária (para arquivos locais)
   name: string
   type: string
   extension: string
+  originFileObj?: File // Para arquivos locais que ainda não foram salvos no Storage final
 }
 
 const FileListDisplay: React.FC<FileListDisplayProps> = ({
@@ -25,37 +26,67 @@ const FileListDisplay: React.FC<FileListDisplayProps> = ({
   viewOnly = false
 }) => {
   const [fileInfos, setFileInfos] = useState<FileInfo[]>([])
-  const [filteredFileInfos, setFilteredFileInfos] = useState<FileInfo[]>([]) // Lista filtrada para exibição
-  const [selectedFiles, setSelectedFiles] = useState<string[]>([]) // URLs dos arquivos selecionados
-  const [downloading, setDownloading] = useState<string | null>(null) // Estado para indicar qual arquivo está sendo baixado
-  const [searchTerm, setSearchTerm] = useState<string>('') // Termo de pesquisa
-  const [messageApi, contextHolder] = message.useMessage()
+  const [filteredFileInfos, setFilteredFileInfos] = useState<FileInfo[]>([])
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([])
+  const [downloading, setDownloading] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState<string>('')
 
-  // console.log(files)
+  // Mapa para armazenar URLs temporárias geradas para arquivos locais
+  const [localUrls, setLocalUrls] = useState<Map<string, string>>(new Map())
 
+  // Gera URLs temporárias para arquivos locais e limpa quando o componente é desmontado
   useEffect(() => {
+    const newLocalUrls = new Map<string, string>()
     if (files && files.length > 0) {
-      const infos = files
-        .filter((file): file is UploadFile & { url: string } => !!file.url)
-        .map((file) => ({
-          url: file.url,
-          name: file.name || 'Arquivo sem nome',
-          type: (file as any).type || 'other',
-          extension:
-            (file as any).extension ||
-            file.name.split('.').pop()?.toLowerCase() ||
-            'desconhecido'
-        }))
-      setFileInfos(infos)
-      setFilteredFileInfos(infos) // Inicialmente, a lista filtrada é igual à lista completa
-    } else {
-      setFileInfos([])
-      setFilteredFileInfos([])
-      setSelectedFiles([]) // Limpa a seleção quando não há arquivos
+      files.forEach((file) => {
+        if (
+          !file.url &&
+          file.originFileObj &&
+          file.originFileObj instanceof File
+        ) {
+          const localUrl = URL.createObjectURL(file.originFileObj)
+          newLocalUrls.set(file.uid, localUrl)
+        }
+      })
+    }
+    setLocalUrls(newLocalUrls)
+
+    return () => {
+      // Limpa as URLs temporárias ao desmontar o componente
+      newLocalUrls.forEach((url) => URL.revokeObjectURL(url))
+      setLocalUrls(new Map())
     }
   }, [files])
 
-  // Função para filtrar os arquivos com base no termo de pesquisa
+  // Atualiza a lista de fileInfos com base nos arquivos recebidos
+  useEffect(() => {
+    if (files && files.length > 0) {
+      const infos = files.map((file) => {
+        console.log(file)
+        const extension =
+          file.name.split('.').pop()?.toLowerCase() || 'desconhecido'
+        const type = file.type || 'other'
+        const url = file.url || localUrls.get(file.uid)
+
+        return {
+          url,
+          name: file.name || 'Arquivo sem nome',
+          type,
+          extension,
+          originFileObj:
+            file.originFileObj instanceof File ? file.originFileObj : undefined
+        }
+      })
+      setFileInfos(infos)
+      setFilteredFileInfos(infos)
+    } else {
+      setFileInfos([])
+      setFilteredFileInfos([])
+      setSelectedFiles([])
+    }
+  }, [files, localUrls])
+
+  // Filtra os arquivos com base no termo de pesquisa
   useEffect(() => {
     if (searchTerm.trim() === '') {
       setFilteredFileInfos(fileInfos)
@@ -64,7 +95,6 @@ const FileListDisplay: React.FC<FileListDisplayProps> = ({
         file.name.toLowerCase().includes(searchTerm.toLowerCase())
       )
       setFilteredFileInfos(filtered)
-      // Atualiza a seleção para incluir apenas os arquivos que ainda estão na lista filtrada
       setSelectedFiles((prev) =>
         prev.filter((url) => filtered.some((file) => file.url === url))
       )
@@ -73,31 +103,44 @@ const FileListDisplay: React.FC<FileListDisplayProps> = ({
 
   // Função para fazer o download de um único arquivo
   const handleDownload = async (file: FileInfo) => {
-    setDownloading(file.url) // Marca o arquivo como "baixando"
+    if (!file.url) return
+
+    setDownloading(file.url)
     try {
-      const response = await fetch(file.url, { method: 'GET' })
-      if (!response.ok) {
-        throw new Error(
-          'Falha ao baixar o arquivo. Verifique a URL ou as permissões.'
-        )
+      if (
+        file.originFileObj &&
+        !file.url.startsWith('https://firebasestorage.googleapis.com')
+      ) {
+        // Download de arquivo local (ainda não salvo no Storage final)
+        const url = URL.createObjectURL(file.originFileObj)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = file.name
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+      } else {
+        // Download de arquivo já salvo no Storage
+        const response = await fetch(file.url, { method: 'GET' })
+        if (!response.ok) {
+          throw new Error(
+            'Falha ao baixar o arquivo. Verifique a URL ou as permissões.'
+          )
+        }
+
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = file.name
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
       }
-
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = file.name
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-
-      messageApi.success(`Download de "${file.name}" iniciado com sucesso!`)
     } catch (error) {
       console.error(`Erro ao baixar o arquivo ${file.name}:`, error)
-      messageApi.error(
-        `Erro ao baixar o arquivo "${file.name}". Tente novamente ou verifique a URL.`
-      )
     } finally {
       setDownloading(null)
     }
@@ -107,11 +150,12 @@ const FileListDisplay: React.FC<FileListDisplayProps> = ({
   const handleDownloadSelected = async () => {
     const filesToDownload =
       selectedFiles.length > 0
-        ? fileInfos.filter((file) => selectedFiles.includes(file.url))
-        : fileInfos
+        ? fileInfos.filter(
+            (file) => file.url && selectedFiles.includes(file.url)
+          )
+        : fileInfos.filter((file) => file.url)
 
     if (filesToDownload.length === 0) {
-      messageApi.warning('Nenhum arquivo para baixar.')
       return
     }
 
@@ -131,7 +175,7 @@ const FileListDisplay: React.FC<FileListDisplayProps> = ({
 
   // Função para selecionar todos os arquivos
   const handleSelectAll = () => {
-    setSelectedFiles(filteredFileInfos.map((file) => file.url))
+    setSelectedFiles(filteredFileInfos.map((file) => file.url!).filter(Boolean))
   }
 
   // Função para limpar a seleção
@@ -140,7 +184,11 @@ const FileListDisplay: React.FC<FileListDisplayProps> = ({
   }
 
   const renderFilePreview = (file: FileInfo) => {
-    if (file.type === 'image') {
+    if (!file.url) {
+      return <S.FileExtension>.{file.extension}</S.FileExtension>
+    }
+
+    if (file.type.startsWith('image')) {
       return (
         <Image
           src={file.url}
@@ -149,7 +197,7 @@ const FileListDisplay: React.FC<FileListDisplayProps> = ({
           style={{ width: '100%', height: '100%' }}
         />
       )
-    } else if (file.type === 'video') {
+    } else if (file.type.startsWith('video')) {
       return (
         <video controls muted style={{ width: '100%', height: '100%' }}>
           <source src={file.url} type={`video/${file.extension}`} />
@@ -173,7 +221,6 @@ const FileListDisplay: React.FC<FileListDisplayProps> = ({
 
   return (
     <S.FileListDisplay>
-      {contextHolder}
       <S.FileListDisplayTitle>Arquivos Anexados</S.FileListDisplayTitle>
 
       {/* Header com botões e input de pesquisa */}
@@ -208,10 +255,12 @@ const FileListDisplay: React.FC<FileListDisplayProps> = ({
         renderItem={(file) => (
           <S.FileCard>
             <Checkbox
-              checked={selectedFiles.includes(file.url)}
-              onChange={(e) => handleSelectFile(file.url, e.target.checked)}
+              checked={file.url ? selectedFiles.includes(file.url) : false}
+              onChange={(e) =>
+                file.url && handleSelectFile(file.url, e.target.checked)
+              }
               style={{ marginRight: 10 }}
-              disabled={viewOnly}
+              disabled={viewOnly || !file.url}
             />
             <S.FilePreview>{renderFilePreview(file)}</S.FilePreview>
             <S.FileDetails>
@@ -233,8 +282,10 @@ const FileListDisplay: React.FC<FileListDisplayProps> = ({
                     icon={<LuDownload />}
                     size="small"
                     onClick={() => handleDownload(file)}
-                    loading={downloading === file.url}
-                    disabled={downloading === file.url}
+                    loading={file.url ? downloading === file.url : false}
+                    disabled={
+                      !file.url || (file.url ? downloading === file.url : false)
+                    }
                   />
                 </StyledTooltip>
               )}
@@ -252,7 +303,10 @@ const FileListDisplay: React.FC<FileListDisplayProps> = ({
             icon={<LuDownload />}
             onClick={handleDownloadSelected}
             loading={downloading !== null}
-            disabled={downloading !== null}
+            disabled={
+              downloading !== null ||
+              filteredFileInfos.every((file) => !file.url)
+            }
           >
             {getDownloadButtonLabel()}
           </Button>

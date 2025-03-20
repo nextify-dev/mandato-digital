@@ -24,7 +24,7 @@ import DynamicDescriptions, {
 } from '@/components/DynamicDescriptions'
 import { useUsers } from '@/contexts/UsersProvider'
 import { useAuth } from '@/contexts/AuthProvider'
-import FileListDisplay from '@/components/FileListDisplay'
+import { FileListDisplay, FileUploadCard } from '@/components'
 import { UploadFile, UploadProps } from 'antd/lib/upload/interface'
 import { useCities } from '@/contexts/CitiesProvider'
 import { RcFile } from 'antd/es/upload'
@@ -35,14 +35,6 @@ import {
   getTypeLabel,
   urlToRcFile
 } from '@/utils/functions/storageUtils'
-import {
-  FileCard,
-  FileDetails,
-  FileDetailsName,
-  FileDetailsType,
-  FileOptions,
-  FilePreview
-} from '@/components/FileListDisplay/styles'
 
 const { TextArea } = Input
 
@@ -683,28 +675,11 @@ const DocumentsStep = ({
                 showRemoveIcon: false
               }}
               itemRender={(originNode, file, fileList) => (
-                <FileCard>
-                  <FilePreview style={{ marginRight: 8 }}>
-                    {renderFilePreview(file)}
-                  </FilePreview>
-                  <FileDetails>
-                    <FileDetailsName>{file.name}</FileDetailsName>
-                    <FileDetailsType>
-                      <b>Tipo do Arquivo:</b> {getTypeLabel(file.type)}
-                    </FileDetailsType>
-                  </FileDetails>
-                  <FileOptions>
-                    {mode !== 'viewOnly' && (
-                      <Button
-                        icon={<DeleteOutlined />}
-                        size="small"
-                        danger
-                        onClick={() => handleRemove(file)}
-                        style={{ marginLeft: 8 }}
-                      />
-                    )}
-                  </FileOptions>
-                </FileCard>
+                <FileUploadCard
+                  file={file}
+                  mode={mode}
+                  handleRemove={handleRemove}
+                />
               )}
             >
               <Button icon={<UploadOutlined />} disabled={mode === 'viewOnly'}>

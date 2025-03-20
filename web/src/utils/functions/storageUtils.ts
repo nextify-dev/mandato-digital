@@ -188,15 +188,98 @@ export const extractFileInfoFromUrl = (
 }
 
 export const getTypeLabel = (type?: string): string => {
-  switch (type) {
+  if (!type) return 'Outro'
+
+  // Normaliza o tipo para lidar com variações (ex.: 'image/png' ou 'image')
+  const normalizedType = type.toLowerCase()
+
+  // Mapeamento de MIME types para rótulos
+  switch (normalizedType) {
+    // Imagens
     case 'image':
+    case 'image/png':
+    case 'image/jpeg':
+    case 'image/jpg':
+    case 'image/gif':
+    case 'image/bmp':
+    case 'image/webp':
+    case 'image/tiff':
+    case 'image/svg+xml':
       return 'Imagem'
+
+    // Vídeos
     case 'video':
+    case 'video/mp4':
+    case 'video/webm':
+    case 'video/ogg':
+    case 'video/mpeg':
+    case 'video/quicktime': // .mov
+    case 'video/x-msvideo': // .avi
+    case 'video/x-matroska': // .mkv
       return 'Vídeo'
+
+    // Documentos
     case 'document':
+    case 'application/pdf':
+    case 'application/msword': // .doc
+    case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': // .docx
+    case 'text/plain':
+    case 'text/html':
+    case 'text/rtf':
+    case 'application/rtf':
       return 'Documento'
+
+    // Planilhas
     case 'spreadsheet':
+    case 'application/vnd.ms-excel': // .xls
+    case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': // .xlsx
+    case 'text/csv':
+    case 'application/vnd.oasis.opendocument.spreadsheet': // .ods
       return 'Tabela'
+
+    // Áudio
+    case 'audio':
+    case 'audio/mpeg': // .mp3
+    case 'audio/wav':
+    case 'audio/ogg':
+    case 'audio/aac':
+    case 'audio/flac':
+      return 'Áudio'
+
+    // Arquivos compactados
+    case 'application/zip':
+    case 'application/x-rar-compressed': // .rar
+    case 'application/x-7z-compressed': // .7z
+    case 'application/gzip':
+    case 'application/x-tar':
+      return 'Arquivo Compactado'
+
+    // Códigos e scripts
+    case 'text/javascript':
+    case 'application/javascript':
+    case 'text/x-python': // .py
+    case 'text/x-java-source': // .java
+    case 'text/x-c': // .c, .cpp
+    case 'text/css':
+    case 'application/json':
+    case 'application/xml':
+    case 'text/xml':
+      return 'Código'
+
+    // Apresentações
+    case 'application/vnd.ms-powerpoint': // .ppt
+    case 'application/vnd.openxmlformats-officedocument.presentationml.presentation': // .pptx
+    case 'application/vnd.oasis.opendocument.presentation': // .odp
+      return 'Apresentação'
+
+    // Outros formatos comuns
+    case 'application/octet-stream': // Arquivos binários genéricos
+    case 'text/calendar': // .ics
+    case 'application/x-font-ttf': // .ttf
+    case 'application/font-woff': // .woff
+    case 'application/font-woff2': // .woff2
+      return 'Outro'
+
     default:
       return 'Outro'
   }

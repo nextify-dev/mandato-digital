@@ -4,6 +4,7 @@ import Table from './Table'
 import Modal from './Modal'
 import ConfirmModal from './ConfirmModal'
 import UserMenu from './UserMenu'
+import FileUploadCard from './FileUploadCard'
 
 import DynamicDescriptions from './DynamicDescriptions'
 import FileListDisplay from './FileListDisplay'
@@ -25,5 +26,6 @@ export {
   VisitRegistrationForm,
   DemandRegistrationForm,
   ActiveCity,
-  FileListDisplay
+  FileListDisplay,
+  FileUploadCard
 }
