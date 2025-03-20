@@ -1,7 +1,7 @@
 // src/components/FileListDisplay/styles.ts
 
 import styled from 'styled-components'
-import { Card, List } from 'antd'
+import { Card, List, Input, Button } from 'antd'
 
 import { Screen } from '@/utils/styles/commons'
 import { color, textColor } from '@/utils/styles/colors'
@@ -25,13 +25,31 @@ export const FileListDisplayTitle = styled.h2`
   font-weight: 500;
 `
 
+export const Header = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 10px;
+`
+
+export const ButtonGroup = styled.div`
+  display: flex;
+  gap: 8px;
+`
+
+export const SearchInput = styled(Input)`
+  max-width: 300px;
+  width: 100%;
+`
+
 export const FileCard = styled.div`
   display: flex;
   align-items: center;
   column-gap: 10px;
   border-radius: 8px;
   padding: 10px;
-
   border: 1px solid ${color('colorBorderSecondary')};
 `
 
@@ -95,4 +113,10 @@ export const FileDetailsType = styled.p`
   b {
     font-weight: 500;
   }
+`
+
+export const DownloadAllButtonWrapper = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
 `
