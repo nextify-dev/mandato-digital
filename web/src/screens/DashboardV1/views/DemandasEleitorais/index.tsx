@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import * as S from './styles'
-import { LuPen, LuTrash2, LuEye } from 'react-icons/lu'
+import { LuPen, LuTrash2, LuEye, LuHistory } from 'react-icons/lu' // Adicionado LuHistory
 import { Button, Input, Tag, Select, Collapse } from 'antd'
 import { UseFormReturn } from 'react-hook-form'
 import moment from 'moment'
@@ -48,6 +48,7 @@ const DemandasEleitoraisView = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false) // Novo estado para o modal de histórico
   const [selectedDemand, setSelectedDemand] = useState<Demand | null>(null)
   const [currentStep, setCurrentStep] = useState(0)
   const [initialEditData, setInitialEditData] =
@@ -131,9 +132,17 @@ const DemandasEleitoraisView = () => {
               setIsViewModalOpen(true)
             }}
           />
+          <Button
+            type="link"
+            icon={<LuHistory />}
+            onClick={() => {
+              setSelectedDemand(record)
+              setIsHistoryModalOpen(true)
+            }}
+          />
         </TableExtrasWrapper>
       ),
-      width: 150
+      width: 200 // Aumentei a largura para acomodar o novo botão
     }
   ]
 
@@ -160,10 +169,11 @@ const DemandasEleitoraisView = () => {
     fetchInitialData()
   }, [selectedDemand, isEditModalOpen, isViewModalOpen, getInitialData])
 
-  const handleModalClose = (type: 'create' | 'edit' | 'view') => {
+  const handleModalClose = (type: 'create' | 'edit' | 'view' | 'history') => {
     if (type === 'create') setIsCreateModalOpen(false)
     if (type === 'edit') setIsEditModalOpen(false)
     if (type === 'view') setIsViewModalOpen(false)
+    if (type === 'history') setIsHistoryModalOpen(false)
 
     if (formRef.current) {
       formRef.current.reset()
@@ -306,19 +316,6 @@ const DemandasEleitoraisView = () => {
         rowKey="id"
         loading={loading}
         pagination={{ pageSize: 10 }}
-        expandable={{
-          expandedRowRender: (record) => (
-            <div style={{ padding: 16 }}>
-              <p>
-                <b>Descrição:</b> {record.description}
-              </p>
-              <p>
-                <b>Histórico de Atualizações:</b>
-              </p>
-              {renderUpdates(record.details?.updates)}
-            </div>
-          )
-        }}
       />
 
       <Modal
@@ -377,6 +374,27 @@ const DemandasEleitoraisView = () => {
             currentStep={0}
             setCurrentStep={() => {}}
           />
+        )}
+      </Modal>
+
+      <Modal
+        title="Histórico de Atualizações"
+        open={isHistoryModalOpen}
+        onCancel={() => handleModalClose('history')}
+        footer={null}
+        size="default"
+        destroyOnClose
+      >
+        {isHistoryModalOpen && selectedDemand && (
+          <div style={{ padding: 16 }}>
+            <p>
+              <b>Descrição:</b> {selectedDemand.description}
+            </p>
+            <p>
+              <b>Histórico de Atualizações:</b>
+            </p>
+            {renderUpdates(selectedDemand.details?.updates)}
+          </div>
         )}
       </Modal>
 

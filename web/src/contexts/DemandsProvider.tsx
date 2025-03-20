@@ -177,8 +177,11 @@ export const DemandsProvider: React.FC<{ children: React.ReactNode }> = ({
   const getInitialData = async (
     demand: Demand
   ): Promise<Partial<DemandRegistrationFormType>> => {
-    const documents = demand.details.documents
-      ? demand.details.documents.map((url, index) =>
+    // Verifica se demand.details existe, caso contrário, inicializa com valores padrão
+    const details = demand.details ?? { documents: null, updates: null }
+
+    const documents = details.documents
+      ? details.documents.map((url, index) =>
           extractFileInfoFromUrl(url, index)
         )
       : null
