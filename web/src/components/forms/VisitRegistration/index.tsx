@@ -3,10 +3,23 @@
 import React, { forwardRef, Ref, useEffect, useCallback, useState } from 'react'
 import * as S from './styles'
 import { Controller, UseFormReturn, DefaultValues } from 'react-hook-form'
-import { Select, DatePicker, Upload, Button, Input, message } from 'antd'
-import { UploadOutlined } from '@ant-design/icons'
+import {
+  Select,
+  DatePicker,
+  Upload,
+  Button,
+  Input,
+  message,
+  Progress
+} from 'antd'
+import { DeleteOutlined, UploadOutlined } from '@ant-design/icons'
 import moment from 'moment'
-import { StyledForm, StyledButton, StyledSteps } from '@/utils/styles/antd'
+import {
+  StyledForm,
+  StyledButton,
+  StyledSteps,
+  StyledUpload
+} from '@/utils/styles/antd'
 import { FormInputsWrapper, FormStep } from '@/utils/styles/commons'
 import { useModalForm } from '@/hooks/useModalForm'
 import {
@@ -21,10 +34,23 @@ import DynamicDescriptions, {
 import { useUsers } from '@/contexts/UsersProvider'
 import { useAuth } from '@/contexts/AuthProvider'
 import FileListDisplay from '@/components/FileListDisplay'
-import { UploadFile } from 'antd/lib/upload/interface'
-import { urlToRcFile } from '@/utils/functions/firebaseUtils'
-import { UserRole } from '@/@types/user'
+import { UploadFile, UploadProps } from 'antd/lib/upload/interface'
+import {
+  urlToRcFile,
+  uploadFilesToStorage,
+  getTypeLabel
+} from '@/utils/functions/firebaseUtils'
+import { getRoleData, UserRole } from '@/@types/user'
 import { useCities } from '@/contexts/CitiesProvider'
+import { RcFile } from 'antd/es/upload'
+import {
+  FileCard,
+  FileDetails,
+  FileDetailsName,
+  FileDetailsType,
+  FileOptions,
+  FilePreview
+} from '@/components/FileListDisplay/styles'
 
 const { TextArea } = Input
 
@@ -123,7 +149,7 @@ const VisitRegistrationForm = forwardRef<
       if (mode === 'edit' || mode === 'viewOnly') {
         loadFiles()
       }
-    }, [initialData, mode, setValue])
+    }, [initialData, mode, setValue, messageApi])
 
     useEffect(() => {
       if (mode === 'create') {
@@ -144,7 +170,7 @@ const VisitRegistrationForm = forwardRef<
     }))
 
     const USER_OPTIONS = users.map((user) => ({
-      label: `${user.profile?.nomeCompleto} (${user.role})`,
+      label: `${user.profile?.nomeCompleto} (${getRoleData(user.role).label})`,
       value: user.id
     }))
 
@@ -331,6 +357,7 @@ const VisitRegistrationForm = forwardRef<
               setValue={setValue}
               visible={currentStep === 3}
               descriptionFields={descriptionFields}
+              initialData={initialData}
             />
           </S.VisitRegistrationFormContent>
           <S.VisitRegistrationFormFooter>
@@ -384,6 +411,7 @@ interface IVisitRegistrationStep {
   fileList?: UploadFile[]
   setFileList?: React.Dispatch<React.SetStateAction<UploadFile[]>>
   isAdminGeral?: boolean
+  initialData?: Partial<VisitRegistrationFormType>
 }
 
 const BasicDataStep = ({
@@ -526,8 +554,9 @@ const DetailsStep = ({
             help={errors.reason?.message}
             validateStatus={errors.reason ? 'error' : ''}
           >
-            <Input
+            <TextArea
               {...field}
+              rows={6}
               placeholder="Digite o motivo da visita"
               value={field.value}
               onChange={(e) => setValue('reason', e.target.value)}
@@ -574,8 +603,134 @@ const ComplementsStep = ({
   visible,
   mode
 }: IVisitRegistrationStep) => {
+  const [messageApi, contextHolder] = message.useMessage()
+
+  // Função para lidar com o upload personalizado
+  const handleUpload: UploadProps['customRequest'] = async ({
+    file,
+    onSuccess,
+    onError,
+    onProgress
+  }) => {
+    const uid = (file as UploadFile).uid
+    const fileName = (file as File).name
+
+    // Atualiza o fileList para mostrar o estado "uploading"
+    setFileList?.((prev) =>
+      prev.map((item) =>
+        item.uid === uid ? { ...item, status: 'uploading', percent: 0 } : item
+      )
+    )
+
+    try {
+      // Simula progresso de upload (você pode integrar com o Firebase para progresso real)
+      for (let percent = 0; percent <= 100; percent += 10) {
+        onProgress?.({ percent })
+        setFileList?.((prev) =>
+          prev.map((item) => (item.uid === uid ? { ...item, percent } : item))
+        )
+        await new Promise((resolve) => setTimeout(resolve, 200)) // Simula delay
+      }
+
+      // Faz o upload para o Firebase Storage
+      const tempPath = `temp/uploads/${uid}_${fileName}` // Caminho temporário
+      const [downloadUrl] = await uploadFilesToStorage(tempPath, [
+        file as RcFile
+      ])
+
+      // Atualiza o fileList com o estado "done" e a URL
+      setFileList?.((prev) =>
+        prev.map((item) =>
+          item.uid === uid
+            ? {
+                ...item,
+                status: 'done',
+                percent: 100,
+                url: downloadUrl,
+                thumbUrl: downloadUrl // Para imagens, thumbUrl pode ser a mesma URL
+              }
+            : item
+        )
+      )
+
+      // Atualiza o form com o fileList atualizado
+      setValue('documents', fileList)
+
+      onSuccess?.(null, new XMLHttpRequest())
+      messageApi.success(`Arquivo "${fileName}" carregado com sucesso!`)
+    } catch (error) {
+      // Atualiza o fileList com o estado "error"
+      setFileList?.((prev) =>
+        prev.map((item) =>
+          item.uid === uid ? { ...item, status: 'error', percent: 0 } : item
+        )
+      )
+
+      onError?.(error as Error)
+      messageApi.error(
+        `Erro ao carregar o arquivo "${fileName}". Tente novamente.`
+      )
+    }
+  }
+
+  // Função para lidar com a remoção de arquivos (apenas localmente)
+  const handleRemove = (file: UploadFile) => {
+    // Remove o arquivo do fileList localmente
+    const newFileList = fileList?.filter((item) => item.uid !== file.uid) || []
+    setFileList?.(newFileList)
+    setValue('documents', newFileList)
+
+    // messageApi.success(`Arquivo "${file.name}" removido do formulário!`)
+  }
+
+  // Função para lidar com mudanças no fileList (ex.: remoção de arquivos)
+  const handleChange: UploadProps['onChange'] = ({ fileList: newFileList }) => {
+    setFileList?.(newFileList)
+    setValue('documents', newFileList)
+  }
+
+  // Função para renderizar a pré-visualização do arquivo, semelhante ao FileListDisplay
+  const renderFilePreview = (file: UploadFile) => {
+    const extension =
+      file.name.split('.').pop()?.toLowerCase() || 'desconhecido'
+    const type = file.type || 'other'
+
+    if (file.status === 'uploading') {
+      return (
+        <Progress
+          percent={file.percent || 0}
+          size="small"
+          style={{ width: 100 }}
+        />
+      )
+    }
+
+    if (file.status === 'error') {
+      return <span style={{ color: 'red' }}>Erro</span>
+    }
+
+    if (type === 'image' && file.url) {
+      return (
+        <img
+          src={file.url}
+          alt={file.name}
+          style={{ width: 50, height: 50, objectFit: 'cover' }}
+        />
+      )
+    } else if (type === 'video' && file.url) {
+      return (
+        <video controls muted style={{ width: 50, height: 50 }}>
+          <source src={file.url} type={`video/${extension}`} />
+        </video>
+      )
+    } else {
+      return <span style={{ fontSize: 12, color: '#888' }}>.{extension}</span>
+    }
+  }
+
   return (
     <FormStep visible={visible ? 1 : 0}>
+      {contextHolder}
       <Controller
         name="documents"
         control={control}
@@ -585,18 +740,47 @@ const ComplementsStep = ({
             help={errors.documents?.message}
             validateStatus={errors.documents ? 'error' : ''}
           >
-            <Upload
+            <StyledUpload
+              listType="picture" // Exibe os arquivos em formato de imagem
               multiple
-              beforeUpload={() => false}
-              onChange={({ fileList }) => {
-                setFileList?.(fileList)
-                setValue('documents', fileList)
-              }}
+              customRequest={handleUpload}
+              onChange={handleChange}
               fileList={fileList || []}
               disabled={mode === 'viewOnly'}
+              showUploadList={{
+                showPreviewIcon: true,
+                showRemoveIcon: false
+              }}
+              // Renderização personalizada para cada item da lista
+              itemRender={(originNode, file, fileList) => (
+                <FileCard>
+                  <FilePreview style={{ marginRight: 8 }}>
+                    {renderFilePreview(file)}
+                  </FilePreview>
+                  <FileDetails>
+                    <FileDetailsName>{file.name}</FileDetailsName>
+                    <FileDetailsType>
+                      <b>Tipo do Arquivo:</b> {getTypeLabel(file.type)}
+                    </FileDetailsType>
+                  </FileDetails>
+                  <FileOptions>
+                    {mode !== 'viewOnly' && (
+                      <Button
+                        icon={<DeleteOutlined />}
+                        size="small"
+                        danger
+                        onClick={() => handleRemove(file)}
+                        style={{ marginLeft: 8 }}
+                      />
+                    )}
+                  </FileOptions>
+                </FileCard>
+              )}
             >
-              <Button icon={<UploadOutlined />}>Anexar Documentos</Button>
-            </Upload>
+              <Button icon={<UploadOutlined />} disabled={mode === 'viewOnly'}>
+                Anexar Documentos
+              </Button>
+            </StyledUpload>
           </StyledForm.Item>
         )}
       />
@@ -630,9 +814,11 @@ const ReviewStep = ({
   formData,
   setValue,
   visible,
-  descriptionFields
+  descriptionFields,
+  initialData
 }: IVisitRegistrationStep) => (
   <FormStep visible={visible ? 1 : 0}>
     <DynamicDescriptions data={formData} fields={descriptionFields || []} />
+    <FileListDisplay files={formData?.documents || []} viewOnly />
   </FormStep>
 )

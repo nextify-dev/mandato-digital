@@ -299,3 +299,18 @@ export const extractFileInfoFromUrl = (
     type
   }
 }
+
+export const getTypeLabel = (type?: string): string => {
+  switch (type) {
+    case 'image':
+      return 'Imagem'
+    case 'video':
+      return 'Vídeo'
+    case 'document':
+      return 'Documento'
+    case 'spreadsheet':
+      return 'Tabela'
+    default:
+      return 'Outro'
+  }
+}

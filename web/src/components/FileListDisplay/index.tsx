@@ -6,9 +6,11 @@ import { List, Image, Button, Tooltip, message } from 'antd'
 import { UploadFile } from 'antd/lib/upload/interface'
 import { LuDownload } from 'react-icons/lu'
 import { StyledTooltip } from '@/utils/styles/antd'
+import { getTypeLabel } from '@/utils/functions/firebaseUtils'
 
 interface FileListDisplayProps {
   files?: UploadFile[] | null
+  viewOnly?: boolean
 }
 
 interface FileInfo {
@@ -18,7 +20,10 @@ interface FileInfo {
   extension: string
 }
 
-const FileListDisplay: React.FC<FileListDisplayProps> = ({ files }) => {
+const FileListDisplay: React.FC<FileListDisplayProps> = ({
+  files,
+  viewOnly = false
+}) => {
   const [fileInfos, setFileInfos] = useState<FileInfo[]>([])
   const [downloading, setDownloading] = useState<string | null>(null) // Estado para indicar qual arquivo está sendo baixado
   const [messageApi, contextHolder] = message.useMessage()
@@ -106,21 +111,6 @@ const FileListDisplay: React.FC<FileListDisplayProps> = ({ files }) => {
     }
   }
 
-  const getTypeLabel = (type: string): string => {
-    switch (type) {
-      case 'image':
-        return 'Imagem'
-      case 'video':
-        return 'Vídeo'
-      case 'document':
-        return 'Documento'
-      case 'spreadsheet':
-        return 'Tabela'
-      default:
-        return 'Outro'
-    }
-  }
-
   return (
     <S.FileListDisplay>
       {contextHolder}
@@ -140,19 +130,21 @@ const FileListDisplay: React.FC<FileListDisplayProps> = ({ files }) => {
               </S.FileDetailsType>
             </S.FileDetails>
             <S.FileOptions>
-              <StyledTooltip
-                placement="topRight"
-                title="Fazer download do arquivo"
-                arrow
-              >
-                <Button
-                  icon={<LuDownload />}
-                  size="small"
-                  onClick={() => handleDownload(file)}
-                  loading={downloading === file.url}
-                  disabled={downloading === file.url}
-                />
-              </StyledTooltip>
+              {!viewOnly && (
+                <StyledTooltip
+                  placement="topRight"
+                  title="Fazer download do arquivo"
+                  arrow
+                >
+                  <Button
+                    icon={<LuDownload />}
+                    size="small"
+                    onClick={() => handleDownload(file)}
+                    loading={downloading === file.url}
+                    disabled={downloading === file.url}
+                  />
+                </StyledTooltip>
+              )}
             </S.FileOptions>
           </S.FileCard>
         )}

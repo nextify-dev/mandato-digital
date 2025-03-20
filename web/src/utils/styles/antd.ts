@@ -16,11 +16,12 @@ import {
   Steps,
   Table,
   theme,
-  Tooltip
+  Tooltip,
+  Upload
 } from 'antd'
 
 import { font } from './fonts'
-import { color, backgroundColor } from './colors'
+import { color, backgroundColor, textColor } from './colors'
 import { ModalSize } from '@/components/Modal'
 
 const { useToken } = theme
@@ -412,6 +413,20 @@ export const StyledTooltip = styled(Tooltip)`
 
   ${font('regular')}
   ${backgroundColor('colorPrimary')} */
+`
+
+export const StyledUpload = styled(Upload)`
+  div.ant-upload {
+    height: fit-content !important;
+    margin-bottom: 10px;
+  }
+
+  .ant-upload-list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    row-gap: 8px;
+  }
 `
 
 export const StyledCard = styled(Card)`

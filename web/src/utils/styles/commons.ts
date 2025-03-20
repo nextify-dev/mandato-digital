@@ -59,7 +59,7 @@ export const FormStep = styled.div<{ visible: number }>`
   width: 100%;
   max-height: 420px;
   overflow: auto;
-  padding-right: 5px;
+  padding: 5px 5px 5px 0;
 
   &::-webkit-scrollbar {
     width: 4px;
