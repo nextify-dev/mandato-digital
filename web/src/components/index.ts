@@ -11,6 +11,7 @@ import FileListDisplay from './FileListDisplay'
 import UserRegistrationForm from './forms/UserRegistration'
 import CityRegistrationForm from './forms/CityRegistration'
 import VisitRegistrationForm from './forms/VisitRegistration'
+import DemandRegistrationForm from './forms/DemandRegistration'
 
 export {
   DynamicDescriptions,
@@ -22,6 +23,7 @@ export {
   UserRegistrationForm,
   CityRegistrationForm,
   VisitRegistrationForm,
+  DemandRegistrationForm,
   ActiveCity,
   FileListDisplay
 }

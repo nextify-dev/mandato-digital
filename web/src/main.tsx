@@ -10,6 +10,7 @@ import { AuthProvider } from '@/contexts/AuthProvider'
 import { UsersProvider } from '@/contexts/UsersProvider'
 import { CitiesProvider } from '@/contexts/CitiesProvider'
 import { VisitsProvider } from '@/contexts/VisitsProvider'
+import { DemandsProvider } from './contexts/DemandsProvider'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -17,8 +18,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <CitiesProvider>
         <UsersProvider>
           <VisitsProvider>
-            <GlobalStyle />
-            <App />
+            <DemandsProvider>
+              <GlobalStyle />
+              <App />
+            </DemandsProvider>
           </VisitsProvider>
         </UsersProvider>
       </CitiesProvider>

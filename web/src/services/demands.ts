@@ -1,0 +1,239 @@
+// src/services/demand.ts
+
+import {
+  Demand,
+  DemandStatus,
+  DemandRegistrationFormType
+} from '@/@types/demand'
+import { RcFile } from 'antd/lib/upload/interface'
+import moment from 'moment'
+import {
+  fetchFromDatabase,
+  saveToDatabase,
+  deleteFromDatabase,
+  uploadFilesToStorage,
+  deleteFilesFromStorage
+} from '@/utils/functions/firebaseUtils'
+import { deleteObject, listAll, ref } from 'firebase/storage'
+import { storage } from '@/lib/firebase'
+
+export const demandsService = {
+  getDemands: async (filters?: { voterId: string }): Promise<Demand[]> => {
+    return fetchFromDatabase<Demand>(
+      'demands',
+      filters ? { key: 'voterId', value: filters.voterId } : undefined
+    ) as Promise<Demand[]>
+  },
+
+  createDemand: async (
+    data: DemandRegistrationFormType,
+    userId: string,
+    userCityId: string,
+    userRole: string
+  ): Promise<string> => {
+    const newDemandId = `demand_${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(2, 8)}`
+    const protocol = `DM-${Date.now()}-${Math.random()
+      .toString(36)
+      .substring(2, 5)
+      .toUpperCase()}`
+    const storagePath = `demands/${newDemandId}`
+
+    let documentUrls: string[] = []
+    if (data.documents && data.documents.length > 0) {
+      const filesToUpload = data.documents
+        .map((doc) => doc.originFileObj)
+        .filter((file): file is RcFile => file instanceof File)
+
+      if (filesToUpload.length !== data.documents.length) {
+        throw new Error(
+          'Todos os documentos devem ter originFileObj. Reanexe os arquivos existentes.'
+        )
+      }
+
+      if (filesToUpload.length > 0) {
+        try {
+          await deleteFilesFromStorage(storagePath)
+        } catch (error) {
+          throw new Error(
+            `Falha ao limpar arquivos antigos no Storage: ${error}`
+          )
+        }
+
+        documentUrls = await uploadFilesToStorage(storagePath, filesToUpload)
+      }
+    }
+
+    const newDemand: Demand = {
+      id: newDemandId,
+      protocol,
+      voterId: data.voterId || '',
+      cityId: data.cityId || userCityId,
+      description: data.description || '',
+      status: data.status || DemandStatus.NOVA,
+      createdAt: new Date().toISOString(),
+      createdBy: userId,
+      relatedUserId: data.relatedUserId || '',
+      details: {
+        documents: documentUrls.length > 0 ? documentUrls : null,
+        updates: null
+      }
+    }
+
+    try {
+      await saveToDatabase('demands', newDemand)
+      return newDemandId
+    } catch (error) {
+      if (documentUrls.length > 0) {
+        await deleteFilesFromStorage(storagePath).catch((cleanupError) =>
+          console.warn('Erro ao limpar arquivos após falha:', cleanupError)
+        )
+      }
+      throw new Error(`Falha ao criar demanda: ${error}`)
+    }
+  },
+
+  updateDemand: async (
+    id: string,
+    data: Partial<DemandRegistrationFormType>,
+    updatedBy: string
+  ): Promise<void> => {
+    const existingDemand = (await fetchFromDatabase<Demand>(
+      `demands/${id}`,
+      undefined,
+      true
+    )) as Demand
+
+    if (!existingDemand) {
+      throw new Error('Demanda não encontrada')
+    }
+
+    const storagePath = `demands/${id}`
+    let documentUrls: string[] = []
+
+    if (data.documents !== undefined) {
+      const existingDocuments = existingDemand.details.documents || []
+      const filesToKeep = (data.documents || []).filter(
+        (doc) => doc.url && existingDocuments.includes(doc.url)
+      )
+      const urlsToKeep = filesToKeep.map((doc) => doc.url!)
+      const urlsToDelete = existingDocuments.filter(
+        (url) => !urlsToKeep.includes(url)
+      )
+      const newFilesToUpload = (data.documents || [])
+        .filter((doc) => !doc.url)
+        .map((doc) => doc.originFileObj)
+        .filter((file): file is RcFile => file instanceof File)
+
+      if (
+        newFilesToUpload.length > 0 &&
+        newFilesToUpload.length !==
+          (data.documents || []).filter((doc) => !doc.url).length
+      ) {
+        throw new Error(
+          'Todos os novos documentos devem ter originFileObj. Reanexe os arquivos existentes.'
+        )
+      }
+
+      if (urlsToDelete.length > 0) {
+        try {
+          const folderRef = ref(storage, storagePath)
+          const listResult = await listAll(folderRef)
+          const deletePromises = listResult.items
+            .filter((itemRef) => {
+              const fileName = itemRef.name
+              const fileUrl = `https://firebasestorage.googleapis.com/v0/b/mandatodigital-19990.firebasestorage.app/o/${encodeURIComponent(
+                storagePath
+              )}%2F${encodeURIComponent(fileName)}?alt=media`
+              return urlsToDelete.some((url) => url.includes(fileName))
+            })
+            .map(async (itemRef) => {
+              try {
+                await deleteObject(itemRef)
+              } catch (err) {
+                throw new Error(`Erro ao deletar ${itemRef.fullPath}: ${err}`)
+              }
+            })
+          await Promise.all(deletePromises)
+        } catch (error) {
+          throw new Error(
+            `Falha ao excluir arquivos antigos no Storage: ${error}`
+          )
+        }
+      }
+
+      let newDocumentUrls: string[] = []
+      if (newFilesToUpload.length > 0) {
+        newDocumentUrls = await uploadFilesToStorage(
+          storagePath,
+          newFilesToUpload
+        )
+      }
+
+      documentUrls = [...urlsToKeep, ...newDocumentUrls]
+    } else {
+      documentUrls = existingDemand.details.documents || []
+    }
+
+    const newUpdate =
+      data.status && data.status !== existingDemand.status
+        ? {
+            updatedAt: new Date().toISOString(),
+            updatedBy,
+            newStatus: data.status
+          }
+        : null
+
+    const updatedDemand: Demand = {
+      ...existingDemand,
+      cityId: data.cityId ?? existingDemand.cityId,
+      description: data.description ?? existingDemand.description,
+      status: data.status ?? existingDemand.status,
+      relatedUserId: data.relatedUserId ?? existingDemand.relatedUserId,
+      details: {
+        ...existingDemand.details,
+        documents: documentUrls.length > 0 ? documentUrls : null,
+        updates: newUpdate
+          ? [...(existingDemand.details.updates || []), newUpdate]
+          : existingDemand.details.updates
+      }
+    }
+
+    try {
+      await saveToDatabase('demands', updatedDemand)
+    } catch (error) {
+      if (data.documents !== undefined && documentUrls.length > 0) {
+        await deleteFilesFromStorage(storagePath).catch((cleanupError) =>
+          console.warn('Erro ao limpar arquivos após falha:', cleanupError)
+        )
+      }
+      throw new Error(`Falha ao atualizar demanda: ${error}`)
+    }
+  },
+
+  deleteDemand: async (id: string): Promise<void> => {
+    const existingDemand = (await fetchFromDatabase<Demand>(
+      `demands/${id}`,
+      undefined,
+      true
+    )) as Demand
+
+    if (!existingDemand) {
+      throw new Error('Demanda não encontrada')
+    }
+
+    if (
+      existingDemand.details.documents &&
+      existingDemand.details.documents.length > 0
+    ) {
+      try {
+        await deleteFilesFromStorage(`demands/${id}`)
+      } catch (error) {
+        throw new Error(`Falha ao excluir arquivos no Storage: ${error}`)
+      }
+    }
+
+    await deleteFromDatabase(`demands/${id}`)
+  }
+}
