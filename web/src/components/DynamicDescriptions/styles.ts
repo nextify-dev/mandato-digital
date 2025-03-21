@@ -10,7 +10,8 @@ import { StyledButton } from '@/utils/styles/antd'
 export const DescriptionContent = styled.div`
   position: relative;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  justify-content: center;
   gap: 8px;
 `
 

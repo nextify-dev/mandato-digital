@@ -10,6 +10,7 @@ import * as S from './styles'
 import { LuX } from 'react-icons/lu'
 import moment from 'moment'
 import { applyMask } from '@/utils/functions/masks'
+import { getVisitStatusData, VisitStatus } from '@/@types/visit'
 
 interface SideCardProps {
   data: SideCardData
@@ -30,27 +31,30 @@ const SideCard: React.FC<SideCardProps> = ({
   // Definir os campos para o DynamicDescriptions
   const fields: DynamicDescriptionsField<SideCardData>[] = [
     {
-      key: 'user',
+      key: 'user.role',
       label: 'Cargo',
       render: () => (
-        <Tag color={getRoleData(user.role).color}>
+        <Tag
+          color={getRoleData(user.role).color}
+          style={{ width: 'fit-content' }}
+        >
           {getRoleData(user.role).label}
         </Tag>
       )
     },
     {
-      key: 'user',
+      key: 'user.nomme',
       label: 'Nome Completo',
       render: () => user.profile?.nomeCompleto || 'N/A'
     },
     {
-      key: 'user',
+      key: 'user.endereco',
       label: 'Endereço',
       render: () =>
         `${user.profile?.endereco || 'N/A'}, ${user.profile?.numero || 'N/A'}`
     },
     {
-      key: 'user',
+      key: 'user.telefone',
       label: 'Telefone',
       render: () =>
         user.profile?.telefone
@@ -58,7 +62,7 @@ const SideCard: React.FC<SideCardProps> = ({
           : 'N/A'
     },
     {
-      key: 'user',
+      key: 'user.whatsapp',
       label: 'WhatsApp',
       render: () =>
         user.profile?.whatsapp
@@ -66,7 +70,7 @@ const SideCard: React.FC<SideCardProps> = ({
           : 'N/A'
     },
     {
-      key: 'user',
+      key: 'user.dataCadastro',
       label: 'Data de Cadastro',
       render: () => new Date(user.createdAt).toLocaleDateString()
     },
@@ -80,14 +84,15 @@ const SideCard: React.FC<SideCardProps> = ({
       label: 'Visitas Recentes',
       render: () =>
         recentVisits?.length
-          ? recentVisits
-              .map((visit) => (
-                <>
-                  {moment(visit.dateTime).format('DD/MM/YYYY HH:mm')} -
-                  {visit.reason} (${visit.status})
-                </>
-              ))
-              .join('; ')
+          ? recentVisits.map(
+              (visit, index) =>
+                `${moment(recentVisits[index].dateTime).format(
+                  'DD/MM/YYYY HH:mm'
+                )} - ${recentVisits[index].reason} (${
+                  getVisitStatusData(recentVisits[index].status as VisitStatus)
+                    .label
+                })`
+            )
           : 'Nenhuma visita recente'
     }
   ]

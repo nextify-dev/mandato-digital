@@ -1,3 +1,5 @@
+// src/screens/DashboardV1/views/Comunicacao/index.tsx
+
 import * as S from './styles'
 
 import { Button } from 'antd'

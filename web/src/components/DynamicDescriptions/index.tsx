@@ -1,7 +1,6 @@
 // src/components/DynamicDescriptions/index.tsx
 
 import * as S from './styles'
-
 import React, { useState } from 'react'
 import { DescriptionsProps, message } from 'antd'
 import { CopyOutlined } from '@ant-design/icons'
@@ -58,9 +57,28 @@ const DynamicDescriptions = <T,>({
         const value = data[key as keyof T]
         const displayValue = render ? render(value) : value ?? '-'
 
+        // Verificar se o valor é copiável
         const canCopy = isCopyableValue(displayValue)
 
-        console.log(value)
+        // Função para renderizar o valor
+        const renderDisplayValue = () => {
+          // Se for um ReactNode válido (como um elemento JSX), renderize diretamente
+          if (React.isValidElement(displayValue)) {
+            return displayValue
+          }
+
+          // Se for um array, renderize cada item
+          if (Array.isArray(displayValue)) {
+            return displayValue.map((item, index) => (
+              <div key={index}>
+                {React.isValidElement(item) ? item : String(item)}
+              </div>
+            ))
+          }
+
+          // Caso contrário, renderize como string
+          return String(displayValue)
+        }
 
         return (
           <StyledDescriptions.Item key={key as string} label={label}>
@@ -68,12 +86,11 @@ const DynamicDescriptions = <T,>({
               onMouseEnter={() => canCopy && setHoveredKey(key as string)}
               onMouseLeave={() => setHoveredKey(null)}
             >
-              {React.isValidElement(displayValue)
-                ? displayValue
-                : String(displayValue)}
+              {renderDisplayValue()}
               {hoveredKey === key &&
                 canCopy &&
-                !React.isValidElement(displayValue) && (
+                !React.isValidElement(displayValue) &&
+                !Array.isArray(displayValue) && (
                   <S.CopyButton
                     icon={<CopyOutlined />}
                     onClick={(e) => {

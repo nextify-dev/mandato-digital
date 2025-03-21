@@ -1,13 +1,11 @@
 // src/components/FiltersPanel/index.tsx
 
 import * as S from './styles'
-
-import { Select, Checkbox, Input } from 'antd'
+import { Select } from 'antd'
 import { MapFilters } from '@/@types/map'
 import { UserRole, User } from '@/@types/user'
 import { City } from '@/@types/city'
-import { DemandStatus } from '@/@types/demand'
-const { Option } = Select
+import { DemandStatus, getDemandStatusData } from '@/@types/demand'
 
 interface FiltersPanelProps {
   filters: MapFilters
@@ -24,27 +22,39 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
   allowedCityIds,
   users
 }) => {
-  const userTypeOptions = Object.values(UserRole).map((role) => ({
+  // Opções para o filtro de cidade
+  const CITY_OPTIONS = cities
+    .filter((city) => allowedCityIds.includes(city.id))
+    .map((city) => ({
+      label: city.name,
+      value: city.id
+    }))
+
+  // Opções para o filtro de tipo de usuário
+  const USER_ROLES_OPTIONS = Object.values(UserRole).map((role) => ({
     label: role,
     value: role
   }))
 
-  const bairroOptions = Array.from(
+  // Opções para o filtro de bairro
+  const BAIRRO_OPTIONS = Array.from(
     new Set(users.map((user) => user.profile?.bairro).filter(Boolean))
   ).map((bairro) => ({
     label: bairro,
     value: bairro
   }))
 
-  const vereadorOptions = users
+  // Opções para o filtro de vereador (base eleitoral)
+  const VEREADOR_OPTIONS = users
     .filter((user) => user.role === UserRole.VEREADOR)
     .map((vereador) => ({
       label: vereador.profile?.nomeCompleto || vereador.id,
       value: vereador.id
     }))
 
-  const demandStatusOptions = Object.values(DemandStatus).map((status) => ({
-    label: status,
+  // Opções para o filtro de status de demanda
+  const DAMAND_STATUS_OPTIONS = Object.values(DemandStatus).map((status) => ({
+    label: getDemandStatusData(status).label,
     value: status
   }))
 
@@ -57,15 +67,8 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
           onChange={(value) => setFilters({ ...filters, cityId: value })}
           style={{ width: 180 }}
           allowClear
-        >
-          {cities
-            .filter((city) => allowedCityIds.includes(city.id))
-            .map((city) => (
-              <Option key={city.id} value={city.id}>
-                {city.name}
-              </Option>
-            ))}
-        </Select>
+          options={CITY_OPTIONS}
+        />
       )}
       <Select
         placeholder="Tipo de Usuário"
@@ -74,52 +77,32 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
         onChange={(value) => setFilters({ ...filters, userType: value })}
         style={{ width: 180 }}
         allowClear
-      >
-        {userTypeOptions.map((option) => (
-          <Option key={option.value} value={option.value}>
-            {option.label}
-          </Option>
-        ))}
-      </Select>
+        options={USER_ROLES_OPTIONS}
+      />
       <Select
         placeholder="Bairro"
         value={filters.bairro}
         onChange={(value) => setFilters({ ...filters, bairro: value })}
         style={{ width: 120 }}
         allowClear
-      >
-        {bairroOptions.map((option) => (
-          <Option key={option.value} value={option.value}>
-            {option.label}
-          </Option>
-        ))}
-      </Select>
+        options={BAIRRO_OPTIONS}
+      />
       <Select
         placeholder="Base Eleitoral (Vereador)"
         value={filters.vereadorId}
         onChange={(value) => setFilters({ ...filters, vereadorId: value })}
         style={{ width: 180 }}
         allowClear
-      >
-        {vereadorOptions.map((option) => (
-          <Option key={option.value} value={option.value}>
-            {option.label}
-          </Option>
-        ))}
-      </Select>
+        options={VEREADOR_OPTIONS}
+      />
       <Select
         placeholder="Status de Demanda"
         value={filters.demandStatus}
         onChange={(value) => setFilters({ ...filters, demandStatus: value })}
         style={{ width: 180 }}
         allowClear
-      >
-        {demandStatusOptions.map((option) => (
-          <Option key={option.value} value={option.value}>
-            {option.label}
-          </Option>
-        ))}
-      </Select>
+        options={DAMAND_STATUS_OPTIONS}
+      />
     </S.FiltersWrapper>
   )
 }

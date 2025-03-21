@@ -196,16 +196,17 @@ export const StyledSteps = styled(Steps)`
 
 export const StyledDescriptions = styled(Descriptions)`
   .ant-descriptions-item-label {
-    ${font('xxs')};
-
     width: 150px !important;
     padding: 5px 10px !important;
+
+    ${font('xxs')};
   }
 
   .ant-descriptions-item-content {
-    ${font('xxs')};
-
     padding: 8px 12px !important;
+
+    ${font('xxs')};
+    line-height: 1rem;
   }
 `
 
