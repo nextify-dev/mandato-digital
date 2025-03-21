@@ -32,6 +32,7 @@ import MinhaContaView from '@/screens/DashboardV1/views/MinhaConta'
 
 import { UserType, Permissions } from '@/@types/user'
 import { MapProvider } from '@/contexts/MapProvider'
+import { TicketsProvider } from '@/contexts/TicketsProvider'
 
 // Interface do Menu
 export interface IMenu {
@@ -181,9 +182,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Gerenciar campanhas informativas',
     menuIcon: <LuMegaphone />,
     menuView: (
-      <>
+      <TicketsProvider>
         <ComunicacaoView />
-      </>
+      </TicketsProvider>
     ),
     menuCategory: 'Comunicação',
     requiredPermissions: { canManageCampaigns: true },
