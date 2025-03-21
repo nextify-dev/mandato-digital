@@ -10,7 +10,7 @@ import {
   useMapsLibrary
 } from '@vis.gl/react-google-maps'
 import { MarkerClusterer } from '@googlemaps/markerclusterer'
-import { MapPoint } from '@/@types/map'
+import { MapPoint, SideCardData } from '@/@types/map'
 import { UserRole } from '@/@types/user'
 import * as S from './styles'
 
@@ -61,7 +61,7 @@ const getPinColor = (
 
 interface MapComponentProps {
   points: MapPoint[]
-  onMarkerClick: (point: MapPoint) => void
+  onMarkerClick: (data: SideCardData) => void // Alterado para passar SideCardData
   loading: boolean
 }
 
@@ -70,14 +70,14 @@ const MapComponent: React.FC<MapComponentProps> = ({
   onMarkerClick,
   loading
 }) => {
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API || '' // Corrigido de VITE_GOOGLE_MAPS_API para VITE_GOOGLE_MAPS_API
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API || ''
   const mapId = 'MAP_ELEITORAL_ID'
 
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>({
     lat: -23.5505,
     lng: -46.6333 // São Paulo como padrão inicial
   })
-  const [zoom, setZoom] = useState(5)
+  const [zoom, setZoom] = useState(10)
   const [hoveredMarker, setHoveredMarker] = useState<MapPoint | null>(null)
 
   // Calcular o centro do mapa com base nos pontos
@@ -105,6 +105,41 @@ const MapComponent: React.FC<MapComponentProps> = ({
   const handleZoomChanged = useCallback((event: MapCameraChangedEvent) => {
     setZoom(event.detail.zoom)
   }, [])
+
+  // Função para calcular a base eleitoral (número de eleitores associados a um vereador)
+  const calculateElectoralBase = (vereadorId: string): number => {
+    return points.filter(
+      (point) =>
+        point.type === UserRole.ELEITOR && point.user.vereadorId === vereadorId
+    ).length
+  }
+
+  // Função para calcular eleitores vinculados (número de eleitores associados a um cabo eleitoral)
+  const calculateLinkedVoters = (caboEleitoralId: string): number => {
+    return points.filter(
+      (point) =>
+        point.type === UserRole.ELEITOR &&
+        point.user.caboEleitoralId === caboEleitoralId
+    ).length
+  }
+
+  // Função para criar os dados do SideCardData ao clicar em um marcador
+  const handleMarkerClick = (point: MapPoint) => {
+    const sideCardData: SideCardData = {
+      user: point.user,
+      recentDemands: point.recentDemands || 0,
+      recentVisits: point.recentVisits || [],
+      electoralBase:
+        point.type === UserRole.VEREADOR
+          ? calculateElectoralBase(point.user.id)
+          : undefined,
+      linkedVoters:
+        point.type === UserRole.CABO_ELEITORAL
+          ? calculateLinkedVoters(point.user.id)
+          : undefined
+    }
+    onMarkerClick(sideCardData)
+  }
 
   if (!apiKey) {
     return (
@@ -136,9 +171,41 @@ const MapComponent: React.FC<MapComponentProps> = ({
       >
         <MarkersWithClustering
           points={points}
-          onMarkerClick={onMarkerClick}
+          onMarkerClick={handleMarkerClick}
           setHoveredMarker={setHoveredMarker}
         />
+        {hoveredMarker && (
+          <S.InfoBox>
+            <strong>{hoveredMarker.user.profile?.nomeCompleto}</strong>
+            <br />
+            Endereço: {hoveredMarker.user.profile?.endereco},{' '}
+            {hoveredMarker.user.profile?.numero}
+            <br />
+            Telefone: {hoveredMarker.user.profile?.telefone || 'N/A'}
+            <br />
+            {hoveredMarker.type === UserRole.ELEITOR &&
+              hoveredMarker.user.vereadorId && (
+                <>
+                  Relacionado a: Vereador{' '}
+                  {hoveredMarker.user.vereadorId
+                    ? hoveredMarker.user
+                        .vereadorId /* Substitua por nome real */
+                    : 'N/A'}
+                </>
+              )}
+            {hoveredMarker.type === UserRole.VEREADOR && (
+              <>
+                Base Eleitoral: {calculateElectoralBase(hoveredMarker.user.id)}
+              </>
+            )}
+            {hoveredMarker.type === UserRole.CABO_ELEITORAL && (
+              <>
+                Eleitores Vinculados:{' '}
+                {calculateLinkedVoters(hoveredMarker.user.id)}
+              </>
+            )}
+          </S.InfoBox>
+        )}
       </Map>
     </APIProvider>
   )
@@ -157,7 +224,7 @@ const MarkersWithClustering: React.FC<MarkersWithClusteringProps> = ({
   setHoveredMarker
 }) => {
   const map = useMap()
-  const markerLibrary = useMapsLibrary('marker') // Carrega a biblioteca 'marker' do Google Maps
+  const markerLibrary = useMapsLibrary('marker')
   const [clusterer, setClusterer] = useState<MarkerClusterer | null>(null)
 
   // Criar os marcadores
@@ -169,10 +236,10 @@ const MarkersWithClustering: React.FC<MarkersWithClusteringProps> = ({
 
     console.log('Creating markers for points:', points)
     return points.map((point) => {
-      const pinStyle = getPinColor(point.type)
+      const pinStyle = getPinColor(point.user.role)
       const marker = new markerLibrary.AdvancedMarkerElement({
         position: { lat: point.latitude, lng: point.longitude },
-        map, // Adiciona o marcador ao mapa
+        map,
         content: new markerLibrary.PinElement({
           background: pinStyle.background,
           glyphColor: pinStyle.glyphColor,
@@ -180,7 +247,6 @@ const MarkersWithClustering: React.FC<MarkersWithClusteringProps> = ({
         }).element
       })
 
-      // Adicionar eventos ao marcador
       marker.addListener('click', () => {
         console.log('Marker clicked:', point.id)
         onMarkerClick(point)
@@ -209,13 +275,11 @@ const MarkersWithClustering: React.FC<MarkersWithClusteringProps> = ({
 
     console.log('Setting up MarkerClusterer with markers:', markers.length)
 
-    // Limpar clusterer anterior, se existir
     if (clusterer) {
       console.log('Clearing previous clusterer')
       clusterer.clearMarkers()
     }
 
-    // Criar novo clusterer
     const newClusterer = new MarkerClusterer({
       map,
       markers,
@@ -237,7 +301,6 @@ const MarkersWithClustering: React.FC<MarkersWithClusteringProps> = ({
 
     setClusterer(newClusterer)
 
-    // Limpar o clusterer ao desmontar
     return () => {
       console.log('Cleaning up MarkerClusterer')
       newClusterer.clearMarkers()

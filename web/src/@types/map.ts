@@ -7,10 +7,12 @@ import { Visit } from '@/@types/visit'
 
 export interface MapPoint {
   id: string
-  user: User
   latitude: number
   longitude: number
-  type: UserRole
+  type: string
+  user: User
+  recentDemands?: number
+  recentVisits?: any[]
   demandsStatus?: DemandStatus
 }
 
@@ -24,8 +26,10 @@ export interface MapFilters {
 
 export interface SideCardData {
   user: User
-  recentDemands: number
-  recentVisits: Visit[]
+  recentDemands?: number
+  recentVisits?: any[]
+  electoralBase?: number // Adicionado para Vereador
+  linkedVoters?: number // Adicionado para Cabo Eleitoral
 }
 
 export interface Coordinates {

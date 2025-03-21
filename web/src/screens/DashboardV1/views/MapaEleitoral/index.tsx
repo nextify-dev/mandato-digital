@@ -31,11 +31,11 @@ const MapaEleitoralView = () => {
   const { mapPoints, filters, setFilters, loading } = useMapData()
   const navigate = useNavigate()
 
-  const [selectedPoint, setSelectedPoint] = useState<MapPoint | null>(null)
+  const [selectedPoint, setSelectedPoint] = useState<SideCardData | null>(null)
   const [isCreateDemandModalOpen, setIsCreateDemandModalOpen] = useState(false)
   const [sideCardData, setSideCardData] = useState<SideCardData | null>(null)
 
-  const handleMarkerClick = (point: MapPoint) => {
+  const handleMarkerClick = (point: SideCardData) => {
     setSelectedPoint(point)
     setSideCardData({
       user: point.user,

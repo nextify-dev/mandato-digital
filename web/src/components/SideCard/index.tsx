@@ -2,6 +2,10 @@
 
 import { Button } from 'antd'
 import { SideCardData } from '@/@types/map'
+import { UserRole } from '@/@types/user'
+import DynamicDescriptions, {
+  DynamicDescriptionsField
+} from '../DynamicDescriptions'
 import * as S from './styles'
 
 interface SideCardProps {
@@ -15,32 +19,70 @@ const SideCard: React.FC<SideCardProps> = ({
   onClose,
   onViewHistory
 }) => {
-  const { user } = data
+  const { user, recentDemands, recentVisits, electoralBase, linkedVoters } =
+    data
+
+  // Definir os campos para o DynamicDescriptions
+  const fields: DynamicDescriptionsField<SideCardData>[] = [
+    {
+      key: 'user',
+      label: 'Nome Completo',
+      render: () => user.profile?.nomeCompleto || 'N/A'
+    },
+    {
+      key: 'user',
+      label: 'Endereço',
+      render: () =>
+        `${user.profile?.endereco || 'N/A'}, ${user.profile?.numero || 'N/A'}`
+    },
+    {
+      key: 'user',
+      label: 'Telefone',
+      render: () => user.profile?.telefone || 'N/A'
+    },
+    {
+      key: 'user',
+      label: 'WhatsApp',
+      render: () => user.profile?.whatsapp || 'N/A'
+    },
+    {
+      key: 'user',
+      label: 'Data de Cadastro',
+      render: () => new Date(user.createdAt).toLocaleDateString()
+    },
+    {
+      key: 'recentDemands',
+      label: 'Demandas Recentes',
+      render: () => recentDemands?.toString() || '0'
+    },
+    {
+      key: 'recentVisits',
+      label: 'Visitas Recentes',
+      render: () => recentVisits?.length.toString() || '0'
+    }
+  ]
+
+  // Adicionar campos condicionais com base no tipo de usuário
+  if (user.role === UserRole.VEREADOR && electoralBase !== undefined) {
+    fields.push({
+      key: 'electoralBase',
+      label: 'Base Eleitoral',
+      render: () => electoralBase.toString()
+    })
+  }
+
+  if (user.role === UserRole.CABO_ELEITORAL && linkedVoters !== undefined) {
+    fields.push({
+      key: 'linkedVoters',
+      label: 'Eleitores Vinculados',
+      render: () => linkedVoters.toString()
+    })
+  }
 
   return (
     <S.SideCardWrapper>
       <S.CloseButton onClick={onClose}>X</S.CloseButton>
-      <h3>{user.profile?.nomeCompleto}</h3>
-      <p>
-        <strong>Endereço:</strong> {user.profile?.endereco},{' '}
-        {user.profile?.numero}
-      </p>
-      <p>
-        <strong>Telefone:</strong> {user.profile?.telefone || 'N/A'}
-      </p>
-      <p>
-        <strong>WhatsApp:</strong> {user.profile?.whatsapp}
-      </p>
-      <p>
-        <strong>Data de Cadastro:</strong>{' '}
-        {new Date(user.createdAt).toLocaleDateString()}
-      </p>
-      <p>
-        <strong>Demandas Recentes:</strong> {data.recentDemands}
-      </p>
-      <p>
-        <strong>Visitas Recentes:</strong> {data.recentVisits.length}
-      </p>
+      <DynamicDescriptions data={data} fields={fields} />
       <Button type="link" onClick={onViewHistory}>
         Ver Histórico Completo
       </Button>
