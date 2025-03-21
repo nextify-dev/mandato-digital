@@ -20,4 +20,6 @@ export const MapContainer = styled.div`
   position: relative;
   width: 100%;
   height: calc(100vh - 200px);
+  border-radius: 8px;
+  overflow: hidden;
 `
