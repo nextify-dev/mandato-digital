@@ -7,6 +7,7 @@ import DynamicDescriptions, {
   DynamicDescriptionsField
 } from '../DynamicDescriptions'
 import * as S from './styles'
+import { LuX } from 'react-icons/lu'
 
 interface SideCardProps {
   data: SideCardData
@@ -81,11 +82,14 @@ const SideCard: React.FC<SideCardProps> = ({
 
   return (
     <S.SideCardWrapper>
-      <S.CloseButton onClick={onClose}>X</S.CloseButton>
+      <S.SideCardHeader>
+        <h2>Informações do Usuário</h2>
+        <Button icon={<LuX />} onClick={onClose} size="small" />
+      </S.SideCardHeader>
       <DynamicDescriptions data={data} fields={fields} />
-      <Button type="link" onClick={onViewHistory}>
+      {/* <Button type="link" onClick={onViewHistory}>
         Ver Histórico Completo
-      </Button>
+      </Button> */}
     </S.SideCardWrapper>
   )
 }

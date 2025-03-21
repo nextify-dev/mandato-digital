@@ -31,6 +31,7 @@ import MonitoramentoRedesView from '@/screens/DashboardV1/views/MonitoramentoRed
 import MinhaContaView from '@/screens/DashboardV1/views/MinhaConta'
 
 import { UserType, Permissions } from '@/@types/user'
+import { MapProvider } from '@/contexts/MapProvider'
 
 // Interface do Menu
 export interface IMenu {
@@ -133,9 +134,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Visualizar mapa eleitoral',
     menuIcon: <LuMap />,
     menuView: (
-      <>
+      <MapProvider>
         <MapaEleitoralView />
-      </>
+      </MapProvider>
     ),
     menuCategory: 'Análise',
     requiredPermissions: { canViewCityMap: true },

@@ -77,7 +77,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
     lat: -23.5505,
     lng: -46.6333 // São Paulo como padrão inicial
   })
-  const [zoom, setZoom] = useState(10)
+  const [zoom, setZoom] = useState(5)
   const [hoveredMarker, setHoveredMarker] = useState<MapPoint | null>(null)
 
   // Calcular o centro do mapa com base nos pontos

@@ -97,14 +97,14 @@ const MapaEleitoralView = () => {
             <Button type="primary" onClick={handleGenerateReport}>
               Gerar Relatório Geográfico
             </Button>
-            {selectedPoint && (
+            {/* {selectedPoint && (
               <>
                 <Button onClick={handleRegisterVisit}>Registrar Visita</Button>
                 <Button onClick={() => setIsCreateDemandModalOpen(true)}>
                   Criar Demanda
                 </Button>
               </>
-            )}
+            )} */}
           </S.ActionButtons>
         </S.HeaderWrapper>
       }
