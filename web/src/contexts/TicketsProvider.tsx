@@ -24,6 +24,7 @@ interface TicketsContextData {
     id: string,
     data: Partial<TicketRegistrationFormType>
   ) => Promise<void>
+  updateTicketStatus: (id: string, status: TicketStatus) => Promise<void>
   deleteTicket: (id: string) => Promise<void>
   sendMessage: (
     ticketId: string,
@@ -40,6 +41,9 @@ interface TicketFilters {
   cityId?: string
   participantId?: string
   status?: TicketStatus
+  createdBy?: string
+  relatedDemandId?: string
+  relatedEventId?: string
 }
 
 const TicketsContext = createContext<TicketsContextData>(
@@ -91,6 +95,21 @@ export const TicketsProvider: React.FC<{ children: React.ReactNode }> = ({
             (ticket) => ticket.status === filters.status
           )
         }
+        if (filters.createdBy) {
+          filteredTickets = filteredTickets.filter(
+            (ticket) => ticket.createdBy === filters.createdBy
+          )
+        }
+        if (filters.relatedDemandId) {
+          filteredTickets = filteredTickets.filter(
+            (ticket) => ticket.relatedDemandId === filters.relatedDemandId
+          )
+        }
+        if (filters.relatedEventId) {
+          filteredTickets = filteredTickets.filter(
+            (ticket) => ticket.relatedEventId === filters.relatedEventId
+          )
+        }
 
         setTickets(filteredTickets)
         setLoading(false)
@@ -140,6 +159,23 @@ export const TicketsProvider: React.FC<{ children: React.ReactNode }> = ({
       setLoading(false)
     } catch (error: any) {
       messageApi.error('Erro ao atualizar ticket, tente novamente')
+      setLoading(false)
+      throw error
+    }
+  }
+
+  const updateTicketStatus = async (
+    id: string,
+    status: TicketStatus
+  ): Promise<void> => {
+    setLoading(true)
+    try {
+      if (!user) throw new Error('Usuário não autenticado')
+      await ticketsService.updateTicketStatus(id, status, user.id)
+      messageApi.success('Status do ticket atualizado com sucesso!')
+      setLoading(false)
+    } catch (error: any) {
+      messageApi.error('Erro ao atualizar status do ticket, tente novamente')
       setLoading(false)
       throw error
     }
@@ -229,6 +265,7 @@ export const TicketsProvider: React.FC<{ children: React.ReactNode }> = ({
         setFilters,
         createTicket,
         updateTicket,
+        updateTicketStatus,
         deleteTicket,
         sendMessage,
         markMessageAsRead,

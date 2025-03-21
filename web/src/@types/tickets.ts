@@ -72,7 +72,7 @@ export interface TicketRegistrationFormType {
   participants: string[] // IDs dos usuários envolvidos
   relatedDemandId?: string | null
   relatedEventId?: string | null
-  initialMessage: string
+  initialMessage?: string // Mensagem inicial agora é opcional
   attachments?: UploadFile[] | null
 }
 
@@ -88,11 +88,7 @@ export const getTicketRegistrationSchema = (mode: 'create' | 'edit') => {
       .required('Participantes são obrigatórios'),
     relatedDemandId: yup.string().nullable().optional(),
     relatedEventId: yup.string().nullable().optional(),
-    initialMessage: yup.string().when('mode', {
-      is: () => mode === 'create',
-      then: () => yup.string().required('Mensagem inicial é obrigatória'),
-      otherwise: () => yup.string().notRequired()
-    }),
+    initialMessage: yup.string().optional(), // Mensagem inicial não é mais obrigatória
     attachments: yup.array().of(yup.mixed<UploadFile>()).nullable().optional()
   })
 }
