@@ -12,7 +12,9 @@ import {
 import { MarkerClusterer } from '@googlemaps/markerclusterer'
 import { MapPoint, SideCardData } from '@/@types/map'
 import { UserRole } from '@/@types/user'
+import { useMap as useMapContext } from '@/contexts/MapProvider'
 import * as S from './styles'
+import { Spin } from 'antd'
 
 // Função para obter a cor do marcador com base no tipo de usuário
 const getPinColor = (
@@ -61,7 +63,7 @@ const getPinColor = (
 
 interface MapComponentProps {
   points: MapPoint[]
-  onMarkerClick: (data: SideCardData) => void // Alterado para passar SideCardData
+  onMarkerClick: (data: SideCardData) => void
   loading: boolean
 }
 
@@ -70,6 +72,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
   onMarkerClick,
   loading
 }) => {
+  const { getSideCardData } = useMapContext()
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API || ''
   const mapId = 'MAP_ELEITORAL_ID'
 
@@ -80,17 +83,24 @@ const MapComponent: React.FC<MapComponentProps> = ({
   const [zoom, setZoom] = useState(5)
   const [hoveredMarker, setHoveredMarker] = useState<MapPoint | null>(null)
 
-  // Calcular o centro do mapa com base nos pontos
+  // Filtrar pontos com coordenadas válidas
+  const validPoints = useMemo(() => {
+    return points.filter(
+      (point) => point.latitude !== 0 && point.longitude !== 0
+    )
+  }, [points])
+
+  // Calcular o centro do mapa com base nos pontos válidos
   const center = useMemo(() => {
-    if (points.length === 0) {
+    if (validPoints.length === 0) {
       return { lat: -23.5505, lng: -46.6333 } // São Paulo como padrão
     }
     const avgLat =
-      points.reduce((sum, p) => sum + p.latitude, 0) / points.length
+      validPoints.reduce((sum, p) => sum + p.latitude, 0) / validPoints.length
     const avgLng =
-      points.reduce((sum, p) => sum + p.longitude, 0) / points.length
+      validPoints.reduce((sum, p) => sum + p.longitude, 0) / validPoints.length
     return { lat: avgLat, lng: avgLng }
-  }, [points])
+  }, [validPoints])
 
   // Atualizar o centro do mapa quando os pontos mudarem
   useEffect(() => {
@@ -106,38 +116,9 @@ const MapComponent: React.FC<MapComponentProps> = ({
     setZoom(event.detail.zoom)
   }, [])
 
-  // Função para calcular a base eleitoral (número de eleitores associados a um vereador)
-  const calculateElectoralBase = (vereadorId: string): number => {
-    return points.filter(
-      (point) =>
-        point.type === UserRole.ELEITOR && point.user.vereadorId === vereadorId
-    ).length
-  }
-
-  // Função para calcular eleitores vinculados (número de eleitores associados a um cabo eleitoral)
-  const calculateLinkedVoters = (caboEleitoralId: string): number => {
-    return points.filter(
-      (point) =>
-        point.type === UserRole.ELEITOR &&
-        point.user.caboEleitoralId === caboEleitoralId
-    ).length
-  }
-
   // Função para criar os dados do SideCardData ao clicar em um marcador
   const handleMarkerClick = (point: MapPoint) => {
-    const sideCardData: SideCardData = {
-      user: point.user,
-      recentDemands: point.recentDemands || 0,
-      recentVisits: point.recentVisits || [],
-      electoralBase:
-        point.type === UserRole.VEREADOR
-          ? calculateElectoralBase(point.user.id)
-          : undefined,
-      linkedVoters:
-        point.type === UserRole.CABO_ELEITORAL
-          ? calculateLinkedVoters(point.user.id)
-          : undefined
-    }
+    const sideCardData = getSideCardData(point)
     onMarkerClick(sideCardData)
   }
 
@@ -150,7 +131,11 @@ const MapComponent: React.FC<MapComponentProps> = ({
   }
 
   if (loading) {
-    return <S.LoadingWrapper>Carregando mapa...</S.LoadingWrapper>
+    return (
+      <S.LoadingWrapper>
+        <Spin />
+      </S.LoadingWrapper>
+    )
   }
 
   return (
@@ -170,42 +155,10 @@ const MapComponent: React.FC<MapComponentProps> = ({
         fullscreenControl={true}
       >
         <MarkersWithClustering
-          points={points}
+          points={validPoints}
           onMarkerClick={handleMarkerClick}
           setHoveredMarker={setHoveredMarker}
         />
-        {hoveredMarker && (
-          <S.InfoBox>
-            <strong>{hoveredMarker.user.profile?.nomeCompleto}</strong>
-            <br />
-            Endereço: {hoveredMarker.user.profile?.endereco},{' '}
-            {hoveredMarker.user.profile?.numero}
-            <br />
-            Telefone: {hoveredMarker.user.profile?.telefone || 'N/A'}
-            <br />
-            {hoveredMarker.type === UserRole.ELEITOR &&
-              hoveredMarker.user.vereadorId && (
-                <>
-                  Relacionado a: Vereador{' '}
-                  {hoveredMarker.user.vereadorId
-                    ? hoveredMarker.user
-                        .vereadorId /* Substitua por nome real */
-                    : 'N/A'}
-                </>
-              )}
-            {hoveredMarker.type === UserRole.VEREADOR && (
-              <>
-                Base Eleitoral: {calculateElectoralBase(hoveredMarker.user.id)}
-              </>
-            )}
-            {hoveredMarker.type === UserRole.CABO_ELEITORAL && (
-              <>
-                Eleitores Vinculados:{' '}
-                {calculateLinkedVoters(hoveredMarker.user.id)}
-              </>
-            )}
-          </S.InfoBox>
-        )}
       </Map>
     </APIProvider>
   )
@@ -230,11 +183,11 @@ const MarkersWithClustering: React.FC<MarkersWithClusteringProps> = ({
   // Criar os marcadores
   const markers = useMemo(() => {
     if (!map || !markerLibrary) {
-      console.log('Map or markerLibrary not ready yet')
+      //   console.log('Map or markerLibrary not ready yet')
       return []
     }
 
-    console.log('Creating markers for points:', points)
+    // console.log('Creating markers for points:', points)
     return points.map((point) => {
       const pinStyle = getPinColor(point.user.role)
       const marker = new markerLibrary.AdvancedMarkerElement({
@@ -248,15 +201,15 @@ const MarkersWithClustering: React.FC<MarkersWithClusteringProps> = ({
       })
 
       marker.addListener('click', () => {
-        console.log('Marker clicked:', point.id)
+        // console.log('Marker clicked:', point.id)
         onMarkerClick(point)
       })
       marker.addListener('mouseover', () => {
-        console.log('Mouse over marker:', point.id)
+        // console.log('Mouse over marker:', point.id)
         setHoveredMarker(point)
       })
       marker.addListener('mouseout', () => {
-        console.log('Mouse out marker:', point.id)
+        // console.log('Mouse out marker:', point.id)
         setHoveredMarker(null)
       })
 
@@ -267,16 +220,16 @@ const MarkersWithClustering: React.FC<MarkersWithClusteringProps> = ({
   // Configurar o MarkerClusterer
   useEffect(() => {
     if (!map || !markerLibrary || markers.length === 0) {
-      console.log(
-        'Skipping MarkerClusterer setup: map, markerLibrary, or markers not ready'
-      )
+      //   console.log(
+      //     'Skipping MarkerClusterer setup: map, markerLibrary, or markers not ready'
+      //   )
       return
     }
 
-    console.log('Setting up MarkerClusterer with markers:', markers.length)
+    // console.log('Setting up MarkerClusterer with markers:', markers.length)
 
     if (clusterer) {
-      console.log('Clearing previous clusterer')
+      //   console.log('Clearing previous clusterer')
       clusterer.clearMarkers()
     }
 
@@ -285,7 +238,7 @@ const MarkersWithClustering: React.FC<MarkersWithClusteringProps> = ({
       markers,
       renderer: {
         render: ({ count, position }) => {
-          console.log('Rendering cluster marker with count:', count)
+          //   console.log('Rendering cluster marker with count:', count)
           return new markerLibrary.AdvancedMarkerElement({
             position,
             content: new markerLibrary.PinElement({
@@ -302,7 +255,7 @@ const MarkersWithClustering: React.FC<MarkersWithClusteringProps> = ({
     setClusterer(newClusterer)
 
     return () => {
-      console.log('Cleaning up MarkerClusterer')
+      //   console.log('Cleaning up MarkerClusterer')
       newClusterer.clearMarkers()
     }
   }, [map, markerLibrary, markers])

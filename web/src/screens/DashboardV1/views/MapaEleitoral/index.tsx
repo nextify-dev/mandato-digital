@@ -7,6 +7,7 @@ import { View } from '@/components'
 import { useAuth } from '@/contexts/AuthProvider'
 import { useCities } from '@/contexts/CitiesProvider'
 import { useUsers } from '@/contexts/UsersProvider'
+import { useMap } from '@/contexts/MapProvider'
 import {
   Modal,
   MapComponent,
@@ -14,21 +15,19 @@ import {
   SideCard,
   Legend
 } from '@/components'
-// import { ReportGenerator } from './components/ReportGenerator'
-import { useMapData } from '@/hooks/useMapData'
-import { MapPoint, SideCardData } from '@/@types/map'
-import { UserRole } from '@/@types/user'
 import { DemandRegistrationForm } from '@/components'
 import { DemandRegistrationFormType } from '@/@types/demand'
 import { useDemands } from '@/contexts/DemandsProvider'
 import * as S from './styles'
+import { UserRole } from '@/@types/user'
+import { SideCardData } from '@/@types/map'
 
 const MapaEleitoralView = () => {
   const { user } = useAuth()
   const { cities } = useCities()
   const { users, getUserById } = useUsers()
   const { createDemand } = useDemands()
-  const { mapPoints, filters, setFilters, loading } = useMapData()
+  const { mapPoints, filters, setFilters, loading } = useMap()
   const navigate = useNavigate()
 
   const [selectedPoint, setSelectedPoint] = useState<SideCardData | null>(null)
@@ -37,11 +36,7 @@ const MapaEleitoralView = () => {
 
   const handleMarkerClick = (point: SideCardData) => {
     setSelectedPoint(point)
-    setSideCardData({
-      user: point.user,
-      recentDemands: 0, // Placeholder: substitua por uma consulta real
-      recentVisits: [] // Placeholder: substitua por uma consulta real
-    })
+    setSideCardData(point)
   }
 
   const handleCreateDemand = async (data: DemandRegistrationFormType) => {
@@ -77,10 +72,6 @@ const MapaEleitoralView = () => {
       : user?.cityId
       ? [user.cityId]
       : []
-  // const allowedCityIds =
-  //   user?.role === UserRole.ADMINISTRADOR_GERAL
-  //     ? cities.map((city) => city.id)
-  //     : [user?.cityId]
 
   return (
     <View
@@ -97,14 +88,6 @@ const MapaEleitoralView = () => {
             <Button type="primary" onClick={handleGenerateReport}>
               Gerar Relatório Geográfico
             </Button>
-            {/* {selectedPoint && (
-              <>
-                <Button onClick={handleRegisterVisit}>Registrar Visita</Button>
-                <Button onClick={() => setIsCreateDemandModalOpen(true)}>
-                  Criar Demanda
-                </Button>
-              </>
-            )} */}
           </S.ActionButtons>
         </S.HeaderWrapper>
       }

@@ -10,6 +10,7 @@ import { useDemands } from '@/contexts/DemandsProvider'
 import { useVisits } from '@/contexts/VisitsProvider'
 import { useAuth } from '@/contexts/AuthProvider'
 import moment from 'moment'
+import { geocodeAddress } from '@/utils/functions/geolocation'
 
 interface MapContextData {
   mapPoints: MapPoint[]
@@ -37,6 +38,8 @@ export const MapProvider: React.FC<{ children: React.ReactNode }> = ({
   const [filters, setFilters] = useState<MapFilters>({})
   const [loading, setLoading] = useState(false)
 
+  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API || ''
+
   const fetchMapPoints = async () => {
     if (!user) return
 
@@ -44,18 +47,30 @@ export const MapProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const allowedCityIds =
         user.role === UserRole.ADMINISTRADOR_GERAL
-          ? cities.map((city) => city.id)
-          : [user.cityId]
+          ? cities
+              .map((city) => city.id)
+              .filter((id): id is string => id !== undefined)
+          : user.cityId
+          ? [user.cityId]
+          : []
 
       // Filtrar usuários com base nos filtros e permissões
       const filteredUsers = allUsers.filter((u) => {
+        // Calcular o status das demandas para o usuário
+        const userDemands = demands.filter((demand) => {
+          console.log(demand.relatedUserId, u.id)
+          return demand.relatedUserId === u.id
+        })
+        const latestDemandStatus =
+          userDemands.length > 0 ? userDemands[0].status : undefined
+
         return (
           allowedCityIds.includes(u.cityId) &&
           (!filters.cityId || u.cityId === filters.cityId) &&
           (!filters.userType || filters.userType.includes(u.role)) &&
           (!filters.bairro || u.profile?.bairro === filters.bairro) &&
           (!filters.vereadorId || u.vereadorId === filters.vereadorId) &&
-          (!filters.demandStatus || u.demandsStatus === filters.demandStatus)
+          (!filters.demandStatus || latestDemandStatus === filters.demandStatus)
         )
       })
 
@@ -63,7 +78,7 @@ export const MapProvider: React.FC<{ children: React.ReactNode }> = ({
       const pointsPromises = filteredUsers.map(async (u) => {
         const recentDemands = demands.filter(
           (demand) =>
-            demand.voterId === u.id &&
+            demand.relatedUserId === u.id &&
             moment(demand.createdAt).isAfter(moment().subtract(30, 'days'))
         ).length
 
@@ -76,22 +91,38 @@ export const MapProvider: React.FC<{ children: React.ReactNode }> = ({
           .map((visit) => ({
             id: visit.id,
             dateTime: visit.dateTime,
-            reason: visit.details.reason,
+            reason: visit.details?.reason || 'N/A',
             status: visit.status
           }))
 
+        // Calcular o status das demandas
+        const userDemands = demands.filter(
+          (demand) => demand.relatedUserId === u.id
+        )
+        const demandsStatus =
+          userDemands.length > 0 ? userDemands[0].status : undefined
+
+        // Obter latitude e longitude com base no endereço
+        let latitude = 0
+        let longitude = 0
+        const address = `${u.profile?.endereco || ''}, ${
+          u.profile?.numero || ''
+        }, ${u.profile?.bairro || ''}, ${u.profile?.cep || ''}`
+        if (address.trim() && googleMapsApiKey) {
+          const coords = await geocodeAddress(address, googleMapsApiKey)
+          latitude = coords.latitude
+          longitude = coords.longitude
+        }
+
         return {
           id: u.id,
-          latitude:
-            parseFloat(u.profile?.cep.replace(/\D/g, '').slice(0, 2)) || 0, // Simulação de latitude
-          longitude:
-            parseFloat(u.profile?.cep.replace(/\D/g, '').slice(2, 4)) || 0, // Simulação de longitude
+          latitude,
+          longitude,
           type: u.role,
           user: u,
           recentDemands,
           recentVisits: recentVisitsList,
-          demandsStatus: demands.find((demand) => demand.voterId === u.id)
-            ?.status
+          demandsStatus
         } as MapPoint
       })
 

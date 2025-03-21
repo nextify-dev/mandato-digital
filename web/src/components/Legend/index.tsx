@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { UserRole } from '@/@types/user'
 import * as S from './styles'
+import { Button } from 'antd'
 
 const Legend: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false)
@@ -25,9 +26,6 @@ const Legend: React.FC = () => {
 
   return (
     <S.LegendWrapper>
-      <S.LegendButton onClick={() => setIsOpen(!isOpen)}>
-        {isOpen ? 'Ocultar Legenda' : 'Mostrar Legenda'}
-      </S.LegendButton>
       {isOpen && (
         <S.LegendContent>
           {legendItems.map((item) => (
@@ -38,6 +36,9 @@ const Legend: React.FC = () => {
           ))}
         </S.LegendContent>
       )}
+      <Button onClick={() => setIsOpen(!isOpen)}>
+        {isOpen ? 'Ocultar Legenda' : 'Mostrar Legenda'}
+      </Button>
     </S.LegendWrapper>
   )
 }

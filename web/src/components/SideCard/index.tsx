@@ -1,13 +1,15 @@
 // src/components/SideCard/index.tsx
 
-import { Button } from 'antd'
+import { Button, Tag } from 'antd'
 import { SideCardData } from '@/@types/map'
-import { UserRole } from '@/@types/user'
+import { getRoleData, UserRole } from '@/@types/user'
 import DynamicDescriptions, {
   DynamicDescriptionsField
 } from '../DynamicDescriptions'
 import * as S from './styles'
 import { LuX } from 'react-icons/lu'
+import moment from 'moment'
+import { applyMask } from '@/utils/functions/masks'
 
 interface SideCardProps {
   data: SideCardData
@@ -23,8 +25,19 @@ const SideCard: React.FC<SideCardProps> = ({
   const { user, recentDemands, recentVisits, electoralBase, linkedVoters } =
     data
 
+  // const formatVisitItem
+
   // Definir os campos para o DynamicDescriptions
   const fields: DynamicDescriptionsField<SideCardData>[] = [
+    {
+      key: 'user',
+      label: 'Cargo',
+      render: () => (
+        <Tag color={getRoleData(user.role).color}>
+          {getRoleData(user.role).label}
+        </Tag>
+      )
+    },
     {
       key: 'user',
       label: 'Nome Completo',
@@ -39,12 +52,18 @@ const SideCard: React.FC<SideCardProps> = ({
     {
       key: 'user',
       label: 'Telefone',
-      render: () => user.profile?.telefone || 'N/A'
+      render: () =>
+        user.profile?.telefone
+          ? applyMask(user.profile?.telefone, 'phone')
+          : 'N/A'
     },
     {
       key: 'user',
       label: 'WhatsApp',
-      render: () => user.profile?.whatsapp || 'N/A'
+      render: () =>
+        user.profile?.whatsapp
+          ? applyMask(user.profile?.whatsapp, 'phone')
+          : 'N/A'
     },
     {
       key: 'user',
@@ -59,7 +78,17 @@ const SideCard: React.FC<SideCardProps> = ({
     {
       key: 'recentVisits',
       label: 'Visitas Recentes',
-      render: () => recentVisits?.length.toString() || '0'
+      render: () =>
+        recentVisits?.length
+          ? recentVisits
+              .map((visit) => (
+                <>
+                  {moment(visit.dateTime).format('DD/MM/YYYY HH:mm')} -
+                  {visit.reason} (${visit.status})
+                </>
+              ))
+              .join('; ')
+          : 'Nenhuma visita recente'
     }
   ]
 
@@ -87,9 +116,9 @@ const SideCard: React.FC<SideCardProps> = ({
         <Button icon={<LuX />} onClick={onClose} size="small" />
       </S.SideCardHeader>
       <DynamicDescriptions data={data} fields={fields} />
-      {/* <Button type="link" onClick={onViewHistory}>
+      <Button type="link" onClick={onViewHistory}>
         Ver Histórico Completo
-      </Button> */}
+      </Button>
     </S.SideCardWrapper>
   )
 }
