@@ -9,7 +9,6 @@ import {
   Avatar,
   Upload,
   Select,
-  Form,
   Tag,
   Modal as AntdModal
 } from 'antd'
@@ -27,8 +26,7 @@ import {
 import { UserRole, User, getRoleData } from '@/@types/user'
 import { UploadOutlined, SendOutlined } from '@ant-design/icons'
 import moment from 'moment'
-
-const { Option } = Select
+import TicketRegistrationForm from '@/components/forms/TicketRegistrationForm'
 
 interface IComunicacaoView {}
 
@@ -52,9 +50,8 @@ const ComunicacaoView = ({}: IComunicacaoView) => {
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [isStatusModalVisible, setIsStatusModalVisible] = useState(false)
   const [newStatus, setNewStatus] = useState<TicketStatus | null>(null)
-  const [form] = Form.useForm()
+  const [currentStep, setCurrentStep] = useState(0)
 
-  // Filtrar contatos permitidos com base nas regras de acesso
   const allowedContacts = [...users, ...voters].filter((contact) => {
     if (!user) return false
     if (user.id === contact.id) return false
@@ -88,32 +85,13 @@ const ComunicacaoView = ({}: IComunicacaoView) => {
 
   useEffect(() => {
     if (selectedTicket?.messages && user) {
-      // Marcar mensagens como lidas
-      selectedTicket.messages?.forEach((msg) => {
+      selectedTicket.messages.forEach((msg) => {
         if (msg.senderId !== user.id && !msg.readBy?.includes(user.id)) {
           markMessageAsRead(selectedTicket.id, msg.id)
         }
       })
     }
-  }, [selectedTicket, user])
-
-  const handleCreateTicket = async (values: any) => {
-    try {
-      const ticketData: TicketRegistrationFormType = {
-        title: values.title,
-        description: values.description,
-        participants: [user!.id, ...values.participants],
-        initialMessage: values.initialMessage || '', // Mensagem inicial é opcional
-        attachments: attachments.map((file) => ({ originFileObj: file } as any))
-      }
-      await createTicket(ticketData)
-      setIsModalVisible(false)
-      form.resetFields()
-      setAttachments([])
-    } catch (error) {
-      console.error(error)
-    }
-  }
+  }, [selectedTicket, user, markMessageAsRead])
 
   const handleDeleteTicket = async (ticketId: string) => {
     await deleteTicket(ticketId)
@@ -155,6 +133,24 @@ const ComunicacaoView = ({}: IComunicacaoView) => {
         .filter((participant): participant is User => !!participant)
     : []
 
+  const getTimeSinceLastMessage = (ticket: Ticket): string => {
+    if (!ticket.messages || ticket.messages.length === 0) {
+      return 'Sem mensagens'
+    }
+    const lastMessage = ticket.messages[ticket.messages.length - 1]
+    return moment(lastMessage.timestamp).fromNow()
+  }
+
+  const STATUS_OPTIONS = Object.values(TicketStatus).map((status) => ({
+    label: getTicketStatusData(status).label,
+    value: status
+  }))
+
+  const CREATOR_OPTIONS = allowedContacts.map((contact) => ({
+    label: `${contact.profile?.nomeCompleto} (${contact.role})`,
+    value: contact.id
+  }))
+
   return (
     <View
       header={
@@ -165,49 +161,21 @@ const ComunicacaoView = ({}: IComunicacaoView) => {
               allowClear
               onChange={(value) => setFilters({ ...filters, status: value })}
               style={{ width: 200 }}
-            >
-              {Object.values(TicketStatus).map((status) => (
-                <Option key={status} value={status}>
-                  {getTicketStatusData(status).label}
-                </Option>
-              ))}
-            </Select>
+              options={STATUS_OPTIONS}
+            />
             <Select
               placeholder="Filtrar por criador"
               allowClear
               onChange={(value) => setFilters({ ...filters, createdBy: value })}
               style={{ width: 200 }}
-            >
-              {allowedContacts.map((contact) => (
-                <Option key={contact.id} value={contact.id}>
-                  {contact.profile?.nomeCompleto} ({contact.role})
-                </Option>
-              ))}
-            </Select>
-            <Select
-              placeholder="Filtrar por demanda relacionada"
-              allowClear
-              onChange={(value) =>
-                setFilters({ ...filters, relatedDemandId: value })
+              options={CREATOR_OPTIONS}
+              showSearch
+              filterOption={(input, option) =>
+                (option?.label ?? '')
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
               }
-              style={{ width: 200 }}
-            >
-              {/* Supondo que você tenha uma lista de demandas disponíveis */}
-              <Option value="demand1">Demanda 1</Option>
-              <Option value="demand2">Demanda 2</Option>
-            </Select>
-            <Select
-              placeholder="Filtrar por evento relacionado"
-              allowClear
-              onChange={(value) =>
-                setFilters({ ...filters, relatedEventId: value })
-              }
-              style={{ width: 200 }}
-            >
-              {/* Supondo que você tenha uma lista de eventos disponíveis */}
-              <Option value="event1">Evento 1</Option>
-              <Option value="event2">Evento 2</Option>
-            </Select>
+            />
           </div>
           <Button type="primary" onClick={() => setIsModalVisible(true)}>
             Novo Ticket
@@ -220,23 +188,65 @@ const ComunicacaoView = ({}: IComunicacaoView) => {
           <List
             loading={loading}
             dataSource={tickets}
-            renderItem={(ticket) => (
-              <List.Item
-                onClick={() => setSelectedTicket(ticket)}
-                style={{
-                  cursor: 'pointer',
-                  background:
-                    selectedTicket?.id === ticket.id ? '#f0f0f0' : 'white'
-                }}
-              >
-                <List.Item.Meta
-                  title={ticket.title}
-                  description={`Protocolo: ${ticket.protocol} | Status: ${
-                    getTicketStatusData(ticket.status).label
-                  }`}
-                />
-              </List.Item>
-            )}
+            renderItem={(ticket) => {
+              const ticketParticipants = ticket.participants
+                .map((participantId) =>
+                  [...users, ...voters].find((u) => u.id === participantId)
+                )
+                .filter((participant): participant is User => !!participant)
+              const lastMessage =
+                ticket.messages && ticket.messages.length > 0
+                  ? ticket.messages[ticket.messages.length - 1]
+                  : null
+              return (
+                <List.Item
+                  onClick={() => setSelectedTicket(ticket)}
+                  style={{
+                    cursor: 'pointer',
+                    background:
+                      selectedTicket?.id === ticket.id ? '#f0f0f0' : 'white',
+                    padding: '10px'
+                  }}
+                >
+                  <List.Item.Meta
+                    avatar={<Avatar>{ticket.title.charAt(0)}</Avatar>}
+                    title={
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between'
+                        }}
+                      >
+                        <span>{ticket.title}</span>
+                        <Tag color={getTicketStatusData(ticket.status).color}>
+                          {getTicketStatusData(ticket.status).label}
+                        </Tag>
+                      </div>
+                    }
+                    description={
+                      <div>
+                        <div>Protocolo: {ticket.protocol}</div>
+                        <div>
+                          Participantes:{' '}
+                          {ticketParticipants
+                            .map((p) => p.profile?.nomeCompleto)
+                            .join(', ')}
+                        </div>
+                        {lastMessage && (
+                          <div>
+                            Última mensagem: {lastMessage.content.slice(0, 50)}
+                            {lastMessage.content.length > 50 ? '...' : ''}
+                          </div>
+                        )}
+                        <div style={{ color: '#888', fontSize: '12px' }}>
+                          {getTimeSinceLastMessage(ticket)}
+                        </div>
+                      </div>
+                    }
+                  />
+                </List.Item>
+              )
+            }}
           />
         </S.TicketList>
         <S.ChatWindow>
@@ -262,13 +272,8 @@ const ComunicacaoView = ({}: IComunicacaoView) => {
                   value={selectedTicket.status}
                   onChange={handleStatusChange}
                   style={{ width: 200, marginTop: '10px' }}
-                >
-                  {Object.values(TicketStatus).map((status) => (
-                    <Option key={status} value={status}>
-                      {getTicketStatusData(status).label}
-                    </Option>
-                  ))}
-                </Select>
+                  options={STATUS_OPTIONS}
+                />
                 {user?.role === UserRole.ADMINISTRADOR_GERAL && (
                   <Button
                     loading={loading}
@@ -281,20 +286,25 @@ const ComunicacaoView = ({}: IComunicacaoView) => {
                 )}
               </S.ChatHeader>
               <S.MessagesArea>
-                {selectedTicket?.messages?.map((msg) => {
-                  const sender = [...users, ...voters].find(
-                    (u) => u.id === msg.senderId
-                  )
-                  const isOwnMessage = msg.senderId === user?.id
-                  return (
-                    <MessageComponent
-                      key={msg.id}
-                      msg={msg}
-                      sender={sender}
-                      isOwnMessage={isOwnMessage}
-                    />
-                  )
-                })}
+                {Array.isArray(selectedTicket.messages) &&
+                selectedTicket.messages.length > 0 ? (
+                  selectedTicket.messages.map((msg) => {
+                    const sender = [...users, ...voters].find(
+                      (u) => u.id === msg.senderId
+                    )
+                    const isOwnMessage = msg.senderId === user?.id
+                    return (
+                      <MessageComponent
+                        key={msg.id}
+                        msg={msg}
+                        sender={sender}
+                        isOwnMessage={isOwnMessage}
+                      />
+                    )
+                  })
+                ) : (
+                  <div>Nenhuma mensagem disponível</div>
+                )}
               </S.MessagesArea>
               <S.MessageInputArea>
                 <Input.TextArea
@@ -341,65 +351,23 @@ const ComunicacaoView = ({}: IComunicacaoView) => {
         title="Novo Ticket"
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
-        onOk={() => form.submit()}
+        footer={null}
       >
-        <Form form={form} onFinish={handleCreateTicket} layout="vertical">
-          <Form.Item
-            name="title"
-            label="Título"
-            rules={[{ required: true, message: 'Título é obrigatório' }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="description"
-            label="Descrição"
-            rules={[{ required: true, message: 'Descrição é obrigatória' }]}
-          >
-            <Input.TextArea rows={3} />
-          </Form.Item>
-          <Form.Item
-            name="participants"
-            label="Participantes"
-            rules={[
-              {
-                required: true,
-                message: 'Selecione pelo menos um participante'
-              }
-            ]}
-          >
-            <Select mode="multiple" placeholder="Selecione os participantes">
-              {allowedContacts.map((contact) => (
-                <Option key={contact.id} value={contact.id}>
-                  {contact.profile?.nomeCompleto} ({contact.role})
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item name="initialMessage" label="Mensagem Inicial">
-            <Input.TextArea rows={3} />
-          </Form.Item>
-          <Form.Item label="Anexos">
-            <Upload
-              fileList={attachments.map((file, index) => ({
-                uid: String(index),
-                name: file.name,
-                status: 'done'
-              }))}
-              beforeUpload={(file) => {
-                setAttachments([...attachments, file])
-                return false
-              }}
-              onRemove={(file) => {
-                setAttachments(
-                  attachments.filter((_, i) => String(i) !== file.uid)
-                )
-              }}
-            >
-              <Button icon={<UploadOutlined />}>Anexar</Button>
-            </Upload>
-          </Form.Item>
-        </Form>
+        <TicketRegistrationForm
+          onSubmit={async (data) => {
+            try {
+              await createTicket(data)
+              setIsModalVisible(false)
+              setCurrentStep(0)
+            } catch (error) {
+              console.error(error)
+            }
+          }}
+          mode="create"
+          currentStep={currentStep}
+          setCurrentStep={setCurrentStep}
+          allowedContacts={allowedContacts}
+        />
       </Modal>
 
       <AntdModal
@@ -423,8 +391,6 @@ const ComunicacaoView = ({}: IComunicacaoView) => {
 }
 
 export default ComunicacaoView
-
-// ===========================================================
 
 export interface IMessageComponent {
   msg: Message

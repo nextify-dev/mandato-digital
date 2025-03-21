@@ -10,7 +10,6 @@ import {
 } from '@/@types/tickets'
 import { ticketsService } from '@/services/tickets'
 import { useAuth } from '@/contexts/AuthProvider'
-import { listenToDatabase } from '@/utils/functions/databaseUtils'
 import { extractFileInfoFromUrl } from '@/utils/functions/storageUtils'
 import { UserRole } from '@/@types/user'
 
@@ -42,8 +41,6 @@ interface TicketFilters {
   participantId?: string
   status?: TicketStatus
   createdBy?: string
-  relatedDemandId?: string
-  relatedEventId?: string
 }
 
 const TicketsContext = createContext<TicketsContextData>(
@@ -63,12 +60,10 @@ export const TicketsProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!user) return
 
     setLoading(true)
-    const unsubscribe = listenToDatabase<Ticket>(
-      'tickets',
+    const unsubscribe = ticketsService.listenToTickets(
       (ticketsArray) => {
         let filteredTickets = ticketsArray
 
-        // Filtros baseados em permissões
         if (user.role !== UserRole.ADMINISTRADOR_GERAL) {
           filteredTickets = filteredTickets.filter(
             (ticket) => ticket.cityId === user.cityId
@@ -79,7 +74,6 @@ export const TicketsProvider: React.FC<{ children: React.ReactNode }> = ({
           ticket.participants.includes(user.id)
         )
 
-        // Filtros dinâmicos
         if (filters.cityId) {
           filteredTickets = filteredTickets.filter(
             (ticket) => ticket.cityId === filters.cityId
@@ -98,16 +92,6 @@ export const TicketsProvider: React.FC<{ children: React.ReactNode }> = ({
         if (filters.createdBy) {
           filteredTickets = filteredTickets.filter(
             (ticket) => ticket.createdBy === filters.createdBy
-          )
-        }
-        if (filters.relatedDemandId) {
-          filteredTickets = filteredTickets.filter(
-            (ticket) => ticket.relatedDemandId === filters.relatedDemandId
-          )
-        }
-        if (filters.relatedEventId) {
-          filteredTickets = filteredTickets.filter(
-            (ticket) => ticket.relatedEventId === filters.relatedEventId
           )
         }
 
@@ -237,20 +221,24 @@ export const TicketsProvider: React.FC<{ children: React.ReactNode }> = ({
   const getInitialData = async (
     ticket: Ticket
   ): Promise<Partial<TicketRegistrationFormType>> => {
-    const initialMessage = ticket.messages[0]?.content || ''
-    const attachments = ticket.messages[0]?.attachments
-      ? ticket.messages[0].attachments.map((url, index) =>
-          extractFileInfoFromUrl(url, index)
-        )
-      : null
+    const initialMessage =
+      ticket.messages && ticket.messages.length > 0
+        ? ticket.messages[0].content
+        : ''
+    const attachments =
+      ticket.messages &&
+      ticket.messages.length > 0 &&
+      ticket.messages[0]?.attachments
+        ? ticket.messages[0].attachments.map((url, index) =>
+            extractFileInfoFromUrl(url, index)
+          )
+        : null
 
     return {
       title: ticket.title,
       description: ticket.description,
       cityId: ticket.cityId,
       participants: ticket.participants,
-      relatedDemandId: ticket.relatedDemandId,
-      relatedEventId: ticket.relatedEventId,
       initialMessage,
       attachments
     }

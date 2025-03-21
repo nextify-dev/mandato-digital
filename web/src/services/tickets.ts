@@ -1,6 +1,6 @@
 // src/services/tickets.ts
 
-import { ref, push } from 'firebase/database'
+import { ref, push, set, get, update, remove, onValue } from 'firebase/database'
 import { db } from '@/lib/firebase'
 import {
   Ticket,
@@ -10,16 +10,10 @@ import {
   MessageStatus
 } from '@/@types/tickets'
 import { UserRole, User } from '@/@types/user'
-import { authService } from '@/services/auth'
 import {
   uploadFilesToStorage,
   deleteFilesFromStorage
 } from '@/utils/functions/storageUtils'
-import {
-  saveToDatabase,
-  fetchFromDatabase,
-  deleteFromDatabase
-} from '@/utils/functions/databaseUtils'
 import { RcFile } from 'antd/es/upload'
 
 interface TicketsService {
@@ -53,6 +47,10 @@ interface TicketsService {
   ): Promise<void>
   fetchTickets(filters: Partial<TicketFilters>): Promise<Ticket[]>
   fetchTicketById(id: string): Promise<Ticket | null>
+  listenToTickets(
+    callback: (tickets: Ticket[]) => void,
+    errorCallback: (error: Error) => void
+  ): () => void
 }
 
 interface TicketFilters {
@@ -60,12 +58,25 @@ interface TicketFilters {
   participantId?: string
   status?: TicketStatus
   createdBy?: string
-  relatedDemandId?: string
-  relatedEventId?: string
+}
+
+// Função auxiliar para converter mensagens de objeto para array
+const convertMessagesToArray = (
+  messagesObj: Record<string, Message> | null | undefined
+): Message[] => {
+  if (!messagesObj) return []
+  return Object.keys(messagesObj).map((key) => ({
+    ...messagesObj[key],
+    id: key
+  }))
 }
 
 const generateProtocol = async (): Promise<string> => {
-  const tickets = (await fetchFromDatabase<Ticket>('tickets')) as Ticket[]
+  const ticketsRef = ref(db, 'tickets')
+  const snapshot = await get(ticketsRef)
+  const tickets = snapshot.val()
+    ? Object.values(snapshot.val() as Record<string, Ticket>)
+    : []
   const ticketCount = tickets.length + 1
   return `TICKET-${new Date().getFullYear()}-${ticketCount
     .toString()
@@ -77,21 +88,17 @@ const validateParticipants = async (
   userId: string,
   userRole: UserRole
 ): Promise<void> => {
-  const creator = (await fetchFromDatabase<User>(
-    `users/${userId}`,
-    undefined,
-    true
-  )) as User
+  const creatorRef = ref(db, `users/${userId}`)
+  const creatorSnapshot = await get(creatorRef)
+  const creator = creatorSnapshot.val() as User
   if (!creator) throw new Error('Usuário não encontrado')
 
   for (const participantId of participants) {
-    if (participantId === userId) continue // Ignora o próprio usuário
+    if (participantId === userId) continue
 
-    const participant = (await fetchFromDatabase<User>(
-      `users/${participantId}`,
-      undefined,
-      true
-    )) as User
+    const participantRef = ref(db, `users/${participantId}`)
+    const participantSnapshot = await get(participantRef)
+    const participant = participantSnapshot.val() as User
     if (!participant)
       throw new Error(`Participante ${participantId} não encontrado`)
 
@@ -140,14 +147,12 @@ export const ticketsService: TicketsService = {
     userCityId: string,
     userRole: UserRole
   ): Promise<string> {
-    // Validar participantes
     await validateParticipants(data.participants, userId, userRole)
 
     const newTicketId = push(ref(db, 'tickets')).key!
     const protocol = await generateProtocol()
     const storagePath = `tickets/${newTicketId}/messages`
 
-    // Criar o ticket sem mensagens inicialmente
     const newTicket: Ticket = {
       id: newTicketId,
       protocol,
@@ -159,19 +164,16 @@ export const ticketsService: TicketsService = {
       cityId: data.cityId || userCityId,
       participants: data.participants,
       messages: [],
-      relatedDemandId: data.relatedDemandId || null,
-      relatedEventId: data.relatedEventId || null,
       lastUpdatedAt: new Date().toISOString()
     }
 
-    // Salvar o ticket no Firebase usando databaseUtils
+    const ticketRef = ref(db, `tickets/${newTicketId}`)
     try {
-      await saveToDatabase('tickets', newTicket)
+      await set(ticketRef, newTicket)
     } catch (error) {
       throw new Error(`Falha ao criar ticket: ${error}`)
     }
 
-    // Se houver mensagem inicial, enviá-la como uma mensagem normal
     if (data.initialMessage && data.initialMessage.trim()) {
       let attachmentUrls: string[] = []
       if (data.attachments && data.attachments.length > 0) {
@@ -206,8 +208,12 @@ export const ticketsService: TicketsService = {
         readBy: [userId]
       }
 
+      const messageRef = ref(
+        db,
+        `tickets/${newTicketId}/messages/${newMessage.id}`
+      )
       try {
-        await saveToDatabase(`tickets/${newTicketId}/messages`, newMessage)
+        await set(messageRef, newMessage)
       } catch (error) {
         if (attachmentUrls.length > 0) {
           await deleteFilesFromStorage(storagePath).catch((cleanupError) =>
@@ -218,14 +224,11 @@ export const ticketsService: TicketsService = {
       }
     }
 
-    // Registrar no histórico do eleitor, se aplicável
     const eleitor = await Promise.all(
       data.participants.map(async (id) => {
-        const user = (await fetchFromDatabase<User>(
-          `users/${id}`,
-          undefined,
-          true
-        )) as User
+        const userRef = ref(db, `users/${id}`)
+        const userSnapshot = await get(userRef)
+        const user = userSnapshot.val() as User
         return user?.role === UserRole.ELEITOR ? id : null
       })
     ).then((results) => results.find((id) => id !== null))
@@ -244,42 +247,28 @@ export const ticketsService: TicketsService = {
     data: Partial<TicketRegistrationFormType>,
     updatedBy: string
   ): Promise<void> {
-    const existingTicket = (await fetchFromDatabase<Ticket>(
-      `tickets/${id}`,
-      undefined,
-      true
-    )) as Ticket
+    const ticketRef = ref(db, `tickets/${id}`)
+    const snapshot = await get(ticketRef)
+    const existingTicket = snapshot.val() as Ticket
     if (!existingTicket) throw new Error('Ticket não encontrado')
 
-    // Validar participantes, se fornecidos
     if (data.participants) {
-      const user = (await fetchFromDatabase<User>(
-        `users/${updatedBy}`,
-        undefined,
-        true
-      )) as User
+      const userRef = ref(db, `users/${updatedBy}`)
+      const userSnapshot = await get(userRef)
+      const user = userSnapshot.val() as User
       if (!user) throw new Error('Usuário não encontrado')
       await validateParticipants(data.participants, updatedBy, user.role)
     }
 
-    const updatedTicket: Ticket = {
-      ...existingTicket,
+    const updates: Partial<Ticket> = {
       title: data.title ?? existingTicket.title,
       description: data.description ?? existingTicket.description,
       participants: data.participants ?? existingTicket.participants,
-      relatedDemandId:
-        data.relatedDemandId !== undefined
-          ? data.relatedDemandId
-          : existingTicket.relatedDemandId,
-      relatedEventId:
-        data.relatedEventId !== undefined
-          ? data.relatedEventId
-          : existingTicket.relatedEventId,
       lastUpdatedAt: new Date().toISOString()
     }
 
     try {
-      await saveToDatabase('tickets', updatedTicket)
+      await update(ticketRef, updates)
     } catch (error) {
       throw new Error(`Falha ao atualizar ticket: ${error}`)
     }
@@ -290,35 +279,32 @@ export const ticketsService: TicketsService = {
     status: TicketStatus,
     updatedBy: string
   ): Promise<void> {
-    const existingTicket = (await fetchFromDatabase<Ticket>(
-      `tickets/${id}`,
-      undefined,
-      true
-    )) as Ticket
+    const ticketRef = ref(db, `tickets/${id}`)
+    const snapshot = await get(ticketRef)
+    const existingTicket = snapshot.val() as Ticket
     if (!existingTicket) throw new Error('Ticket não encontrado')
 
-    const updatedTicket: Ticket = {
-      ...existingTicket,
+    const updates: Partial<Ticket> = {
       status,
       lastUpdatedAt: new Date().toISOString()
     }
 
     try {
-      await saveToDatabase('tickets', updatedTicket)
+      await update(ticketRef, updates)
     } catch (error) {
       throw new Error(`Falha ao atualizar status do ticket: ${error}`)
     }
   },
 
   async deleteTicket(id: string): Promise<void> {
-    const ticket = (await fetchFromDatabase<Ticket>(
-      `tickets/${id}`,
-      undefined,
-      true
-    )) as Ticket
+    const ticketRef = ref(db, `tickets/${id}`)
+    const snapshot = await get(ticketRef)
+    const ticket = snapshot.val() as Ticket
     if (!ticket) throw new Error('Ticket não encontrado')
 
-    if (ticket?.messages?.some((msg) => msg.attachments)) {
+    // Converter messages para array antes de usar 'some'
+    const messagesArray = convertMessagesToArray(ticket.messages as any)
+    if (messagesArray.some((msg) => msg.attachments)) {
       try {
         await deleteFilesFromStorage(`tickets/${id}/messages`)
       } catch (error) {
@@ -326,8 +312,7 @@ export const ticketsService: TicketsService = {
       }
     }
 
-    await deleteFromDatabase(`tickets/${id}`)
-    console.log(id)
+    await remove(ticketRef)
   },
 
   async sendMessage(
@@ -336,11 +321,9 @@ export const ticketsService: TicketsService = {
     content: string,
     attachments?: RcFile[]
   ): Promise<string> {
-    const ticket = (await fetchFromDatabase<Ticket>(
-      `tickets/${ticketId}`,
-      undefined,
-      true
-    )) as Ticket
+    const ticketRef = ref(db, `tickets/${ticketId}`)
+    const snapshot = await get(ticketRef)
+    const ticket = snapshot.val() as Ticket
     if (!ticket) throw new Error('Ticket não encontrado')
 
     if (!ticket.participants.includes(senderId)) {
@@ -364,20 +347,14 @@ export const ticketsService: TicketsService = {
       readBy: [senderId]
     }
 
-    // console.log(newMessageId)
-
+    const messageRef = ref(db, `tickets/${ticketId}/messages/${newMessageId}`)
     try {
-      await saveToDatabase(`tickets/${ticketId}/messages`, newMessage)
+      await set(messageRef, newMessage)
 
-      // Atualizar o timestamp do ticket
-      const updatedTicket: Ticket = {
-        ...ticket,
+      const updates: Partial<Ticket> = {
         lastUpdatedAt: new Date().toISOString()
       }
-      await saveToDatabase('tickets', updatedTicket)
-
-    console.log(newMessageId)
-
+      await update(ticketRef, updates)
 
       return newMessageId
     } catch (error) {
@@ -395,11 +372,9 @@ export const ticketsService: TicketsService = {
     messageId: string,
     userId: string
   ): Promise<void> {
-    const message = (await fetchFromDatabase<Message>(
-      `tickets/${ticketId}/messages/${messageId}`,
-      undefined,
-      true
-    )) as Message
+    const messageRef = ref(db, `tickets/${ticketId}/messages/${messageId}`)
+    const snapshot = await get(messageRef)
+    const message = snapshot.val() as Message
     if (!message) throw new Error('Mensagem não encontrada')
 
     if (!message.readBy?.includes(userId)) {
@@ -409,7 +384,7 @@ export const ticketsService: TicketsService = {
         status: MessageStatus.LIDA
       }
       try {
-        await saveToDatabase(`tickets/${ticketId}/messages`, updatedMessage)
+        await set(messageRef, updatedMessage)
       } catch (error) {
         throw new Error(`Falha ao marcar mensagem como lida: ${error}`)
       }
@@ -417,35 +392,65 @@ export const ticketsService: TicketsService = {
   },
 
   async fetchTickets(filters: Partial<TicketFilters>): Promise<Ticket[]> {
-    const tickets = (await fetchFromDatabase<Ticket>(
-      'tickets',
-      filters?.cityId ? { key: 'cityId', value: filters.cityId } : undefined
-    )) as Ticket[]
+    const ticketsRef = ref(db, 'tickets')
+    const snapshot = await get(ticketsRef)
+    const ticketsData = snapshot.val() as Record<string, Ticket> | null
+    const tickets = ticketsData
+      ? Object.keys(ticketsData).map((key) => ({
+          ...ticketsData[key],
+          id: key,
+          messages: convertMessagesToArray(ticketsData[key].messages as any)
+        }))
+      : []
 
     return tickets.filter((ticket) => {
       return (
+        (!filters.cityId || ticket.cityId === filters.cityId) &&
         (!filters.participantId ||
           ticket.participants.includes(filters.participantId)) &&
         (!filters.status || ticket.status === filters.status) &&
-        (!filters.createdBy || ticket.createdBy === filters.createdBy) &&
-        (!filters.relatedDemandId ||
-          ticket.relatedDemandId === filters.relatedDemandId) &&
-        (!filters.relatedEventId ||
-          ticket.relatedEventId === filters.relatedEventId)
+        (!filters.createdBy || ticket.createdBy === filters.createdBy)
       )
     })
   },
 
   async fetchTicketById(id: string): Promise<Ticket | null> {
     try {
-      const ticket = (await fetchFromDatabase<Ticket>(
-        `tickets/${id}`,
-        undefined,
-        true
-      )) as Ticket
-      return ticket
+      const ticketRef = ref(db, `tickets/${id}`)
+      const snapshot = await get(ticketRef)
+      const ticket = snapshot.val() as Ticket
+      if (!ticket) return null
+      return {
+        ...ticket,
+        messages: convertMessagesToArray(ticket.messages as any)
+      }
     } catch {
       return null
     }
+  },
+
+  listenToTickets(
+    callback: (tickets: Ticket[]) => void,
+    errorCallback: (error: Error) => void
+  ): () => void {
+    const ticketsRef = ref(db, 'tickets')
+    const listener = onValue(
+      ticketsRef,
+      (snapshot) => {
+        const ticketsData = snapshot.val() as Record<string, Ticket> | null
+        const ticketsArray = ticketsData
+          ? Object.keys(ticketsData).map((key) => ({
+              ...ticketsData[key],
+              id: key,
+              messages: convertMessagesToArray(ticketsData[key].messages as any)
+            }))
+          : []
+        callback(ticketsArray)
+      },
+      (error) => {
+        errorCallback(error)
+      }
+    )
+    return () => listener()
   }
 }
