@@ -3,7 +3,6 @@
 import styled from 'styled-components'
 import { Form, Menu } from 'antd'
 
-import { font } from './fonts'
 import { color, backgroundColor } from './colors'
 import { Globals } from './globals'
 

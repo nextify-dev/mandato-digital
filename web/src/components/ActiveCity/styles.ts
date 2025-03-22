@@ -4,7 +4,7 @@ import { color } from '@/utils/styles/colors'
 import styled from 'styled-components'
 import { Tag, theme } from 'antd'
 
-import { font } from '@/utils/styles/fonts'
+import { fontHeight, fontSize, fontWeight } from '@/utils/styles/fonts'
 import { backgroundColor, textColor } from '@/utils/styles/colors'
 
 export const ActiveCity = styled.div`
@@ -34,8 +34,9 @@ export const ActiveCityLabel = styled.p`
   width: fit-content;
   margin-top: 1px;
 
-  ${font('xxxs')}
-  font-weight: 500;
+  ${fontSize('xxxs')}
+  ${fontHeight('xxxs')}
+  ${fontWeight('medium')}
 
   ${textColor('colorTextLabel')};
 `
@@ -46,7 +47,8 @@ export const ActiveCityTag = styled(Tag)`
   margin: 0;
   padding: 4px 6px;
 
-  ${font('xxxs')}
+  ${fontSize('xxxs')}
+  ${fontHeight('xxxs')}
 `
 
 export const ActiveCityAdminWarning = styled.div`
@@ -57,16 +59,19 @@ export const ActiveCityAdminWarning = styled.div`
   border-radius: 6px;
   padding: 4px 6px;
 
-  ${font('xxxs')}
-  font-weight: 400;
+  ${fontSize('xxxs')}
+  ${fontHeight('xxxs')}
+  ${fontWeight('regular')}
+
   color: white;
 
   b {
-    font-weight: 600;
+    ${fontWeight('bold')}
   }
 
   svg {
-    ${font('xs')}
+    ${fontSize('xs')}
+    ${fontHeight('xs')}
   }
 
   ${backgroundColor('colorPrimary')};

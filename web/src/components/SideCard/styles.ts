@@ -1,6 +1,6 @@
 // src/screens/DashboardV1/views/MapaEleitoral/styles.ts
 
-import { font } from '@/utils/styles/fonts'
+import { fontHeight, fontSize, fontWeight } from '@/utils/styles/fonts'
 import { Button } from 'antd'
 import styled from 'styled-components'
 
@@ -27,7 +27,8 @@ export const SideCardHeader = styled.div`
   width: 100%;
 
   h2 {
-    ${font('small')}
-    font-weight: 600;
+    ${fontSize('small')}
+    ${fontHeight('small')}
+    ${fontWeight('bold')}
   }
 `

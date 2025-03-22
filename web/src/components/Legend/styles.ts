@@ -1,6 +1,6 @@
 // src/screens/DashboardV1/views/MapaEleitoral/styles.ts
 
-import { font } from '@/utils/styles/fonts'
+import { fontHeight, fontSize } from '@/utils/styles/fonts'
 import styled from 'styled-components'
 
 export const LegendWrapper = styled.div`
@@ -29,7 +29,8 @@ export const LegendItem = styled.div`
   align-items: center;
   gap: 8px;
 
-  ${font('xxs')}
+  ${fontSize('xxs')}
+  ${fontHeight('xxs')}
 `
 
 export const ColorBox = styled.div`

@@ -1,6 +1,6 @@
 // src/components/DemandasUpdates/styles.ts
 
-import { font } from '@/utils/styles/fonts'
+import { fontHeight, fontSize, fontWeight } from '@/utils/styles/fonts'
 import styled from 'styled-components'
 
 export const DemandasUpdates = styled.div`
@@ -15,10 +15,12 @@ export const DemandasUpdatesDetails = styled.div`
   row-gap: 6px;
 
   span {
-    ${font('xxs')}
+    ${fontSize('xxs')}
+    ${fontHeight('xxs')}
+
 
     b {
-      font-weight: 500;
+      ${fontWeight('medium')}
     }
   }
 `
@@ -35,10 +37,12 @@ export const DemandasUpdatesContent = styled.div`
   row-gap: 6px;
 
   span {
-    ${font('xxs')}
+    ${fontSize('xxs')}
+    ${fontHeight('xxs')}
+    
 
     b {
-      font-weight: 500;
+      ${fontWeight('medium')}
     }
   }
 `

@@ -3,9 +3,9 @@
 import styled from 'styled-components'
 import { Tag, theme } from 'antd'
 
-import { font } from '@/utils/styles/fonts'
 import { textColor } from '@/utils/styles/colors'
 import { StyledButton } from '@/utils/styles/antd'
+import { fontSize } from '@/utils/styles/fonts'
 
 export const DescriptionContent = styled.div`
   position: relative;
@@ -26,7 +26,7 @@ export const CopyButton = styled(StyledButton)`
 
   svg {
     transition: 0.25s;
-    font-size: 12px;
+    ${fontSize('xxxs')}
     ${textColor('colorTextLabel')}
   }
 

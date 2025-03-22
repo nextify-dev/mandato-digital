@@ -1,7 +1,7 @@
 // src/screens/DashboardV1/views/MapaEleitoral/styles.ts
 
 import { textColor } from '@/utils/styles/colors'
-import { font } from '@/utils/styles/fonts'
+import { fontHeight, fontSize, fontWeight } from '@/utils/styles/fonts'
 import styled from 'styled-components'
 
 export const LoadingWrapper = styled.div`
@@ -10,7 +10,10 @@ export const LoadingWrapper = styled.div`
   align-items: center;
   height: 100%;
 
-  ${font('small')}
+  ${fontSize('small')}
+  ${fontHeight('small')}
+  ${fontWeight('regular')}
+
+
   ${textColor('colorError')}
-  font-weight: 400;
 `

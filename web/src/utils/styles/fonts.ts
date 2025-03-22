@@ -5,10 +5,10 @@ import { css } from 'styled-components'
 interface FontStyle {
   size: string
   height: string
-  weight: number
 }
 
 interface FontSizes {
+  ss: FontStyle
   xxxs: FontStyle
   xxs: FontStyle
   xs: FontStyle
@@ -18,6 +18,7 @@ interface FontSizes {
   xl: FontStyle
   xxl: FontStyle
   xxxl: FontStyle
+  sx: FontStyle
 }
 
 type FontSizeKeys = keyof FontSizes
@@ -34,50 +35,49 @@ interface FontWeights {
 type FontWeightKeys = keyof FontWeights
 
 export const Fonts: FontSizes = {
+  ss: {
+    size: '0.6875rem', // 11px
+    height: '0.6875rem' // 11px
+  },
   xxxs: {
-    size: '0.625rem', // 10px
-    height: '0.625rem', // 10px
-    weight: 400 // Regular
+    size: '0.75rem', // 12px
+    height: '0.75rem' // 12px
   },
   xxs: {
-    size: '0.75rem', // 12px
-    height: '0.75rem', // 12px
-    weight: 400 // Regular
+    size: '0.8125rem', // 13px
+    height: '0.8125rem' // 13px
   },
   xs: {
     size: '0.875rem', // 14px
-    height: '0.875rem', // 14px
-    weight: 400 // Regular
+    height: '0.875rem' // 14px
   },
   small: {
-    size: '0.938rem', // 15px
-    height: '0.938rem', // 15px
-    weight: 500 // Medium
+    size: '0.9375rem', // 15px
+    height: '0.9375rem' // 15px
   },
   regular: {
     size: '1rem', // 16px
-    height: '1rem', // 16px
-    weight: 400 // Regular
+    height: '1rem' // 16px
   },
   large: {
-    size: '1.25rem', // 20px
-    height: '1.25rem', // 20px
-    weight: 500 // Medium
+    size: '1.125rem', // 18px
+    height: '1.125rem' // 18px
   },
   xl: {
-    size: '1.625rem', // 26px
-    height: '1.625rem', // 26px
-    weight: 600 // Semi-bold
+    size: '1.25rem', // 20px
+    height: '1.25rem' // 20px
   },
   xxl: {
-    size: '2rem', // 32px
-    height: '2rem', // 32px
-    weight: 600 // Semi-bold
+    size: '1.5rem', // 24px
+    height: '1.5rem' // 24px
   },
   xxxl: {
-    size: '2.875rem', // 46px
-    height: '2.875rem', // 46px
-    weight: 700 // Bold
+    size: '2rem', // 32px
+    height: '2rem' // 32px
+  },
+  sx: {
+    size: '2.625rem', // 42px
+    height: '2.625rem' // 42px
   }
 } as const
 
@@ -97,10 +97,10 @@ export const fontSize = (size: FontSizeKeys) => css`
 
 // Função para definir apenas o line-height
 export const fontHeight = (size: FontSizeKeys) => css`
-  line-height: ${Fonts[size]?.height};
+  line-height: ${Fonts[size]?.height} !important;
 `
 
 // Função para definir apenas o font-weight
 export const fontWeight = (weight: FontWeightKeys) => css`
-  font-weight: ${Weights[weight]};
+  font-weight: ${Weights[weight]} !important;
 `

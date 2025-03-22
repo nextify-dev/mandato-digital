@@ -4,7 +4,7 @@ import styled from 'styled-components'
 
 import { Screen } from '@/utils/styles/commons'
 import { color, textColor, backgroundColor } from '@/utils/styles/colors'
-import { font } from '@/utils/styles/fonts'
+import { fontHeight, fontSize, fontWeight } from '@/utils/styles/fonts'
 import { StyledButton } from '@/utils/styles/antd'
 
 export const DashboardSignInScreen = styled(Screen)`
@@ -63,7 +63,9 @@ export const BackToLoginButton = styled(StyledButton)`
   width: fit-content;
   margin: 0 10px 10px 0;
 
-  ${font('xxs')};
+  ${fontSize('xxs')}
+  ${fontHeight('xxs')}
+  ${fontWeight('regular')}
 `
 
 export const ForgotPasswordLink = styled.div`
@@ -73,8 +75,12 @@ export const ForgotPasswordLink = styled.div`
   width: 100%;
   text-align: center;
   margin-top: 15px;
+
   a {
-    ${font('xxs')};
+    ${fontSize('xxs')}
+    ${fontHeight('xxs')}
+    ${fontWeight('regular')}
+    
     ${textColor('colorPrimary')};
   }
 `

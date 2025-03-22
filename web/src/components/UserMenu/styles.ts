@@ -1,7 +1,7 @@
 // src/components/UserMenu/styles.ts
 
 import { textColor } from '@/utils/styles/colors'
-import { font } from '@/utils/styles/fonts'
+import { fontSize, fontWeight, fontHeight } from '@/utils/styles/fonts'
 import { Tag } from 'antd'
 import styled from 'styled-components'
 
@@ -20,18 +20,21 @@ export const UserMenuInfos = styled.div`
 `
 
 export const UserMenuLoading = styled.p`
-  ${font('xs')}
+  ${fontSize('xs')}
+  ${fontHeight('xs')}
+
   ${textColor('colorTextHeading')}
 `
 
 export const UserWelcome = styled.p`
-  font-weight: 300;
+  ${fontSize('xxs')}
+  ${fontHeight('xxs')}
+  ${fontWeight('light')}
 
   b {
-    font-weight: 500;
+    ${fontWeight('medium')}
   }
 
-  ${font('xxs')}
   ${textColor('colorTextHeading')}
 `
 
@@ -41,5 +44,6 @@ export const UserRoleTag = styled(Tag)`
   padding: 3px 6px;
   cursor: pointer;
 
-  ${font('xxxs')}
+  ${fontSize('xxxs')}
+  ${fontHeight('xxxs')}
 `

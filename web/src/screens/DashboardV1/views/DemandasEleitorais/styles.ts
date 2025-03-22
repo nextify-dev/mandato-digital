@@ -1,4 +1,3 @@
-import { font } from '@/utils/styles/fonts'
 import styled from 'styled-components'
 
 export const HeaderWrapper = styled.div`

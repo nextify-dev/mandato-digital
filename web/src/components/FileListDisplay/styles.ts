@@ -5,7 +5,7 @@ import { Card, List, Input, Button } from 'antd'
 
 import { Screen } from '@/utils/styles/commons'
 import { color, textColor } from '@/utils/styles/colors'
-import { font } from '@/utils/styles/fonts'
+import { fontHeight, fontSize, fontWeight } from '@/utils/styles/fonts'
 
 export const FileListDisplay = styled.div`
   display: flex;
@@ -21,8 +21,9 @@ export const FileListDisplay = styled.div`
 `
 
 export const FileListDisplayTitle = styled.h2`
-  ${font('small')}
-  font-weight: 500;
+  ${fontSize('small')}
+  ${fontHeight('small')}
+  ${fontWeight('medium')}
 `
 
 export const Header = styled.div`
@@ -70,7 +71,8 @@ export const FilePreview = styled.div`
     height: 100%;
     object-fit: cover;
 
-    ${font('xxxs')}
+    ${fontSize('xxxs')}
+    ${fontHeight('xxxs')}
   }
 
   .ant-image-mask-info {
@@ -79,10 +81,11 @@ export const FilePreview = styled.div`
 `
 
 export const FileExtension = styled.div`
-  ${font('xxs')}
+  ${fontSize('xxs')}
+  ${fontHeight('xxs')}
+  ${fontWeight('bold')}
+  
   ${textColor('colorTextLabel')}
-
-  font-weight: 600;
 `
 
 export const FileDetails = styled.div`
@@ -100,18 +103,22 @@ export const FileOptions = styled.div`
 `
 
 export const FileDetailsName = styled.p`
-  ${font('xxs')}
+  ${fontSize('xxs')}
+  ${fontHeight('xxs')}
+
 
   b {
-    font-weight: 500;
+    ${fontWeight('medium')}
   }
 `
 
 export const FileDetailsType = styled.p`
-  ${font('xxs')}
+  ${fontSize('xxs')}
+  ${fontHeight('xxs')}
+
 
   b {
-    font-weight: 500;
+    ${fontWeight('medium')}
   }
 `
 

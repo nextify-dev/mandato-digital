@@ -21,7 +21,7 @@ import {
   Upload
 } from 'antd'
 
-import { font } from './fonts'
+import { fontSize, fontWeight, fontHeight } from './fonts'
 import { color, backgroundColor, textColor } from './colors'
 import { ModalSize } from '@/components/Modal'
 
@@ -41,7 +41,9 @@ export const StyledForm = styled(Form)<{ onFinish: any }>`
       padding-bottom: 5px !important;
 
       label {
-        ${font('xxs')}
+        ${fontSize('xxs')}
+        ${fontHeight('xxs')}
+        ${fontWeight('medium')}
       }
     }
 
@@ -57,7 +59,10 @@ export const StyledForm = styled(Form)<{ onFinish: any }>`
     }
 
     .ant-input {
-      ${font('small')}
+      ${fontSize('small')}
+      ${fontHeight('small')}
+      ${fontWeight('medium')}
+
       height: 34px;
       padding: 0 11px 1px 11px;
 
@@ -77,16 +82,23 @@ export const StyledForm = styled(Form)<{ onFinish: any }>`
 
     .ant-form-item-explain-error {
       margin-top: 5px;
-      ${font('xxs')}
+      ${fontSize('xxs')}
+      ${fontHeight('xxs')}
+      ${fontWeight('medium')}
     }
 
     .ant-picker-input input {
-      ${font('small')}
+      ${fontSize('small')}
+      ${fontHeight('small')}
+      ${fontWeight('medium')}
+
       padding: 3px 0px 3px 0px;
     }
 
     .ant-select-selection-placeholder {
-      ${font('small')}
+      ${fontSize('small')}
+      ${fontHeight('small')}
+      ${fontWeight('medium')}
     }
   }
 
@@ -95,7 +107,9 @@ export const StyledForm = styled(Form)<{ onFinish: any }>`
     padding-block: 2px !important;
 
     input {
-      ${font('small')}
+      ${fontSize('small')}
+      ${fontHeight('small')}
+      ${fontWeight('medium')}
     }
   }
 
@@ -132,7 +146,10 @@ export const StyledMenu = styled(Menu)<{ opened: number }>`
     .ant-menu-item-group-title {
       display: ${({ opened }) => (opened ? 'block' : 'none')} !important;
       padding: 10px 0px 2px 4px !important;
-      ${font('xxs')}
+      ${fontSize('xxs')}
+      ${fontHeight('xxs')}
+      ${fontWeight('medium')}
+
       ${color('colorTextDescription')}
     }
 
@@ -142,12 +159,16 @@ export const StyledMenu = styled(Menu)<{ opened: number }>`
       border-radius: 6px !important;
 
       .anticon svg {
-        ${font('small')}
+        ${fontSize('small')}
+        ${fontHeight('small')}
+        ${fontWeight('medium')}
       }
 
       .ant-menu-title-content {
         display: ${({ opened }) => (opened ? 'inline' : 'none')} !important;
-        ${font('xxs')}
+        ${fontSize('xxs')}
+        ${fontHeight('xxs')}
+        ${fontWeight('medium')}
       }
     }
   }
@@ -155,7 +176,10 @@ export const StyledMenu = styled(Menu)<{ opened: number }>`
 
 export const StyledCheckbox = styled(Checkbox)`
   .ant-checkbox + span {
-    ${font('xxs')}
+    ${fontSize('xxs')}
+    ${fontHeight('xxs')}
+    ${fontWeight('medium')}
+
     color: ${color('colorTextBase')};
   }
 `
@@ -163,7 +187,10 @@ export const StyledCheckbox = styled(Checkbox)`
 export const StyledButton = styled(Button)``
 
 export const StyledInput = styled(Input)`
-  ${font('small')}
+  ${fontSize('small')}
+  ${fontHeight('small')}
+  ${fontWeight('medium')}
+
   height: 40px;
   padding: 0 12px;
   border-radius: 6px;
@@ -189,7 +216,10 @@ export const StyledSteps = styled(Steps)`
     }
   }
   .ant-steps-item-title {
-    ${font('xxxs')};
+    ${fontSize('xxxs')};
+    ${fontHeight('xxxs')};
+    ${fontWeight('medium')};
+
     margin-top: -5px;
   }
 `
@@ -199,14 +229,17 @@ export const StyledDescriptions = styled(Descriptions)`
     width: 150px !important;
     padding: 5px 10px !important;
 
-    ${font('xxs')};
+    ${fontSize('xxs')};
+    ${fontHeight('xxs')};
+    ${fontWeight('medium')};
   }
 
   .ant-descriptions-item-content {
     padding: 8px 12px !important;
 
-    ${font('xxs')};
-    line-height: 1rem;
+    ${fontSize('xxs')};
+    ${fontHeight('xs')};
+    ${fontWeight('medium')};
   }
 `
 
@@ -240,12 +273,14 @@ export const StyledTable = styled(Table)<{ empty: number }>`
 
   .ant-table-cell {
     padding: 0 16px !important;
-    font-weight: 400;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 
-    ${font('xxs')}
+    ${fontSize('xxs')}
+    ${fontHeight('xxs')}
+    ${fontWeight('regular')}
+
 
     &:last-of-type {
       display: flex;
@@ -346,15 +381,15 @@ export const TableEmptyResult = styled(Result)`
   }
 
   .ant-result-title {
-    font-weight: 500;
-
-    ${font('regular')}
+    ${fontSize('regular')}
+    ${fontHeight('regular')}
+    ${fontWeight('medium')}
   }
 
   .ant-result-subtitle {
-    font-weight: 400;
-
-    ${font('xxs')}
+    ${fontSize('xxs')}
+    ${fontHeight('xxs')}
+    ${fontWeight('regular')}
   }
 `
 
@@ -381,9 +416,9 @@ export const StyledModal = styled(Modal)<{ size?: ModalSize }>`
     margin-bottom: 20px;
 
     .ant-modal-title {
-      font-weight: 500 !important;
-
-      ${font('regular')}
+      ${fontSize('regular')}
+      ${fontHeight('regular')}
+      ${fontWeight('medium')}
     }
   }
 
@@ -406,14 +441,20 @@ export const StyledModal = styled(Modal)<{ size?: ModalSize }>`
 export const StyledAvatar = styled(Avatar)`
   padding-top: 2px;
 
-  ${font('regular')}
+  ${fontSize('regular')}
+  ${fontHeight('regular')}
+  ${fontWeight('medium')}
+
   ${backgroundColor('colorPrimary')}
 `
 
 export const StyledTooltip = styled(Tooltip)`
   /* padding-top: 2px;
 
-  ${font('regular')}
+  ${fontSize('regular')}
+  ${fontHeight('regular')}
+  ${fontWeight('medium')}
+
   ${backgroundColor('colorPrimary')} */
 `
 
@@ -437,14 +478,20 @@ export const StyledCard = styled(Card)`
   border-radius: 8px;
   padding: 10px;
 
-  /* ${font('regular')} */
+  /* ${fontSize('regular')} */
+  /* ${fontHeight('regular')}
+  /*fontWeightfomedium('regular')}
+   
   /* ${backgroundColor('colorPrimary')} */
 `
 
 export const StyledCollapse = styled(Collapse)`
   .ant-collapse-header {
     .ant-collapse-header-text {
-      ${font('xs')}
+      ${fontSize('xs')}
+      ${fontHeight('xs')}
+      ${fontWeight('medium')}
+
       margin:  auto 0;
     }
   }

@@ -4,7 +4,7 @@ import { Screen } from '@/utils/styles/commons'
 import { StyledMenu } from '@/utils/styles/antd'
 import { color, backgroundColor, textColor } from '@/utils/styles/colors'
 import { Globals } from '@/utils/styles/globals'
-import { font } from '@/utils/styles/fonts'
+import { fontSize, fontWeight, fontHeight } from '@/utils/styles/fonts'
 
 const { useToken } = theme
 
@@ -92,14 +92,17 @@ export const DashboardActiveViewLabel = styled.div`
   margin: 0 auto 0 12px;
 
   h2 {
-    font-weight: 600 !important;
-
-    ${font('small')}
+    ${fontSize('small')}
+    ${fontHeight('small')}
+    ${fontWeight('bold')}
+    
     ${textColor('colorTextHeading')}
   }
 
   p {
-    ${font('xxs')}
+    ${fontSize('xxs')}
+    ${fontHeight('xxs')}
+    
     ${textColor('colorTextDescription')}
   }
 `

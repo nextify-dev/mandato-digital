@@ -1,7 +1,7 @@
 // src/screens/DashboardV1/views/Comunicacao/styles.ts
 
 import { textColor } from '@/utils/styles/colors'
-import { font } from '@/utils/styles/fonts'
+import { fontHeight, fontSize, fontWeight } from '@/utils/styles/fonts'
 import { List, Tag } from 'antd'
 import styled from 'styled-components'
 
@@ -45,14 +45,17 @@ export const TicketItemTitle = styled.div`
   row-gap: 3px;
 
   h3 {
-    ${font('small')}
-    font-weight: 500;
+    ${fontSize('small')}
+    ${fontHeight('small')}
+    ${fontWeight('medium')}
   }
 
   span {
-    ${font('xxxs')}
+    ${fontSize('xxxs')}
+    ${fontHeight('xxxs')}
+    ${fontWeight('light')}
+
     ${textColor('colorTextSecondary')}
-    font-weight: 300;
   }
 `
 
@@ -66,12 +69,14 @@ export const TicketItemDescriptions = styled.div`
   row-gap: 3px;
 
   p {
-    ${font('xs')}
+    ${fontSize('xs')}
+    ${fontHeight('small')}
+    ${fontWeight('bold')}
+    
     ${textColor('colorTextSecondary')}
-    font-weight: 300;
 
     b {
-      font-weight: 500;
+      ${fontWeight('medium')}
     }
   }
 `
