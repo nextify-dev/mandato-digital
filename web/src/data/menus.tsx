@@ -164,7 +164,7 @@ export const DASHBOARD_MENUS: IMenu[] = [
     ),
     menuCategory: 'Análise',
     requiredPermissions: { canViewReports: true },
-    menuDisabled: true,
+    menuDisabled: false,
     menuHidden: false
   },
   {

@@ -12,7 +12,7 @@ import {
   Tag,
   Modal as AntdModal
 } from 'antd'
-import { View, Modal } from '@/components'
+import { View, Modal, TicketRegistrationForm } from '@/components'
 import { useTickets } from '@/contexts/TicketsProvider'
 import { useAuth } from '@/contexts/AuthProvider'
 import { useUsers } from '@/contexts/UsersProvider'
@@ -26,7 +26,6 @@ import {
 import { UserRole, User, getRoleData } from '@/@types/user'
 import { UploadOutlined, SendOutlined } from '@ant-design/icons'
 import moment from 'moment'
-import TicketRegistrationForm from '@/components/forms/TicketRegistrationForm'
 
 import { ref, onValue, off } from 'firebase/database'
 import { db } from '@/lib/firebase'

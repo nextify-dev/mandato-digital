@@ -19,6 +19,8 @@ import UserRegistrationForm from './forms/UserRegistration'
 import CityRegistrationForm from './forms/CityRegistration'
 import VisitRegistrationForm from './forms/VisitRegistration'
 import DemandRegistrationForm from './forms/DemandRegistration'
+import TicketRegistrationForm from './forms/TicketRegistration'
+import SegmentRegistrationForm from './forms/SegmentRegistration'
 
 export {
   DynamicDescriptions,
@@ -31,6 +33,8 @@ export {
   CityRegistrationForm,
   VisitRegistrationForm,
   DemandRegistrationForm,
+  SegmentRegistrationForm,
+  TicketRegistrationForm,
   ActiveCity,
   FileListDisplay,
   FileUploadCard,

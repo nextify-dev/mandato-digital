@@ -11,6 +11,7 @@ import { UsersProvider } from '@/contexts/UsersProvider'
 import { CitiesProvider } from '@/contexts/CitiesProvider'
 import { VisitsProvider } from '@/contexts/VisitsProvider'
 import { DemandsProvider } from './contexts/DemandsProvider'
+import { SegmentsProvider } from './contexts/SegmentsProvider'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -19,8 +20,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <UsersProvider>
           <VisitsProvider>
             <DemandsProvider>
-              <GlobalStyle />
-              <App />
+              <SegmentsProvider>
+                <GlobalStyle />
+                <App />
+              </SegmentsProvider>
             </DemandsProvider>
           </VisitsProvider>
         </UsersProvider>
