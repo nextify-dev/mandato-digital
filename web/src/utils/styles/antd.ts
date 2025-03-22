@@ -43,7 +43,7 @@ export const StyledForm = styled(Form)<{ onFinish: any }>`
       label {
         ${fontSize('xxs')}
         ${fontHeight('xxs')}
-        ${fontWeight('medium')}
+        ${fontWeight('regular')}
       }
     }
 
@@ -59,9 +59,9 @@ export const StyledForm = styled(Form)<{ onFinish: any }>`
     }
 
     .ant-input {
-      ${fontSize('small')}
-      ${fontHeight('small')}
-      ${fontWeight('medium')}
+      ${fontSize('xs')}
+      ${fontHeight('xs')}
+      ${fontWeight('regular')}
 
       height: 34px;
       padding: 0 11px 1px 11px;
@@ -80,25 +80,26 @@ export const StyledForm = styled(Form)<{ onFinish: any }>`
       }
     }
 
-    .ant-form-item-explain-error {
+    .ant-form-item-explain-error,
+    .ant-form-item-explain {
       margin-top: 5px;
       ${fontSize('xxs')}
       ${fontHeight('xxs')}
-      ${fontWeight('medium')}
+      ${fontWeight('regular')}
     }
 
     .ant-picker-input input {
-      ${fontSize('small')}
-      ${fontHeight('small')}
-      ${fontWeight('medium')}
+      ${fontSize('xs')}
+      ${fontHeight('xs')}
+      ${fontWeight('regular')}
 
       padding: 3px 0px 3px 0px;
     }
 
     .ant-select-selection-placeholder {
-      ${fontSize('small')}
-      ${fontHeight('small')}
-      ${fontWeight('medium')}
+      ${fontSize('xs')}
+      ${fontHeight('xs')}
+      ${fontWeight('regular')}
     }
   }
 
@@ -107,9 +108,9 @@ export const StyledForm = styled(Form)<{ onFinish: any }>`
     padding-block: 2px !important;
 
     input {
-      ${fontSize('small')}
-      ${fontHeight('small')}
-      ${fontWeight('medium')}
+      ${fontSize('xs')}
+      ${fontHeight('xs')}
+      ${fontWeight('regular')}
     }
   }
 
@@ -143,12 +144,28 @@ export const StyledMenu = styled(Menu)<{ opened: number }>`
   &.ant-menu {
     border-right: none !important;
 
+    &::-webkit-scrollbar {
+      width: 4px;
+      border-radius: 10px;
+      z-index: 1000;
+    }
+
+    &::-webkit-scrollbar-track {
+      border-radius: 10px;
+      ${backgroundColor('colorBorderSecondary')}
+    }
+
+    &::-webkit-scrollbar-thumb {
+      border-radius: 10px;
+      ${backgroundColor('colorBorder')}
+    }
+
     .ant-menu-item-group-title {
       display: ${({ opened }) => (opened ? 'block' : 'none')} !important;
       padding: 10px 0px 2px 4px !important;
       ${fontSize('xxs')}
       ${fontHeight('xxs')}
-      ${fontWeight('medium')}
+      ${fontWeight('regular')}
 
       ${color('colorTextDescription')}
     }
@@ -161,14 +178,14 @@ export const StyledMenu = styled(Menu)<{ opened: number }>`
       .anticon svg {
         ${fontSize('small')}
         ${fontHeight('small')}
-        ${fontWeight('medium')}
+        ${fontWeight('regular')}
       }
 
       .ant-menu-title-content {
         display: ${({ opened }) => (opened ? 'inline' : 'none')} !important;
-        ${fontSize('xxs')}
-        ${fontHeight('xxs')}
-        ${fontWeight('medium')}
+        ${fontSize('xxxs')}
+        ${fontHeight('xxxs')}
+        ${fontWeight('regular')}
       }
     }
   }
@@ -178,7 +195,7 @@ export const StyledCheckbox = styled(Checkbox)`
   .ant-checkbox + span {
     ${fontSize('xxs')}
     ${fontHeight('xxs')}
-    ${fontWeight('medium')}
+    ${fontWeight('regular')}
 
     color: ${color('colorTextBase')};
   }
@@ -187,9 +204,9 @@ export const StyledCheckbox = styled(Checkbox)`
 export const StyledButton = styled(Button)``
 
 export const StyledInput = styled(Input)`
-  ${fontSize('small')}
-  ${fontHeight('small')}
-  ${fontWeight('medium')}
+  ${fontSize('xs')}
+  ${fontHeight('xs')}
+  ${fontWeight('regular')}
 
   height: 40px;
   padding: 0 12px;
@@ -218,7 +235,7 @@ export const StyledSteps = styled(Steps)`
   .ant-steps-item-title {
     ${fontSize('xxxs')};
     ${fontHeight('xxxs')};
-    ${fontWeight('medium')};
+    ${fontWeight('regular')};
 
     margin-top: -5px;
   }
@@ -231,7 +248,7 @@ export const StyledDescriptions = styled(Descriptions)`
 
     ${fontSize('xxs')};
     ${fontHeight('xxs')};
-    ${fontWeight('medium')};
+    ${fontWeight('regular')};
   }
 
   .ant-descriptions-item-content {
@@ -239,7 +256,7 @@ export const StyledDescriptions = styled(Descriptions)`
 
     ${fontSize('xxs')};
     ${fontHeight('xs')};
-    ${fontWeight('medium')};
+    ${fontWeight('regular')};
   }
 `
 
@@ -277,8 +294,8 @@ export const StyledTable = styled(Table)<{ empty: number }>`
     text-overflow: ellipsis;
     white-space: nowrap;
 
-    ${fontSize('xxs')}
-    ${fontHeight('xxs')}
+    ${fontSize('xxxs')}
+    ${fontHeight('xxxs')}
     ${fontWeight('regular')}
 
 
@@ -383,7 +400,7 @@ export const TableEmptyResult = styled(Result)`
   .ant-result-title {
     ${fontSize('regular')}
     ${fontHeight('regular')}
-    ${fontWeight('medium')}
+    ${fontWeight('regular')}
   }
 
   .ant-result-subtitle {
@@ -443,7 +460,7 @@ export const StyledAvatar = styled(Avatar)`
 
   ${fontSize('regular')}
   ${fontHeight('regular')}
-  ${fontWeight('medium')}
+  ${fontWeight('regular')}
 
   ${backgroundColor('colorPrimary')}
 `
@@ -453,7 +470,7 @@ export const StyledTooltip = styled(Tooltip)`
 
   ${fontSize('regular')}
   ${fontHeight('regular')}
-  ${fontWeight('medium')}
+  ${fontWeight('regular')}
 
   ${backgroundColor('colorPrimary')} */
 `
@@ -480,7 +497,7 @@ export const StyledCard = styled(Card)`
 
   /* ${fontSize('regular')} */
   /* ${fontHeight('regular')}
-  /*fontWeightfomedium('regular')}
+  /*fontWeightforegular('regular')}
    
   /* ${backgroundColor('colorPrimary')} */
 `
@@ -490,7 +507,7 @@ export const StyledCollapse = styled(Collapse)`
     .ant-collapse-header-text {
       ${fontSize('xs')}
       ${fontHeight('xs')}
-      ${fontWeight('medium')}
+      ${fontWeight('regular')}
 
       margin:  auto 0;
     }

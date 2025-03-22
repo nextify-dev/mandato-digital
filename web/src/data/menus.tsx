@@ -13,7 +13,14 @@ import {
   LuMessageSquare,
   LuShield,
   LuCircleUser,
-  LuLogOut
+  LuLogOut,
+  LuMessagesSquare,
+  LuChartBar, // Para Segmentação de Eleitores
+  LuSend, // Para Campanhas Informativas
+  LuClipboardList, // Para Enquetes e Pesquisas
+  LuTarget, // Para Painel de Metas e Resultados
+  LuHistory, // Para Histórico do Eleitor
+  LuCalendarClock // Para Agendamento de Publicações
 } from 'react-icons/lu'
 
 import DashboardInicialView from '@/screens/DashboardV1/views/DashboardInicial'
@@ -29,6 +36,7 @@ import ComunicacaoView from '@/screens/DashboardV1/views/Comunicacao'
 import PlanejamentoView from '@/screens/DashboardV1/views/Planejamento'
 import MonitoramentoRedesView from '@/screens/DashboardV1/views/MonitoramentoRedes'
 import MinhaContaView from '@/screens/DashboardV1/views/MinhaConta'
+import SegmentacaoEleitoresView from '@/screens/DashboardV1/views/SegmentacaoEleitores'
 
 import { UserType, Permissions } from '@/@types/user'
 import { MapProvider } from '@/contexts/MapProvider'
@@ -62,7 +70,7 @@ export const DASHBOARD_MENUS: IMenu[] = [
     ),
     menuCategory: 'Principal',
     requiredPermissions: {},
-    menuDisabled: false,
+    menuDisabled: true,
     menuHidden: false
   },
 
@@ -145,6 +153,21 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuHidden: false
   },
   {
+    menuId: 'segmentacao-eleitores',
+    menuName: 'Segmentação de Eleitores',
+    menuLegend: 'Filtrar e visualizar dados demográficos',
+    menuIcon: <LuChartBar />,
+    menuView: (
+      <>
+        <SegmentacaoEleitoresView />
+      </>
+    ),
+    menuCategory: 'Análise',
+    requiredPermissions: { canViewReports: true },
+    menuDisabled: true,
+    menuHidden: false
+  },
+  {
     menuId: 'relatorios',
     menuName: 'Relatórios',
     menuLegend: 'Estatísticas e relatórios',
@@ -156,7 +179,7 @@ export const DASHBOARD_MENUS: IMenu[] = [
     ),
     menuCategory: 'Análise',
     requiredPermissions: { canViewReports: true },
-    menuDisabled: false,
+    menuDisabled: true,
     menuHidden: false
   },
   {
@@ -171,16 +194,16 @@ export const DASHBOARD_MENUS: IMenu[] = [
     ),
     menuCategory: 'Análise',
     requiredPermissions: { canViewReports: true },
-    menuDisabled: false,
+    menuDisabled: true,
     menuHidden: false
   },
 
   // Categoria: Comunicação
   {
     menuId: 'comunicacao',
-    menuName: 'Comunicação',
-    menuLegend: 'Gerenciar campanhas informativas',
-    menuIcon: <LuMegaphone />,
+    menuName: 'Central de Relacionamento',
+    menuLegend: 'Gerenciar tickets e relacionamento com eleitores',
+    menuIcon: <LuMessagesSquare />,
     menuView: (
       <TicketsProvider>
         <ComunicacaoView />
@@ -189,6 +212,39 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuCategory: 'Comunicação',
     requiredPermissions: { canManageCampaigns: true },
     menuDisabled: false,
+    menuHidden: false
+  },
+  {
+    menuId: 'campanhas-informativas',
+    menuName: 'Campanhas Informativas',
+    menuLegend: 'Criar e gerenciar campanhas informativas',
+    menuIcon: <LuSend />,
+    menuView: <div>CampanhasInformativasView (a ser implementado)</div>,
+    menuCategory: 'Comunicação',
+    requiredPermissions: { canManageCampaigns: true },
+    menuDisabled: true,
+    menuHidden: false
+  },
+  {
+    menuId: 'enquetes-pesquisas',
+    menuName: 'Enquetes e Pesquisas',
+    menuLegend: 'Criar e analisar enquetes',
+    menuIcon: <LuClipboardList />,
+    menuView: <div>EnquetesPesquisasView (a ser implementado)</div>,
+    menuCategory: 'Comunicação',
+    requiredPermissions: { canManageCampaigns: true },
+    menuDisabled: true,
+    menuHidden: false
+  },
+  {
+    menuId: 'agendamento-publicacoes',
+    menuName: 'Agendamento de Publicações',
+    menuLegend: 'Programar postagens e conteúdos',
+    menuIcon: <LuCalendarClock />,
+    menuView: <div>AgendamentoPublicacoesView (a ser implementado)</div>,
+    menuCategory: 'Comunicação',
+    requiredPermissions: { canManageCampaigns: true },
+    menuDisabled: true,
     menuHidden: false
   },
   {
@@ -203,7 +259,7 @@ export const DASHBOARD_MENUS: IMenu[] = [
     ),
     menuCategory: 'Comunicação',
     requiredPermissions: { canManageCampaigns: true },
-    menuDisabled: false,
+    menuDisabled: true,
     menuHidden: false
   },
 
@@ -221,6 +277,30 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuCategory: 'Planejamento',
     requiredPermissions: { canManageCampaigns: true },
     menuDisabled: false,
+    menuHidden: false
+  },
+  {
+    menuId: 'painel-metas-resultados',
+    menuName: 'Painel de Metas e Resultados',
+    menuLegend: 'Acompanhar metas e progresso',
+    menuIcon: <LuTarget />,
+    menuView: <div>PainelMetasResultadosView (a ser implementado)</div>,
+    menuCategory: 'Planejamento',
+    requiredPermissions: { canManageCampaigns: true },
+    menuDisabled: true,
+    menuHidden: false
+  },
+
+  // Categoria: Histórico (nova categoria)
+  {
+    menuId: 'historico-eleitor',
+    menuName: 'Histórico do Eleitor',
+    menuLegend: 'Visualizar interações e demandas',
+    menuIcon: <LuHistory />,
+    menuView: <div>HistoricoEleitorView (a ser implementado)</div>,
+    menuCategory: 'Histórico',
+    requiredPermissions: {}, // Todos têm acesso, com restrições via lógica interna
+    menuDisabled: true,
     menuHidden: false
   },
 

@@ -294,7 +294,10 @@ const ParticipantsStep = ({
         render={({ field }) => (
           <StyledForm.Item
             label="Participantes"
-            help={errors.participants?.message}
+            help={
+              errors.participants?.message ||
+              'Você será incluído automaticamente'
+            }
             validateStatus={errors.participants ? 'error' : ''}
           >
             <Select
