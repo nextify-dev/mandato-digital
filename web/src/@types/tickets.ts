@@ -84,7 +84,7 @@ export const getTicketRegistrationSchema = (mode: 'create' | 'edit') => {
     participants: yup
       .array()
       .of(yup.string().required())
-      .min(2, 'Pelo menos dois participantes são necessários')
+      //   .min(2, 'Pelo menos dois participantes são necessários')
       .required('Participantes são obrigatórios'),
     relatedDemandId: yup.string().nullable().optional(),
     relatedEventId: yup.string().nullable().optional(),

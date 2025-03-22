@@ -4,8 +4,13 @@ import AppRoutes from '@/Routes'
 import { ConfigProvider, theme } from 'antd'
 
 import dayjs from 'dayjs'
-dayjs.locale('pt-br')
+import moment from 'moment'
+
 import localeProvider from 'antd/locale/pt_BR'
+import 'moment/locale/pt-br'
+
+dayjs.locale('pt-br')
+moment.locale('pt-br')
 
 function App() {
   return <AppThemed />

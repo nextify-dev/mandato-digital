@@ -28,6 +28,9 @@ import { UploadOutlined, SendOutlined } from '@ant-design/icons'
 import moment from 'moment'
 import TicketRegistrationForm from '@/components/forms/TicketRegistrationForm'
 
+import { ref, onValue, off } from 'firebase/database'
+import { db } from '@/lib/firebase'
+
 interface IComunicacaoView {}
 
 const ComunicacaoView = ({}: IComunicacaoView) => {
@@ -93,6 +96,47 @@ const ComunicacaoView = ({}: IComunicacaoView) => {
     }
   }, [selectedTicket, user, markMessageAsRead])
 
+  // Função auxiliar para converter mensagens de objeto para array
+  const convertMessagesToArray = (
+    messagesObj: Record<string, Message> | null | undefined
+  ): Message[] => {
+    if (!messagesObj) return []
+    return Object.keys(messagesObj).map((key) => ({
+      ...messagesObj[key],
+      id: key
+    }))
+  }
+
+  // Novo useEffect para escutar mudanças no ticket ativo
+  useEffect(() => {
+    if (!selectedTicket) return
+
+    const ticketRef = ref(db, `tickets/${selectedTicket.id}`)
+    const listener = onValue(
+      ticketRef,
+      (snapshot) => {
+        const updatedTicket = snapshot.val() as Ticket | null
+        if (updatedTicket) {
+          setSelectedTicket({
+            ...updatedTicket,
+            messages: convertMessagesToArray(updatedTicket.messages as any)
+          })
+        } else {
+          // Se o ticket foi deletado, podemos desmarcá-lo
+          setSelectedTicket(null)
+        }
+      },
+      (error) => {
+        console.error('Erro ao escutar mudanças no ticket:', error)
+      }
+    )
+
+    // Cleanup: remove o listener quando o ticket mudar ou o componente for desmontado
+    return () => {
+      off(ticketRef, 'value', listener)
+    }
+  }, [selectedTicket?.id])
+
   const handleDeleteTicket = async (ticketId: string) => {
     await deleteTicket(ticketId)
     setSelectedTicket(null)
@@ -132,14 +176,6 @@ const ComunicacaoView = ({}: IComunicacaoView) => {
         )
         .filter((participant): participant is User => !!participant)
     : []
-
-  const getTimeSinceLastMessage = (ticket: Ticket): string => {
-    if (!ticket.messages || ticket.messages.length === 0) {
-      return 'Sem mensagens'
-    }
-    const lastMessage = ticket.messages[ticket.messages.length - 1]
-    return moment(lastMessage.timestamp).fromNow()
-  }
 
   const STATUS_OPTIONS = Object.values(TicketStatus).map((status) => ({
     label: getTicketStatusData(status).label,
@@ -199,52 +235,13 @@ const ComunicacaoView = ({}: IComunicacaoView) => {
                   ? ticket.messages[ticket.messages.length - 1]
                   : null
               return (
-                <List.Item
-                  onClick={() => setSelectedTicket(ticket)}
-                  style={{
-                    cursor: 'pointer',
-                    background:
-                      selectedTicket?.id === ticket.id ? '#f0f0f0' : 'white',
-                    padding: '10px'
-                  }}
-                >
-                  <List.Item.Meta
-                    avatar={<Avatar>{ticket.title.charAt(0)}</Avatar>}
-                    title={
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between'
-                        }}
-                      >
-                        <span>{ticket.title}</span>
-                        <Tag color={getTicketStatusData(ticket.status).color}>
-                          {getTicketStatusData(ticket.status).label}
-                        </Tag>
-                      </div>
-                    }
-                    description={
-                      <div>
-                        <div>Protocolo: {ticket.protocol}</div>
-                        <div>
-                          Participantes:{' '}
-                          {ticketParticipants
-                            .map((p) => p.profile?.nomeCompleto)
-                            .join(', ')}
-                        </div>
-                        {lastMessage && (
-                          <div>
-                            Última mensagem: {lastMessage.content.slice(0, 50)}
-                            {lastMessage.content.length > 50 ? '...' : ''}
-                          </div>
-                        )}
-                        <div style={{ color: '#888', fontSize: '12px' }}>
-                          {getTimeSinceLastMessage(ticket)}
-                        </div>
-                      </div>
-                    }
-                  />
-                </List.Item>
+                <TicketCard
+                  ticket={ticket}
+                  selectedTicket={selectedTicket}
+                  setSelectedTicket={setSelectedTicket}
+                  ticketParticipants={ticketParticipants}
+                  lastMessage={lastMessage}
+                />
               )
             }}
           />
@@ -266,14 +263,16 @@ const ComunicacaoView = ({}: IComunicacaoView) => {
                     )
                   })}
                 </div>
-                <Select
-                  loading={loading}
-                  disabled={loading}
-                  value={selectedTicket.status}
-                  onChange={handleStatusChange}
-                  style={{ width: 200, marginTop: '10px' }}
-                  options={STATUS_OPTIONS}
-                />
+                {user?.role !== UserRole.ELEITOR && (
+                  <Select
+                    loading={loading}
+                    disabled={loading}
+                    value={selectedTicket.status}
+                    onChange={handleStatusChange}
+                    style={{ width: 200, marginTop: '10px' }}
+                    options={STATUS_OPTIONS}
+                  />
+                )}
                 {user?.role === UserRole.ADMINISTRADOR_GERAL && (
                   <Button
                     loading={loading}
@@ -421,5 +420,79 @@ const MessageComponent = ({ msg, sender, isOwnMessage }: IMessageComponent) => {
         )}
       </S.MessageContent>
     </S.MessageContainer>
+  )
+}
+
+export interface ITicketCard {
+  ticket: Ticket
+  selectedTicket: Ticket | null
+  setSelectedTicket: (ticket: Ticket) => void
+  ticketParticipants: User[]
+  lastMessage: Message | null
+}
+
+const TicketCard = ({
+  ticket,
+  selectedTicket,
+  setSelectedTicket,
+  ticketParticipants,
+  lastMessage
+}: ITicketCard) => {
+  const getTimeSinceLastMessage = (ticket: Ticket): string => {
+    if (!ticket.messages || ticket.messages.length === 0) {
+      return 'Sem mensagens'
+    }
+    const lastMessage = ticket.messages[ticket.messages.length - 1]
+    return moment(lastMessage.timestamp).fromNow()
+  }
+
+  return (
+    <S.TicketItem
+      onClick={() => setSelectedTicket(ticket)}
+      active={selectedTicket?.id === ticket.id ? 1 : 0}
+    >
+      <List.Item.Meta
+        // avatar={<Avatar>{ticket.title.charAt(0)}</Avatar>}
+        title={
+          <S.TicketItemHeader
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between'
+            }}
+          >
+            <S.TicketItemTitle>
+              <h3>{ticket.title}</h3>
+              <span>{ticket.protocol}</span>
+            </S.TicketItemTitle>
+            <S.TicketItemTag color={getTicketStatusData(ticket.status).color}>
+              {getTicketStatusData(ticket.status).label}
+            </S.TicketItemTag>
+          </S.TicketItemHeader>
+        }
+        description={
+          <S.TicketItemDescriptions>
+            {/* <div>Protocolo: {ticket.protocol}</div> */}
+            <p>
+              <b>Participantes: </b>
+              {ticketParticipants
+                .map((p) => p.profile?.nomeCompleto)
+                .join(', ')}
+            </p>
+            {lastMessage && (
+              <p>
+                <b>Última mensagem: </b>
+                {lastMessage.content.slice(0, 50)}
+                {lastMessage.content.length > 50 ? '...' : ''}
+              </p>
+            )}
+            <S.TicketItemDescriptionSince
+              style={{ color: '#888', fontSize: '12px' }}
+            >
+              {getTimeSinceLastMessage(ticket)}
+            </S.TicketItemDescriptionSince>
+          </S.TicketItemDescriptions>
+        }
+      />
+    </S.TicketItem>
   )
 }

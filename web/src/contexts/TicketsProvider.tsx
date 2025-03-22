@@ -118,7 +118,7 @@ export const TicketsProvider: React.FC<{ children: React.ReactNode }> = ({
       const newTicketId = await ticketsService.createTicket(
         data,
         user.id,
-        user.cityId || '',
+        data?.cityId || user.cityId,
         user.role
       )
       messageApi.success('Ticket criado com sucesso!')

@@ -22,6 +22,17 @@ interface FontSizes {
 
 type FontSizeKeys = keyof FontSizes
 
+// Novo padrão para pesos de fonte
+interface FontWeights {
+  light: number
+  regular: number
+  medium: number
+  bold: number
+  black: number
+}
+
+type FontWeightKeys = keyof FontWeights
+
 export const Fonts: FontSizes = {
   xxxs: {
     size: '0.625rem', // 10px
@@ -70,8 +81,26 @@ export const Fonts: FontSizes = {
   }
 } as const
 
-export const font = (size: FontSizeKeys) => css`
+// Novo objeto para os pesos de fonte
+export const Weights: FontWeights = {
+  light: 300,
+  regular: 400,
+  medium: 500,
+  bold: 700,
+  black: 900
+} as const
+
+// Função para definir apenas o font-size
+export const fontSize = (size: FontSizeKeys) => css`
   font-size: ${Fonts[size]?.size} !important;
+`
+
+// Função para definir apenas o line-height
+export const fontHeight = (size: FontSizeKeys) => css`
   line-height: ${Fonts[size]?.height};
-  font-weight: ${Fonts[size]?.weight};
+`
+
+// Função para definir apenas o font-weight
+export const fontWeight = (weight: FontWeightKeys) => css`
+  font-weight: ${Weights[weight]};
 `

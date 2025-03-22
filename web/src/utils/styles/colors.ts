@@ -7,6 +7,7 @@ type ColorTokenKeys =
   | 'colorPrimary'
   | 'colorText'
   | 'colorTextDescription'
+  | 'colorTextSecondary'
   | 'colorTextLabel'
   | 'colorBgBase'
   | 'colorBorder'

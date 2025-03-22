@@ -153,6 +153,11 @@ export const ticketsService: TicketsService = {
     const protocol = await generateProtocol()
     const storagePath = `tickets/${newTicketId}/messages`
 
+    // Garantir que o criador (userId) esteja na lista de participantes
+    const participantsWithCreator = Array.from(
+      new Set([...data.participants, userId])
+    )
+
     const newTicket: Ticket = {
       id: newTicketId,
       protocol,
@@ -162,7 +167,7 @@ export const ticketsService: TicketsService = {
       createdAt: new Date().toISOString(),
       createdBy: userId,
       cityId: data.cityId || userCityId,
-      participants: data.participants,
+      participants: participantsWithCreator,
       messages: [],
       lastUpdatedAt: new Date().toISOString()
     }
