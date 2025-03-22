@@ -23,6 +23,13 @@ export const Globals = {
       maxWidth: '1180px',
       headerHeight: '60px'
     }
+  },
+  chat: {
+    sidebar: {
+      width: {
+        expanded: '260px'
+      }
+    }
   }
 }
 

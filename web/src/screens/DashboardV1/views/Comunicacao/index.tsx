@@ -30,6 +30,8 @@ import TicketRegistrationForm from '@/components/forms/TicketRegistrationForm'
 
 import { ref, onValue, off } from 'firebase/database'
 import { db } from '@/lib/firebase'
+import formatUsername from '@/utils/functions/formatUsername'
+import { StyledTooltip } from '@/utils/styles/antd'
 
 interface IComunicacaoView {}
 
@@ -182,28 +184,42 @@ const ComunicacaoView = ({}: IComunicacaoView) => {
     value: status
   }))
 
-  const CREATOR_OPTIONS = allowedContacts.map((contact) => ({
-    label: `${contact.profile?.nomeCompleto} (${contact.role})`,
-    value: contact.id
-  }))
+  const CREATOR_OPTIONS = user
+    ? [
+        ...(allowedContacts.some((contact) => contact.id === user.id)
+          ? []
+          : [user]),
+        ...allowedContacts
+      ].map((contact) => ({
+        label: `${formatUsername(contact.profile?.nomeCompleto).reducedName} (${
+          getRoleData(contact.role).label
+        })`,
+        value: contact.id
+      }))
+    : allowedContacts.map((contact) => ({
+        label: `${formatUsername(contact.profile?.nomeCompleto).reducedName} (${
+          getRoleData(contact.role).label
+        })`,
+        value: contact.id
+      }))
 
   return (
     <View
       header={
-        <S.Header>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <S.HeaderWrapper>
+          <S.TicketFilters>
             <Select
               placeholder="Filtrar por status"
               allowClear
               onChange={(value) => setFilters({ ...filters, status: value })}
-              style={{ width: 200 }}
+              style={{ width: 140 }}
               options={STATUS_OPTIONS}
             />
             <Select
               placeholder="Filtrar por criador"
               allowClear
               onChange={(value) => setFilters({ ...filters, createdBy: value })}
-              style={{ width: 200 }}
+              style={{ width: 220 }}
               options={CREATOR_OPTIONS}
               showSearch
               filterOption={(input, option) =>
@@ -212,11 +228,11 @@ const ComunicacaoView = ({}: IComunicacaoView) => {
                   .includes(input.toLowerCase())
               }
             />
-          </div>
+          </S.TicketFilters>
           <Button type="primary" onClick={() => setIsModalVisible(true)}>
             Novo Ticket
           </Button>
-        </S.Header>
+        </S.HeaderWrapper>
       }
     >
       <S.ComunicacaoView>
@@ -246,104 +262,20 @@ const ComunicacaoView = ({}: IComunicacaoView) => {
             }}
           />
         </S.TicketList>
-        <S.ChatWindow>
-          {selectedTicket ? (
-            <>
-              <S.ChatHeader>
-                <h3>{selectedTicket.title}</h3>
-                <p>Protocolo: {selectedTicket.protocol}</p>
-                <div style={{ marginTop: '10px' }}>
-                  <strong>Participantes: </strong>
-                  {participants.map((participant) => {
-                    const roleData = getRoleData(participant.role)
-                    return (
-                      <Tag key={participant.id} color={roleData.color}>
-                        {participant.profile?.nomeCompleto} ({roleData.label})
-                      </Tag>
-                    )
-                  })}
-                </div>
-                {user?.role !== UserRole.ELEITOR && (
-                  <Select
-                    loading={loading}
-                    disabled={loading}
-                    value={selectedTicket.status}
-                    onChange={handleStatusChange}
-                    style={{ width: 200, marginTop: '10px' }}
-                    options={STATUS_OPTIONS}
-                  />
-                )}
-                {user?.role === UserRole.ADMINISTRADOR_GERAL && (
-                  <Button
-                    loading={loading}
-                    disabled={loading}
-                    danger
-                    onClick={() => handleDeleteTicket(selectedTicket.id)}
-                  >
-                    Deletar Ticket
-                  </Button>
-                )}
-              </S.ChatHeader>
-              <S.MessagesArea>
-                {Array.isArray(selectedTicket.messages) &&
-                selectedTicket.messages.length > 0 ? (
-                  selectedTicket.messages.map((msg) => {
-                    const sender = [...users, ...voters].find(
-                      (u) => u.id === msg.senderId
-                    )
-                    const isOwnMessage = msg.senderId === user?.id
-                    return (
-                      <MessageComponent
-                        key={msg.id}
-                        msg={msg}
-                        sender={sender}
-                        isOwnMessage={isOwnMessage}
-                      />
-                    )
-                  })
-                ) : (
-                  <div>Nenhuma mensagem disponível</div>
-                )}
-              </S.MessagesArea>
-              <S.MessageInputArea>
-                <Input.TextArea
-                  value={messageContent}
-                  onChange={(e) => setMessageContent(e.target.value)}
-                  placeholder="Digite sua mensagem..."
-                  rows={3}
-                />
-                <Upload
-                  fileList={attachments.map((file, index) => ({
-                    uid: String(index),
-                    name: file.name,
-                    status: 'done'
-                  }))}
-                  beforeUpload={(file) => {
-                    setAttachments([...attachments, file])
-                    return false
-                  }}
-                  onRemove={(file) => {
-                    setAttachments(
-                      attachments.filter((_, i) => String(i) !== file.uid)
-                    )
-                  }}
-                >
-                  <Button icon={<UploadOutlined />}>Anexar</Button>
-                </Upload>
-                <Button
-                  type="primary"
-                  icon={<SendOutlined />}
-                  onClick={handleSendMessage}
-                  disabled={!messageContent.trim()}
-                >
-                  Enviar
-                </Button>
-              </S.MessageInputArea>
-            </>
-          ) : (
-            <div>Selecione um ticket para visualizar as mensagens</div>
-          )}
-        </S.ChatWindow>
+        <Chat
+          selectedTicket={selectedTicket}
+          user={user}
+          participants={participants}
+          messageContent={messageContent}
+          attachments={attachments}
+          loading={loading}
+          statusOptions={STATUS_OPTIONS}
+          setMessageContent={setMessageContent}
+          setAttachments={setAttachments}
+          handleSendMessage={handleSendMessage}
+          handleStatusChange={handleStatusChange}
+          handleDeleteTicket={handleDeleteTicket}
+        />
       </S.ComunicacaoView>
 
       <Modal
@@ -391,6 +323,8 @@ const ComunicacaoView = ({}: IComunicacaoView) => {
 
 export default ComunicacaoView
 
+// =================================================== MESSAGE COMPONENT
+
 export interface IMessageComponent {
   msg: Message
   sender?: User
@@ -400,10 +334,14 @@ export interface IMessageComponent {
 const MessageComponent = ({ msg, sender, isOwnMessage }: IMessageComponent) => {
   return (
     <S.MessageContainer own={isOwnMessage ? 1 : 0} key={msg.id}>
-      <Avatar>{sender?.profile?.nomeCompleto?.charAt(0) || 'U'}</Avatar>
+      <S.MessageAvatar>
+        {formatUsername(sender?.profile?.nomeCompleto).initials || ''}
+      </S.MessageAvatar>
       <S.MessageContent own={isOwnMessage ? 1 : 0}>
-        <div>{msg.content}</div>
-        <small>{moment(msg.timestamp).format('DD/MM/YYYY HH:mm')}</small>
+        <S.MessageContentText>{msg.content}</S.MessageContentText>
+        <S.MessageContentDate>
+          {moment(msg.timestamp).format('DD/MM/YYYY HH:mm')}
+        </S.MessageContentDate>
         {msg.attachments && (
           <div>
             {msg.attachments.map((url, index) => (
@@ -422,6 +360,8 @@ const MessageComponent = ({ msg, sender, isOwnMessage }: IMessageComponent) => {
     </S.MessageContainer>
   )
 }
+
+// =================================================== TICKET CARD
 
 export interface ITicketCard {
   ticket: Ticket
@@ -450,16 +390,11 @@ const TicketCard = ({
     <S.TicketItem
       onClick={() => setSelectedTicket(ticket)}
       active={selectedTicket?.id === ticket.id ? 1 : 0}
+      color={getTicketStatusData(ticket.status).color}
     >
       <List.Item.Meta
-        // avatar={<Avatar>{ticket.title.charAt(0)}</Avatar>}
         title={
-          <S.TicketItemHeader
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between'
-            }}
-          >
+          <S.TicketItemHeader>
             <S.TicketItemTitle>
               <h3>{ticket.title}</h3>
               <span>{ticket.protocol}</span>
@@ -471,28 +406,169 @@ const TicketCard = ({
         }
         description={
           <S.TicketItemDescriptions>
-            {/* <div>Protocolo: {ticket.protocol}</div> */}
             <p>
-              <b>Participantes: </b>
               {ticketParticipants
-                .map((p) => p.profile?.nomeCompleto)
+                .map((p) => formatUsername(p.profile?.nomeCompleto).firstName)
                 .join(', ')}
             </p>
+
             {lastMessage && (
-              <p>
-                <b>Última mensagem: </b>
-                {lastMessage.content.slice(0, 50)}
-                {lastMessage.content.length > 50 ? '...' : ''}
-              </p>
+              <S.TicketItemDescriptionSince>
+                Última mensagem há: <b>{getTimeSinceLastMessage(ticket)}</b>
+              </S.TicketItemDescriptionSince>
             )}
-            <S.TicketItemDescriptionSince
-              style={{ color: '#888', fontSize: '12px' }}
-            >
-              {getTimeSinceLastMessage(ticket)}
-            </S.TicketItemDescriptionSince>
           </S.TicketItemDescriptions>
         }
       />
     </S.TicketItem>
+  )
+}
+
+// =================================================== CHAT
+interface IChat {
+  selectedTicket: Ticket | null
+  user: User | null
+  participants: User[]
+  messageContent: string
+  attachments: File[]
+  loading: boolean
+  statusOptions: { label: string; value: TicketStatus }[]
+  setMessageContent: (content: string) => void
+  setAttachments: (files: File[]) => void
+  handleSendMessage: () => Promise<void>
+  handleStatusChange: (value: TicketStatus) => void
+  handleDeleteTicket: (ticketId: string) => Promise<void>
+}
+
+const Chat = ({
+  selectedTicket,
+  user,
+  participants,
+  messageContent,
+  attachments,
+  loading,
+  statusOptions,
+  setMessageContent,
+  setAttachments,
+  handleSendMessage,
+  handleStatusChange,
+  handleDeleteTicket
+}: IChat) => {
+  return (
+    <S.ChatWindow>
+      {selectedTicket ? (
+        <>
+          <S.ChatHeader>
+            <S.ChatHeaderContent>
+              <S.ChatTicketTitle>{selectedTicket.title}</S.ChatTicketTitle>
+              <S.ChatTicketProtocol>
+                <b>Protocolo:</b> {selectedTicket.protocol}
+              </S.ChatTicketProtocol>
+              <S.ChatTicketParticipants>
+                <b>Participantes:</b>
+                <S.ChatTicketParticipantsWrapper>
+                  {participants.map((participant) => {
+                    const roleData = getRoleData(participant.role)
+                    return (
+                      <StyledTooltip
+                        key={`tooltip-${participant.id}`}
+                        placement="bottomRight"
+                        title={roleData.label}
+                        arrow
+                      >
+                        <S.ParticipantTag
+                          key={participant.id}
+                          color={roleData.color}
+                        >
+                          {participant.profile?.nomeCompleto}
+                        </S.ParticipantTag>
+                      </StyledTooltip>
+                    )
+                  })}
+                </S.ChatTicketParticipantsWrapper>
+              </S.ChatTicketParticipants>
+            </S.ChatHeaderContent>
+            <S.ChatHeaderMenu>
+              {user?.role !== UserRole.ELEITOR && (
+                <Select
+                  loading={loading}
+                  disabled={loading}
+                  value={selectedTicket.status}
+                  onChange={handleStatusChange}
+                  options={statusOptions}
+                />
+              )}
+              {user?.role === UserRole.ADMINISTRADOR_GERAL && (
+                <Button
+                  loading={loading}
+                  disabled={loading}
+                  danger
+                  onClick={() => handleDeleteTicket(selectedTicket.id)}
+                >
+                  Deletar Ticket
+                </Button>
+              )}
+            </S.ChatHeaderMenu>
+          </S.ChatHeader>
+          <S.MessagesArea>
+            {Array.isArray(selectedTicket.messages) &&
+            selectedTicket.messages.length > 0 ? (
+              selectedTicket.messages.map((msg) => {
+                const sender = participants.find((u) => u.id === msg.senderId)
+                const isOwnMessage = msg.senderId === user?.id
+                return (
+                  <MessageComponent
+                    key={msg.id}
+                    msg={msg}
+                    sender={sender}
+                    isOwnMessage={isOwnMessage}
+                  />
+                )
+              })
+            ) : (
+              <div>Nenhuma mensagem disponível</div>
+            )}
+          </S.MessagesArea>
+          <S.MessageInputArea>
+            <Input.TextArea
+              value={messageContent}
+              onChange={(e) => setMessageContent(e.target.value)}
+              placeholder="Digite sua mensagem..."
+              rows={1}
+            />
+            <Upload
+              fileList={attachments.map((file, index) => ({
+                uid: String(index),
+                name: file.name,
+                status: 'done'
+              }))}
+              beforeUpload={(file) => {
+                setAttachments([...attachments, file])
+                return false
+              }}
+              onRemove={(file) => {
+                setAttachments(
+                  attachments.filter((_, i) => String(i) !== file.uid)
+                )
+              }}
+            >
+              <Button icon={<UploadOutlined />} />
+            </Upload>
+            <Button
+              type="primary"
+              icon={<SendOutlined />}
+              onClick={handleSendMessage}
+              disabled={!messageContent.trim()}
+            >
+              Enviar
+            </Button>
+          </S.MessageInputArea>
+        </>
+      ) : (
+        <S.EmptyChat>
+          Selecione um ticket para visualizar as mensagens
+        </S.EmptyChat>
+      )}
+    </S.ChatWindow>
   )
 }

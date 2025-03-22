@@ -21,9 +21,9 @@ export enum UserRole {
 export const getRoleData = (role?: UserRole): FormattedUserTag => {
   switch (role) {
     case UserRole.ADMINISTRADOR_GERAL:
-      return { label: 'Administrador Geral', color: '#1E90FF' }
+      return { label: 'Admin. Geral', color: '#1E90FF' }
     case UserRole.ADMINISTRADOR_CIDADE:
-      return { label: 'Administrador da Cidade', color: '#4682B4' }
+      return { label: 'Admin. da Cidade', color: '#4682B4' }
     case UserRole.PREFEITO:
       return { label: 'Prefeito', color: '#2E8B57' }
     case UserRole.VEREADOR:
