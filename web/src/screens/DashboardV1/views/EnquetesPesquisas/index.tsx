@@ -1,19 +1,39 @@
 // src/screens/DashboardV1/views/EnquetesPesquisas/index.tsx
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import * as S from './styles'
-import { LuPen, LuTrash2, LuEye, LuCheck, LuX } from 'react-icons/lu'
-import { Button, Select, Table, message, Switch } from 'antd'
-import { View, Modal, ConfirmModal, PollRegistrationForm } from '@/components'
+import {
+  LuPen,
+  LuTrash2,
+  LuEye,
+  LuCheck,
+  LuX,
+  LuMessageSquare
+} from 'react-icons/lu'
+import { Button, Select, Table, message, Switch, Tabs, Empty } from 'antd'
+import {
+  View,
+  Modal,
+  ConfirmModal,
+  PollRegistrationForm,
+  PollResponseForm
+} from '@/components'
 import { TableExtrasWrapper } from '@/utils/styles/commons'
 import { usePolls } from '@/contexts/PollsProvider'
 import { useAuth } from '@/contexts/AuthProvider'
 import { useCities } from '@/contexts/CitiesProvider'
 import { useSegments } from '@/contexts/SegmentsProvider'
-import { Poll, PollRegistrationFormType } from '@/@types/poll'
+import {
+  Poll,
+  PollRegistrationFormType,
+  PollResponse,
+  PollResponseFormType
+} from '@/@types/poll'
 import { UserRole } from '@/@types/user'
 import moment from 'moment'
 import { UseFormReturn } from 'react-hook-form'
+
+const { TabPane } = Tabs
 
 const EnquetesPesquisasView = () => {
   const { user } = useAuth()
@@ -25,12 +45,15 @@ const EnquetesPesquisasView = () => {
     createPoll,
     updatePoll,
     deletePoll,
-    togglePollActive
+    togglePollActive,
+    submitResponse,
+    getResponses
   } = usePolls()
   const [messageApi, contextHolder] = message.useMessage()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
+  const [isRespondModalOpen, setIsRespondModalOpen] = useState(false)
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
   const [selectedPoll, setSelectedPoll] = useState<Poll | null>(null)
   const [currentStep, setCurrentStep] = useState(0)
@@ -40,11 +63,23 @@ const EnquetesPesquisasView = () => {
   const [scopeFilter, setScopeFilter] = useState<
     'minhaBase' | 'cidadeCompleta'
   >('cidadeCompleta')
+  const [selectedPollForResponses, setSelectedPollForResponses] = useState<
+    string | null
+  >(null)
+  const [responses, setResponses] = useState<PollResponse[]>([])
   const formRef = useRef<UseFormReturn<PollRegistrationFormType> | null>(null)
+  const responseFormRef = useRef<UseFormReturn<PollResponseFormType> | null>(
+    null
+  )
 
   const cityOptions = cities.map((city) => ({
     label: city.name,
     value: city.id
+  }))
+
+  const pollOptions = polls.map((poll) => ({
+    label: poll.title,
+    value: poll.id
   }))
 
   const filteredPolls = polls.filter((poll) => {
@@ -90,6 +125,12 @@ const EnquetesPesquisasView = () => {
       key: 'questions',
       render: (questions: PollRegistrationFormType['questions']) =>
         questions.length
+    },
+    {
+      title: 'Respostas',
+      dataIndex: 'responseCount',
+      key: 'responseCount',
+      render: (responseCount: number) => responseCount || 0
     },
     {
       title: 'Ativo',
@@ -157,8 +198,54 @@ const EnquetesPesquisasView = () => {
               setIsViewModalOpen(true)
             }}
           />
+          <Button
+            type="link"
+            icon={<LuMessageSquare />}
+            onClick={() => {
+              setSelectedPoll(record)
+              setIsRespondModalOpen(true)
+            }}
+          />
         </TableExtrasWrapper>
       )
+    }
+  ]
+
+  const responseColumns = [
+    {
+      title: 'Usuário',
+      dataIndex: 'userId',
+      key: 'userId'
+    },
+    {
+      title: 'Enviado em',
+      dataIndex: 'submittedAt',
+      key: 'submittedAt',
+      render: (submittedAt: string) =>
+        moment(submittedAt).format('DD/MM/YYYY HH:mm')
+    },
+    {
+      title: 'Respostas',
+      dataIndex: 'answers',
+      key: 'answers',
+      render: (answers: PollResponse['answers']) => {
+        const poll = polls.find((p) => p.id === selectedPollForResponses)
+        if (!poll) return '-'
+        return (
+          <div>
+            {answers.map((answer) => {
+              const question = poll.questions.find(
+                (q) => q.id === answer.questionId
+              )
+              return (
+                <div key={answer.questionId}>
+                  <strong>{question?.title}:</strong> {answer.value}
+                </div>
+              )
+            })}
+          </div>
+        )
+      }
     }
   ]
 
@@ -186,17 +273,38 @@ const EnquetesPesquisasView = () => {
     }
   }
 
-  const handleModalClose = (type: 'create' | 'edit' | 'view') => {
+  const handleSubmitResponse = async (data: PollResponseFormType) => {
+    if (selectedPoll) {
+      await submitResponse(selectedPoll.id, data)
+      handleModalClose('respond')
+    }
+  }
+
+  const handleModalClose = (type: 'create' | 'edit' | 'view' | 'respond') => {
     if (type === 'create') setIsCreateModalOpen(false)
     if (type === 'edit') setIsEditModalOpen(false)
     if (type === 'view') setIsViewModalOpen(false)
+    if (type === 'respond') setIsRespondModalOpen(false)
 
     if (formRef.current) {
       formRef.current.reset()
     }
+    if (responseFormRef.current) {
+      responseFormRef.current.reset()
+    }
     setCurrentStep(0)
     setSelectedPoll(null)
     setInitialEditData(null)
+  }
+
+  const handlePollSelectForResponses = async (pollId: string) => {
+    setSelectedPollForResponses(pollId)
+    if (pollId) {
+      const responsesData = await getResponses(pollId)
+      setResponses(responsesData || [])
+    } else {
+      setResponses([])
+    }
   }
 
   return (
@@ -234,13 +342,38 @@ const EnquetesPesquisasView = () => {
       }
     >
       <S.EnquetesPesquisasView>
-        <Table
-          columns={pollColumns}
-          dataSource={filteredPolls}
-          rowKey="id"
-          loading={loading}
-          pagination={{ pageSize: 10 }}
-        />
+        <Tabs defaultActiveKey="1">
+          <TabPane tab="Enquetes" key="1">
+            <Table
+              columns={pollColumns}
+              dataSource={filteredPolls}
+              rowKey="id"
+              loading={loading}
+              pagination={{ pageSize: 10 }}
+            />
+          </TabPane>
+          <TabPane tab="Respostas" key="2">
+            <Select
+              placeholder="Selecione uma enquete para visualizar respostas"
+              options={pollOptions}
+              onChange={handlePollSelectForResponses}
+              value={selectedPollForResponses}
+              style={{ width: 300, marginBottom: 20 }}
+              allowClear
+            />
+            {selectedPollForResponses && responses.length > 0 ? (
+              <Table
+                columns={responseColumns}
+                dataSource={responses}
+                rowKey="id"
+                loading={loading}
+                pagination={{ pageSize: 10 }}
+              />
+            ) : (
+              <Empty description="Nenhuma resposta encontrada para esta enquete." />
+            )}
+          </TabPane>
+        </Tabs>
       </S.EnquetesPesquisasView>
 
       <Modal
@@ -301,6 +434,24 @@ const EnquetesPesquisasView = () => {
             currentStep={0}
             setCurrentStep={() => {}}
             segments={segments}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        title="Responder Enquete (Teste)"
+        open={isRespondModalOpen}
+        onCancel={() => handleModalClose('respond')}
+        footer={null}
+        size="default"
+        destroyOnClose
+      >
+        {isRespondModalOpen && selectedPoll && (
+          <PollResponseForm
+            onSubmit={handleSubmitResponse}
+            questions={selectedPoll.questions}
+            ref={responseFormRef}
+            loading={loading}
           />
         )}
       </Modal>

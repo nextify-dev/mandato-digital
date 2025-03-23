@@ -28,6 +28,21 @@ export interface PollQuestion {
   ratingScale?: number // Para perguntas de avaliação (ex.: 5 para 1-5 estrelas)
 }
 
+// Interface para uma resposta a uma pergunta
+export interface PollAnswer {
+  questionId: string
+  value: string // Pode ser a opção selecionada, texto, número (rating) ou "Sim"/"Não"
+}
+
+// Interface para uma resposta completa de um usuário
+export interface PollResponse {
+  id: string
+  pollId: string
+  userId: string
+  answers: PollAnswer[]
+  submittedAt: string
+}
+
 // Interface para a enquete
 export interface Poll {
   id: string
@@ -51,6 +66,11 @@ export interface PollRegistrationFormType {
   questions: PollQuestion[]
   cityIds: string[]
   isActive: boolean
+}
+
+// Interface para o formulário de resposta
+export interface PollResponseFormType {
+  answers: PollAnswer[]
 }
 
 // Schema de validação para o formulário de enquete
@@ -150,6 +170,47 @@ export const getPollRegistrationSchema = () => {
   })
 }
 
+// Schema de validação para o formulário de resposta
+export const getPollResponseSchema = (questions: PollQuestion[]) => {
+  return yup.object().shape({
+    answers: yup
+      .array()
+      .of(
+        yup.object().shape({
+          questionId: yup.string().required(),
+          value: yup.string().when('questionId', {
+            is: (questionId: string) => {
+              const question = questions.find((q) => q.id === questionId)
+              return question?.isRequired
+            },
+            then: (schema) =>
+              schema
+                .required('Este campo é obrigatório')
+                .min(1, 'Este campo não pode estar vazio'),
+            otherwise: (schema) => schema.optional()
+          })
+        })
+      )
+      .required()
+      .test(
+        'match-questions',
+        'Todas as perguntas obrigatórias devem ser respondidas',
+        (answers) => {
+          const requiredQuestionIds = questions
+            .filter((q) => q.isRequired)
+            .map((q) => q.id)
+          return requiredQuestionIds.every((id) =>
+            answers?.some((answer) => answer.questionId === id && answer.value)
+          )
+        }
+      )
+  })
+}
+
 export type PollRegistrationFormTypeSchema = yup.InferType<
   ReturnType<typeof getPollRegistrationSchema>
+>
+
+export type PollResponseFormTypeSchema = yup.InferType<
+  ReturnType<typeof getPollResponseSchema>
 >

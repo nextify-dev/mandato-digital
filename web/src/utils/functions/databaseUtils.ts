@@ -12,7 +12,8 @@ import {
   endAt,
   onValue,
   off,
-  DatabaseReference
+  DatabaseReference,
+  update // Importando a função update do Firebase
 } from 'firebase/database'
 
 // Interface genérica para dados do Realtime Database
@@ -142,4 +143,38 @@ export const saveToDatabase = async <T extends DatabaseItem>(
 export const deleteFromDatabase = async (path: string): Promise<void> => {
   const dbReference = dbRef(db, path)
   await remove(dbReference)
+}
+
+// Função para atualizar um campo específico no Realtime Database
+export const updateFieldInDatabase = async (
+  path: string,
+  field: string,
+  value: any
+): Promise<void> => {
+  try {
+    const dbReference = dbRef(db, path)
+
+    // Verificar se o documento existe antes de atualizar
+    const snapshot = await get(dbReference)
+    if (!snapshot.exists()) {
+      throw new Error(`Nenhum item encontrado no caminho ${path}`)
+    }
+
+    // Preparar o objeto de atualização com o campo específico
+    const updates: { [key: string]: any } = {}
+    updates[field] = value
+
+    // Atualizar apenas o campo especificado
+    await update(dbReference, updates)
+  } catch (error) {
+    console.error(
+      `Erro ao atualizar o campo ${field} no caminho ${path}:`,
+      error
+    )
+    throw new Error(
+      `Falha ao atualizar o campo: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    )
+  }
 }

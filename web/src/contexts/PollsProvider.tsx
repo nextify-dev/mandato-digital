@@ -2,7 +2,12 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { message } from 'antd'
-import { Poll, PollRegistrationFormType } from '@/@types/poll'
+import {
+  Poll,
+  PollRegistrationFormType,
+  PollResponse,
+  PollResponseFormType
+} from '@/@types/poll'
 import { Segment } from '@/@types/segment'
 import { UserRole } from '@/@types/user'
 import { pollService } from '@/services/poll'
@@ -22,6 +27,11 @@ interface PollsContextData {
   ) => Promise<void>
   deletePoll: (id: string) => Promise<void>
   togglePollActive: (id: string, isActive: boolean) => Promise<void>
+  submitResponse: (
+    pollId: string,
+    response: PollResponseFormType
+  ) => Promise<void>
+  getResponses: (pollId: string) => Promise<PollResponse[]>
 }
 
 const PollsContext = createContext<PollsContextData>({} as PollsContextData)
@@ -126,6 +136,36 @@ export const PollsProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }
 
+  const submitResponse = async (
+    pollId: string,
+    response: PollResponseFormType
+  ): Promise<void> => {
+    setLoading(true)
+    try {
+      if (!user) throw new Error('Usuário não autenticado')
+      await pollService.submitResponse(pollId, user.id, response)
+      messageApi.success('Resposta enviada com sucesso!')
+      setLoading(false)
+    } catch (error: any) {
+      messageApi.error('Erro ao enviar resposta, tente novamente')
+      setLoading(false)
+      throw error
+    }
+  }
+
+  const getResponses = async (pollId: string): Promise<PollResponse[]> => {
+    setLoading(true)
+    try {
+      const responses = await pollService.getResponses(pollId)
+      setLoading(false)
+      return responses
+    } catch (error: any) {
+      messageApi.error('Erro ao carregar respostas, tente novamente')
+      setLoading(false)
+      throw error
+    }
+  }
+
   return (
     <PollsContext.Provider
       value={{
@@ -134,7 +174,9 @@ export const PollsProvider: React.FC<{ children: React.ReactNode }> = ({
         createPoll,
         updatePoll,
         deletePoll,
-        togglePollActive
+        togglePollActive,
+        submitResponse,
+        getResponses
       }}
     >
       {contextHolder}

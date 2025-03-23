@@ -1,11 +1,18 @@
 // src/services/pollService.ts
 
-import { Poll, PollRegistrationFormType, PollQuestionType } from '@/@types/poll'
+import {
+  Poll,
+  PollRegistrationFormType,
+  PollQuestionType,
+  PollResponse,
+  PollResponseFormType
+} from '@/@types/poll'
 import { Segment } from '@/@types/segment'
 import {
   fetchFromDatabase,
   saveToDatabase,
-  deleteFromDatabase
+  deleteFromDatabase,
+  updateFieldInDatabase
 } from '@/utils/functions/databaseUtils'
 
 // Função auxiliar para limpar valores undefined e formatar o objeto Poll
@@ -53,6 +60,21 @@ const cleanPollData = (poll: Poll): Poll => {
   return cleanedPoll
 }
 
+// Função auxiliar para limpar valores undefined e formatar o objeto PollResponse
+const cleanPollResponseData = (response: PollResponse): PollResponse => {
+  const cleanedResponse: PollResponse = { ...response }
+
+  // Filtrar respostas vazias ou inválidas
+  cleanedResponse.answers = cleanedResponse.answers
+    .filter((answer) => answer.value && answer.value.trim() !== '')
+    .map((answer) => ({
+      questionId: answer.questionId,
+      value: answer.value.trim()
+    }))
+
+  return cleanedResponse
+}
+
 export const pollService = {
   getPolls: async (filters?: { createdBy: string }): Promise<Poll[]> => {
     return fetchFromDatabase<Poll>(
@@ -81,7 +103,7 @@ export const pollService = {
       createdBy: userId,
       cityIds: segment.cityIds, // Herdado do segmento
       isActive: data.isActive ?? true,
-      responseCount: 0 // Será preenchido dinamicamente
+      responseCount: 0 // Inicializa com 0
     }
 
     // Limpar o objeto antes de salvar
@@ -124,6 +146,60 @@ export const pollService = {
   },
 
   deletePoll: async (id: string): Promise<void> => {
+    // Deletar a enquete
     await deleteFromDatabase(`polls/${id}`)
+    // Deletar todas as respostas associadas
+    await deleteFromDatabase(`pollResponses/${id}`)
+  },
+
+  submitResponse: async (
+    pollId: string,
+    userId: string,
+    response: PollResponseFormType
+  ): Promise<void> => {
+    const existingPoll = (await fetchFromDatabase<Poll>(
+      `polls/${pollId}`,
+      undefined,
+      true
+    )) as Poll
+
+    if (!existingPoll) {
+      throw new Error('Enquete não encontrada')
+    }
+
+    const responseId = `response_${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(2, 8)}`
+    const currentDate = new Date().toISOString()
+    const newResponse: PollResponse = {
+      id: responseId,
+      pollId,
+      userId,
+      answers: response.answers,
+      submittedAt: currentDate
+    }
+
+    // Limpar o objeto antes de salvar
+    const cleanedResponse = cleanPollResponseData(newResponse)
+
+    // Salvar a resposta
+    await saveToDatabase(
+      `pollResponses/${pollId}/${responseId}`,
+      cleanedResponse
+    )
+
+    // Atualizar o responseCount da enquete
+    const newResponseCount = (existingPoll.responseCount || 0) + 1
+    await updateFieldInDatabase(
+      `polls/${pollId}`,
+      'responseCount',
+      newResponseCount
+    )
+  },
+
+  getResponses: async (pollId: string): Promise<PollResponse[]> => {
+    return (await fetchFromDatabase<PollResponse>(
+      `pollResponses/${pollId}`
+    )) as PollResponse[]
   }
 }
