@@ -41,6 +41,8 @@ import SegmentacaoEleitoresView from '@/screens/DashboardV1/views/SegmentacaoEle
 import { UserType, Permissions } from '@/@types/user'
 import { MapProvider } from '@/contexts/MapProvider'
 import { TicketsProvider } from '@/contexts/TicketsProvider'
+import EnquetesPesquisasView from '@/screens/DashboardV1/views/EnquetesPesquisas'
+import { PollsProvider } from '@/contexts/PollsProvider'
 
 // Interface do Menu
 export interface IMenu {
@@ -230,13 +232,14 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuName: 'Enquetes e Pesquisas',
     menuLegend: 'Criar e analisar enquetes',
     menuIcon: <LuClipboardList />,
-    menuView: <>
-    
-      <EnquetesPesquisasView />
-    </>,
+    menuView: (
+      <PollsProvider>
+        <EnquetesPesquisasView />
+      </PollsProvider>
+    ),
     menuCategory: 'Comunicação',
     requiredPermissions: { canManageCampaigns: true },
-    menuDisabled: true,
+    menuDisabled: false,
     menuHidden: false
   },
   {
