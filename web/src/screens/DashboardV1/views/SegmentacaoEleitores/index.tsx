@@ -1,49 +1,31 @@
 // src/screens/DashboardV1/views/SegmentacaoEleitores/index.tsx
 
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef } from 'react'
 import * as S from './styles'
-import { LuPen, LuTrash2, LuEye, LuDownload } from 'react-icons/lu'
-import { Button, Input, Select, Slider, Table, Card, Tabs, message } from 'antd'
-import { Pie, Bar } from '@ant-design/charts'
+import { LuPen, LuTrash2, LuEye } from 'react-icons/lu'
+import { Button, Select, message } from 'antd'
 import {
   View,
   Modal,
+  Table,
   ConfirmModal,
   SegmentRegistrationForm
 } from '@/components'
 import { TableExtrasWrapper } from '@/utils/styles/commons'
 import { useSegments } from '@/contexts/SegmentsProvider'
 import { useAuth } from '@/contexts/AuthProvider'
-import { useUsers } from '@/contexts/UsersProvider'
-import { useDemands } from '@/contexts/DemandsProvider'
 import { useCities } from '@/contexts/CitiesProvider'
 import { Segment, SegmentRegistrationFormType } from '@/@types/segment'
 import { DemandStatus, getDemandStatusData } from '@/@types/demand'
-import { User, UserRole } from '@/@types/user'
+import { UserRole } from '@/@types/user'
 import moment from 'moment'
 import { UseFormReturn } from 'react-hook-form'
-import { GENDER_OPTIONS } from '@/data/options'
-// import { exportToExcel, exportToPDF } from '@/utils/functions/exportUtils'
-
-const { Search } = Input
-const { TabPane } = Tabs
 
 const SegmentacaoEleitoresView = () => {
   const { user } = useAuth()
-  const { voters, allUsers } = useUsers()
-  const { demands } = useDemands()
   const { cities } = useCities()
-  const {
-    segments,
-    filteredVoters,
-    loading,
-    filters,
-    setFilters,
-    createSegment,
-    updateSegment,
-    deleteSegment,
-    applySegmentFilters
-  } = useSegments()
+  const { segments, loading, createSegment, updateSegment, deleteSegment } =
+    useSegments()
   const [messageApi, contextHolder] = message.useMessage()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -53,127 +35,74 @@ const SegmentacaoEleitoresView = () => {
   const [currentStep, setCurrentStep] = useState(0)
   const [initialEditData, setInitialEditData] =
     useState<Partial<SegmentRegistrationFormType> | null>(null)
+  const [cityFilter, setCityFilter] = useState<string | undefined>(undefined)
+  const [scopeFilter, setScopeFilter] = useState<
+    'minhaBase' | 'cidadeCompleta'
+  >('cidadeCompleta')
   const formRef = useRef<UseFormReturn<SegmentRegistrationFormType> | null>(
     null
   )
-
-  const bairroOptions = Array.from(
-    new Set(voters.map((voter) => voter.profile?.bairro).filter(Boolean))
-  ).map((bairro) => ({
-    label: bairro,
-    value: bairro
-  }))
-
-  const demandStatusOptions = Object.values(DemandStatus).map((status) => ({
-    label: getDemandStatusData(status).label,
-    value: status
-  }))
 
   const cityOptions = cities.map((city) => ({
     label: city.name,
     value: city.id
   }))
 
-  const genderData = GENDER_OPTIONS.map((gender) => ({
-    type: gender.label,
-    value: filteredVoters.filter(
-      (voter) => voter.profile?.genero === gender.value
-    ).length
-  })).filter((data) => data.value > 0)
+  const filteredSegments = segments.filter((segment) => {
+    let matchesCity = true
+    let matchesScope = true
 
-  const ageData = [
-    { range: '18-25', count: 0 },
-    { range: '26-35', count: 0 },
-    { range: '36-45', count: 0 },
-    { range: '46-55', count: 0 },
-    { range: '56+', count: 0 }
-  ]
-
-  filteredVoters.forEach((voter) => {
-    const birthDate = voter.profile?.dataNascimento
-    if (birthDate) {
-      const age = moment('2025-03-22').diff(moment(birthDate), 'years')
-      if (age <= 25) ageData[0].count += 1
-      else if (age <= 35) ageData[1].count += 1
-      else if (age <= 45) ageData[2].count += 1
-      else if (age <= 55) ageData[3].count += 1
-      else ageData[4].count += 1
+    if (cityFilter) {
+      matchesCity = segment.cityId === cityFilter
     }
+
+    if (user?.role === UserRole.VEREADOR && scopeFilter === 'minhaBase') {
+      matchesScope = segment.createdBy === user.id
+    }
+
+    return matchesCity && matchesScope
   })
-
-  const demandData = Object.values(DemandStatus)
-    .map((status) => ({
-      type: getDemandStatusData(status).label,
-      value: demands.filter(
-        (demand) =>
-          demand.status === status &&
-          filteredVoters.some((voter) => voter.id === demand.voterId)
-      ).length
-    }))
-    .filter((data) => data.value > 0)
-
-  const voterColumns = [
-    {
-      title: 'Nome',
-      dataIndex: ['profile', 'nomeCompleto'],
-      key: 'nomeCompleto'
-    },
-    {
-      title: 'CPF',
-      dataIndex: ['profile', 'cpf'],
-      key: 'cpf'
-    },
-    {
-      title: 'Bairro',
-      dataIndex: ['profile', 'bairro'],
-      key: 'bairro'
-    },
-    {
-      title: 'Idade',
-      key: 'idade',
-      render: (record: User) => {
-        const birthDate = record.profile?.dataNascimento
-        return birthDate
-          ? moment('2025-03-22').diff(moment(birthDate), 'years')
-          : '-'
-      }
-    },
-    {
-      title: 'Última Demanda',
-      key: 'ultimaDemanda',
-      render: (record: User) => {
-        const voterDemands = demands.filter(
-          (demand) => demand.voterId === record.id
-        )
-        const lastDemand = voterDemands[voterDemands.length - 1]
-        return lastDemand
-          ? `${lastDemand.description} (${
-              getDemandStatusData(lastDemand.status).label
-            })`
-          : '-'
-      }
-    },
-    {
-      title: 'Ações',
-      key: 'actions',
-      render: (_: any, record: User) => (
-        <TableExtrasWrapper>
-          <Button
-            type="link"
-            onClick={() => messageApi.info('Navegar para Histórico do Eleitor')}
-          >
-            Visualizar Perfil
-          </Button>
-        </TableExtrasWrapper>
-      )
-    }
-  ]
 
   const segmentColumns = [
     {
       title: 'Nome',
       dataIndex: 'name',
       key: 'name'
+    },
+    {
+      title: 'Cidade',
+      dataIndex: 'cityId',
+      key: 'cityId',
+      render: (cityId: string) =>
+        cities.find((city) => city.id === cityId)?.name || '-'
+    },
+    {
+      title: 'Bairro',
+      dataIndex: ['filters', 'bairro'],
+      key: 'bairro',
+      render: (bairro: string) => bairro || '-'
+    },
+    {
+      title: 'Faixa Etária',
+      key: 'faixaEtaria',
+      render: (record: Segment) => {
+        const { idadeMin, idadeMax } = record.filters
+        if (idadeMin && idadeMax) {
+          return `${idadeMin} - ${idadeMax} anos`
+        }
+        return '-'
+      }
+    },
+    {
+      title: 'Status das Demandas',
+      dataIndex: ['filters', 'demandStatus'],
+      key: 'demandStatus',
+      render: (demandStatus: DemandStatus[]) =>
+        demandStatus && demandStatus.length > 0
+          ? demandStatus
+              .map((status) => getDemandStatusData(status).label)
+              .join(', ')
+          : '-'
     },
     {
       title: 'Criado em',
@@ -228,53 +157,10 @@ const SegmentacaoEleitoresView = () => {
               setIsViewModalOpen(true)
             }}
           />
-          <Button
-            type="link"
-            icon={<LuDownload />}
-            onClick={() => {
-              applySegmentFilters(record)
-              // exportToExcel(
-              //   filteredVoters.map((voter) => ({
-              //     Nome: voter.profile?.nomeCompleto,
-              //     CPF: voter.profile?.cpf,
-              //     Bairro: voter.profile?.bairro,
-              //     Idade: voter.profile?.dataNascimento
-              //       ? moment('2025-03-22').diff(
-              //           moment(voter.profile.dataNascimento),
-              //           'years'
-              //         )
-              //       : '-'
-              //   })),
-              //   `Segmento_${record.name}`
-              // )
-            }}
-          />
-          <Button type="link" onClick={() => applySegmentFilters(record)}>
-            Aplicar Filtros
-          </Button>
         </TableExtrasWrapper>
       )
     }
   ]
-
-  const handleExport = (format: 'excel' | 'pdf') => {
-    const data = filteredVoters.map((voter) => ({
-      Nome: voter.profile?.nomeCompleto,
-      CPF: voter.profile?.cpf,
-      Bairro: voter.profile?.bairro,
-      Idade: voter.profile?.dataNascimento
-        ? moment('2025-03-22').diff(
-            moment(voter.profile.dataNascimento),
-            'years'
-          )
-        : '-'
-    }))
-    // if (format === 'excel') {
-    //   exportToExcel(data, 'Segmentacao_Eleitores')
-    // } else {
-    //   exportToPDF(data, 'Segmentacao_Eleitores')
-    // }
-  }
 
   const handleCreateSegment = async (data: SegmentRegistrationFormType) => {
     await createSegment(data)
@@ -312,153 +198,42 @@ const SegmentacaoEleitoresView = () => {
     <View
       header={
         <S.HeaderWrapper>
-          <S.HeaderTitle>Segmentação de Eleitores</S.HeaderTitle>
           <S.HeaderActions>
             {user?.role === UserRole.ADMINISTRADOR_GERAL && (
               <Select
                 placeholder="Selecionar cidade"
                 options={cityOptions}
-                onChange={(value) => setFilters({ ...filters, cityId: value })}
+                onChange={(value) => setCityFilter(value)}
+                value={cityFilter}
+                style={{ width: 200 }}
+                allowClear
+              />
+            )}
+            {user?.role === UserRole.VEREADOR && (
+              <Select
+                options={[
+                  { label: 'Cidade Completa', value: 'cidadeCompleta' },
+                  { label: 'Minha Base', value: 'minhaBase' }
+                ]}
+                onChange={(value) => setScopeFilter(value)}
+                value={scopeFilter}
                 style={{ width: 200 }}
               />
             )}
-            <Button onClick={() => handleExport('excel')}>
-              Exportar Excel
-            </Button>
-            <Button onClick={() => handleExport('pdf')}>Exportar PDF</Button>
-            <Button type="primary" onClick={() => setIsCreateModalOpen(true)}>
-              Novo Segmento
-            </Button>
           </S.HeaderActions>
+          <Button type="primary" onClick={() => setIsCreateModalOpen(true)}>
+            Novo Segmento
+          </Button>
         </S.HeaderWrapper>
       }
     >
-      <S.SegmentacaoEleitoresView>
-        <S.FiltersPanel>
-          <h3>Filtros</h3>
-          <Select
-            placeholder="Filtrar por bairro"
-            options={bairroOptions}
-            onChange={(value) => setFilters({ ...filters, bairro: value })}
-            style={{ width: '100%', marginBottom: 16 }}
-            allowClear
-          />
-          <div style={{ marginBottom: 16 }}>
-            <label>Faixa Etária</label>
-            <Slider
-              range
-              min={18}
-              max={100}
-              defaultValue={[18, 100]}
-              onChange={(value: number[]) =>
-                setFilters({
-                  ...filters,
-                  idadeMin: value[0],
-                  idadeMax: value[1]
-                })
-              }
-            />
-          </div>
-          <Select
-            mode="multiple"
-            placeholder="Filtrar por status de demanda"
-            options={demandStatusOptions}
-            onChange={(value) =>
-              setFilters({ ...filters, demandStatus: value })
-            }
-            style={{ width: '100%', marginBottom: 16 }}
-            allowClear
-          />
-        </S.FiltersPanel>
-        <S.MainContent>
-          <S.SubmenuWrapper>
-            {(user?.role === UserRole.ADMINISTRADOR_GERAL ||
-              user?.role === UserRole.PREFEITO ||
-              user?.role === UserRole.ADMINISTRADOR_CIDADE) && (
-              <Button
-                type={
-                  filters.scope === 'cidadeCompleta' ? 'primary' : 'default'
-                }
-                onClick={() =>
-                  setFilters({ ...filters, scope: 'cidadeCompleta' })
-                }
-              >
-                Cidade Completa
-              </Button>
-            )}
-            {user?.role === UserRole.VEREADOR && (
-              <Button
-                type={filters.scope === 'minhaBase' ? 'primary' : 'default'}
-                onClick={() => setFilters({ ...filters, scope: 'minhaBase' })}
-              >
-                Minha Base
-              </Button>
-            )}
-          </S.SubmenuWrapper>
-          <Tabs defaultActiveKey="1">
-            <TabPane tab="Dados Demográficos" key="1">
-              <S.ChartsWrapper>
-                <Card title="Distribuição por Gênero">
-                  <Pie
-                    data={genderData}
-                    angleField="value"
-                    colorField="type"
-                    label={{
-                      type: 'inner',
-                      offset: '-50%',
-                      content: '{value}'
-                    }}
-                    interactions={[{ type: 'element-active' }]}
-                  />
-                </Card>
-                <Card title="Faixa Etária">
-                  <Bar
-                    data={ageData}
-                    xField="count"
-                    yField="range"
-                    label={{
-                      position: 'middle',
-                      layout: [{ type: 'adjust-color' }]
-                    }}
-                  />
-                </Card>
-                <Card title="Demandas por Status">
-                  <Pie
-                    data={demandData}
-                    angleField="value"
-                    colorField="type"
-                    label={{
-                      type: 'inner',
-                      offset: '-50%',
-                      content: '{value}'
-                    }}
-                    interactions={[{ type: 'element-active' }]}
-                  />
-                </Card>
-              </S.ChartsWrapper>
-              <S.VotersList>
-                <h3>Lista Segmentada</h3>
-                <Table
-                  columns={voterColumns}
-                  dataSource={filteredVoters}
-                  rowKey="id"
-                  loading={loading}
-                  pagination={{ pageSize: 10 }}
-                />
-              </S.VotersList>
-            </TabPane>
-            <TabPane tab="Segmentos Criados" key="2">
-              <Table
-                columns={segmentColumns}
-                dataSource={segments}
-                rowKey="id"
-                loading={loading}
-                pagination={{ pageSize: 10 }}
-              />
-            </TabPane>
-          </Tabs>
-        </S.MainContent>
-      </S.SegmentacaoEleitoresView>
+      <Table
+        columns={segmentColumns}
+        dataSource={filteredSegments}
+        rowKey="id"
+        loading={loading}
+        pagination={{ pageSize: 10 }}
+      />
 
       <Modal
         title="Criação de Novo Segmento"

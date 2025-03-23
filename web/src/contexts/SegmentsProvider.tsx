@@ -4,36 +4,19 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import { message } from 'antd'
 import { Segment, SegmentRegistrationFormType } from '@/@types/segment'
 import { User, UserRole } from '@/@types/user'
-import { Demand, DemandStatus } from '@/@types/demand'
 import { segmentService } from '@/services/segment'
 import { useAuth } from '@/contexts/AuthProvider'
-import { useUsers } from '@/contexts/UsersProvider'
-import { useDemands } from '@/contexts/DemandsProvider'
 import { listenToDatabase } from '@/utils/functions/databaseUtils'
-import moment from 'moment'
 
 interface SegmentsContextData {
   segments: Segment[]
-  filteredVoters: User[]
   loading: boolean
-  filters: Partial<SegmentFilters>
-  setFilters: React.Dispatch<React.SetStateAction<Partial<SegmentFilters>>>
   createSegment: (data: SegmentRegistrationFormType) => Promise<string>
   updateSegment: (
     id: string,
     data: Partial<SegmentRegistrationFormType>
   ) => Promise<void>
   deleteSegment: (id: string) => Promise<void>
-  applySegmentFilters: (segment: Segment) => void
-}
-
-interface SegmentFilters {
-  bairro?: string
-  idadeMin?: number
-  idadeMax?: number
-  demandStatus?: DemandStatus[]
-  cityId?: string
-  scope?: 'minhaBase' | 'cidadeCompleta'
 }
 
 const SegmentsContext = createContext<SegmentsContextData>(
@@ -44,15 +27,9 @@ export const SegmentsProvider: React.FC<{ children: React.ReactNode }> = ({
   children
 }) => {
   const { user } = useAuth()
-  const { voters, allUsers } = useUsers()
-  const { demands } = useDemands()
   const [messageApi, contextHolder] = message.useMessage()
   const [segments, setSegments] = useState<Segment[]>([])
-  const [filteredVoters, setFilteredVoters] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
-  const [filters, setFilters] = useState<Partial<SegmentFilters>>({
-    scope: 'cidadeCompleta'
-  })
 
   useEffect(() => {
     if (!user) return
@@ -82,63 +59,6 @@ export const SegmentsProvider: React.FC<{ children: React.ReactNode }> = ({
 
     return unsubscribe
   }, [user, messageApi])
-
-  useEffect(() => {
-    const applyFilters = () => {
-      let filtered = voters
-
-      if (user?.role === UserRole.VEREADOR && filters.scope === 'minhaBase') {
-        filtered = filtered.filter((voter) => voter.vereadorId === user.id)
-      } else if (user?.role !== UserRole.ADMINISTRADOR_GERAL) {
-        filtered = filtered.filter((voter) => voter.cityId === user?.cityId)
-      }
-
-      if (filters.cityId) {
-        filtered = filtered.filter((voter) => voter.cityId === filters.cityId)
-      }
-
-      if (filters.bairro) {
-        filtered = filtered.filter(
-          (voter) => voter.profile?.bairro === filters.bairro
-        )
-      }
-
-      if (filters.idadeMin || filters.idadeMax) {
-        filtered = filtered.filter((voter) => {
-          const birthDate = voter.profile?.dataNascimento
-          if (!birthDate) return false
-          const age = moment('2025-03-22').diff(moment(birthDate), 'years')
-          const min = filters.idadeMin || 18
-          const max = filters.idadeMax || 100
-          return age >= min && age <= max
-        })
-      }
-
-      if (filters.demandStatus && filters.demandStatus.length > 0) {
-        const voterIdsWithDemands = demands
-          .filter((demand) => filters.demandStatus!.includes(demand.status))
-          .map((demand) => demand.voterId)
-        filtered = filtered.filter((voter) =>
-          voterIdsWithDemands.includes(voter.id)
-        )
-      }
-
-      setFilteredVoters(filtered)
-    }
-
-    applyFilters()
-  }, [filters, voters, demands, user])
-
-  const applySegmentFilters = (segment: Segment) => {
-    setFilters({
-      bairro: segment.filters.bairro,
-      idadeMin: segment.filters.idadeMin,
-      idadeMax: segment.filters.idadeMax,
-      demandStatus: segment.filters.demandStatus,
-      cityId: segment.cityId,
-      scope: filters.scope
-    })
-  }
 
   const createSegment = async (
     data: SegmentRegistrationFormType
@@ -194,14 +114,10 @@ export const SegmentsProvider: React.FC<{ children: React.ReactNode }> = ({
     <SegmentsContext.Provider
       value={{
         segments,
-        filteredVoters,
         loading,
-        filters,
-        setFilters,
         createSegment,
         updateSegment,
-        deleteSegment,
-        applySegmentFilters
+        deleteSegment
       }}
     >
       {contextHolder}
