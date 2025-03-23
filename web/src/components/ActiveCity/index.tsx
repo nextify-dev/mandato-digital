@@ -21,13 +21,15 @@ const ActiveCity = ({ cityId, menuClosed }: IActiveCityProps) => {
           {getCityById(cityId)?.state.toUpperCase()}
         </S.ActiveCityTag>
       </S.ActiveCityIndicator>
-      {!menuClosed && (
-        <S.ActiveCityAdminWarning>
-          <IoIosAlert />
-          <b>Atenção:</b>
-          Você é um Adm. Geral
-        </S.ActiveCityAdminWarning>
-      )}
+      <S.ActiveCityAdminWarning>
+        <IoIosAlert />
+        {!menuClosed && (
+          <>
+            <b>Atenção:</b>
+            Você é um Adm. Geral
+          </>
+        )}
+      </S.ActiveCityAdminWarning>
     </S.ActiveCity>
   )
 }

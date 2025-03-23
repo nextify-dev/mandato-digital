@@ -32,11 +32,11 @@ import {
 import { UserRole } from '@/@types/user'
 import moment from 'moment'
 import { UseFormReturn } from 'react-hook-form'
-
-const { TabPane } = Tabs
+import { useUsers } from '@/contexts/UsersProvider'
 
 const EnquetesPesquisasView = () => {
   const { user } = useAuth()
+  const { getUserById } = useUsers()
   const { cities } = useCities()
   const { segments } = useSegments()
   const {
@@ -215,7 +215,9 @@ const EnquetesPesquisasView = () => {
     {
       title: 'Usuário',
       dataIndex: 'userId',
-      key: 'userId'
+      key: 'userId',
+      render: (userId: string) =>
+        getUserById(userId)?.profile?.nomeCompleto || '-'
     },
     {
       title: 'Enviado em',
@@ -230,7 +232,7 @@ const EnquetesPesquisasView = () => {
       key: 'answers',
       render: (answers: PollResponse['answers']) => {
         const poll = polls.find((p) => p.id === selectedPollForResponses)
-        if (!poll) return '-'
+        if (!poll || !answers) return '-'
         return (
           <div>
             {answers.map((answer) => {
@@ -239,7 +241,10 @@ const EnquetesPesquisasView = () => {
               )
               return (
                 <div key={answer.questionId}>
-                  <strong>{question?.title}:</strong> {answer.value}
+                  <strong>
+                    {question?.title || 'Pergunta não encontrada'}:
+                  </strong>{' '}
+                  {answer.value}
                 </div>
               )
             })}
@@ -307,6 +312,49 @@ const EnquetesPesquisasView = () => {
     }
   }
 
+  const tabItems = [
+    {
+      key: '1',
+      label: 'Enquetes',
+      children: (
+        <Table
+          columns={pollColumns}
+          dataSource={filteredPolls}
+          rowKey="id"
+          loading={loading}
+          pagination={{ pageSize: 10 }}
+        />
+      )
+    },
+    {
+      key: '2',
+      label: 'Respostas',
+      children: (
+        <>
+          <Select
+            placeholder="Selecione uma enquete para visualizar respostas"
+            options={pollOptions}
+            onChange={handlePollSelectForResponses}
+            value={selectedPollForResponses}
+            style={{ width: 300, marginBottom: 20 }}
+            allowClear
+          />
+          {selectedPollForResponses && responses.length > 0 ? (
+            <Table
+              columns={responseColumns}
+              dataSource={responses}
+              rowKey="id"
+              loading={loading}
+              pagination={{ pageSize: 10 }}
+            />
+          ) : (
+            <Empty description="Nenhuma resposta encontrada para esta enquete." />
+          )}
+        </>
+      )
+    }
+  ]
+
   return (
     <View
       header={
@@ -342,38 +390,7 @@ const EnquetesPesquisasView = () => {
       }
     >
       <S.EnquetesPesquisasView>
-        <Tabs defaultActiveKey="1">
-          <TabPane tab="Enquetes" key="1">
-            <Table
-              columns={pollColumns}
-              dataSource={filteredPolls}
-              rowKey="id"
-              loading={loading}
-              pagination={{ pageSize: 10 }}
-            />
-          </TabPane>
-          <TabPane tab="Respostas" key="2">
-            <Select
-              placeholder="Selecione uma enquete para visualizar respostas"
-              options={pollOptions}
-              onChange={handlePollSelectForResponses}
-              value={selectedPollForResponses}
-              style={{ width: 300, marginBottom: 20 }}
-              allowClear
-            />
-            {selectedPollForResponses && responses.length > 0 ? (
-              <Table
-                columns={responseColumns}
-                dataSource={responses}
-                rowKey="id"
-                loading={loading}
-                pagination={{ pageSize: 10 }}
-              />
-            ) : (
-              <Empty description="Nenhuma resposta encontrada para esta enquete." />
-            )}
-          </TabPane>
-        </Tabs>
+        <Tabs items={tabItems} defaultActiveKey="1" />
       </S.EnquetesPesquisasView>
 
       <Modal

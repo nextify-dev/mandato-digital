@@ -181,13 +181,85 @@ export const getPollResponseSchema = (questions: PollQuestion[]) => {
           value: yup.string().when('questionId', {
             is: (questionId: string) => {
               const question = questions.find((q) => q.id === questionId)
-              return question?.isRequired
+              if (!question) return false
+              return question.isRequired
             },
             then: (schema) =>
               schema
                 .required('Este campo é obrigatório')
-                .min(1, 'Este campo não pode estar vazio'),
-            otherwise: (schema) => schema.optional()
+                .test(
+                  'valid-value',
+                  'Valor inválido para a pergunta',
+                  function (value) {
+                    const question = questions.find(
+                      (q) => q.id === this.parent.questionId
+                    )
+                    if (!question) return true
+
+                    if (question.type === PollQuestionType.MULTIPLE_CHOICE) {
+                      return (
+                        question.options?.some(
+                          (option) => option.value === value
+                        ) || false
+                      )
+                    }
+                    if (question.type === PollQuestionType.TEXT) {
+                      return (
+                        !question.maxLength ||
+                        value.length <= question.maxLength
+                      )
+                    }
+                    if (question.type === PollQuestionType.RATING) {
+                      const numValue = Number(value)
+                      return (
+                        !isNaN(numValue) &&
+                        numValue >= 1 &&
+                        numValue <= (question.ratingScale || 5)
+                      )
+                    }
+                    if (question.type === PollQuestionType.YES_NO) {
+                      return value === 'Sim' || value === 'Não'
+                    }
+                    return true
+                  }
+                ),
+            otherwise: (schema) =>
+              schema.test(
+                'valid-value',
+                'Valor inválido para a pergunta',
+                function (value) {
+                  if (!value) return true // Campo não preenchido é válido se não for obrigatório
+                  const question = questions.find(
+                    (q) => q.id === this.parent.questionId
+                  )
+                  if (!question) return true
+
+                  if (question.type === PollQuestionType.MULTIPLE_CHOICE) {
+                    return (
+                      question.options?.some(
+                        (option) => option.value === value
+                      ) || false
+                    )
+                  }
+                  if (question.type === PollQuestionType.TEXT) {
+                    return (
+                      !question.maxLength || value.length <= question.maxLength
+                    )
+                  }
+                  if (question.type === PollQuestionType.RATING) {
+                    const numValue = Number(value)
+                    return (
+                      !isNaN(numValue) &&
+                      numValue >= 1 &&
+                      numValue <= (question.ratingScale || 5)
+                    )
+                  }
+                  if (question.type === PollQuestionType.YES_NO) {
+                    return value === 'Sim' || value === 'Não'
+                  }
+                  return true
+                }
+              )
           })
         })
       )

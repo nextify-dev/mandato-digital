@@ -72,7 +72,7 @@ export const DASHBOARD_MENUS: IMenu[] = [
     ),
     menuCategory: 'Principal',
     requiredPermissions: {},
-    menuDisabled: true,
+    menuDisabled: false,
     menuHidden: false
   },
 
@@ -282,7 +282,7 @@ export const DASHBOARD_MENUS: IMenu[] = [
     ),
     menuCategory: 'Planejamento',
     requiredPermissions: { canManageCampaigns: true },
-    menuDisabled: false,
+    menuDisabled: true,
     menuHidden: false
   },
   {
@@ -340,7 +340,7 @@ export const DASHBOARD_MENUS: IMenu[] = [
     ),
     menuCategory: 'Conta',
     requiredPermissions: {},
-    menuDisabled: false,
+    menuDisabled: true,
     menuHidden: true
   }
 ]
@@ -359,7 +359,7 @@ export const USER_MENU: IMenu[] = [
     ),
     menuCategory: 'Conta',
     requiredPermissions: {},
-    menuDisabled: false,
+    menuDisabled: true,
     menuHidden: false
   },
   {

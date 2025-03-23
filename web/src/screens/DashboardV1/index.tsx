@@ -6,9 +6,10 @@ import { formatMenusForAntDesign } from '@/data/menus'
 import { Button } from 'antd'
 import { useAuth } from '@/contexts/AuthProvider'
 import { ActiveCity, UserMenu } from '@/components'
+import { Navigate } from 'react-router-dom'
 
 const DashboardV1 = () => {
-  const { activeMenu, setActiveMenu, loadingMenus } = useViews()
+  const { activeMenu, setActiveMenu, loadingMenus, menus } = useViews()
   const { user } = useAuth()
 
   const [sideMenuOpened, setSideMenuOpened] = useState(true)
@@ -60,7 +61,11 @@ const DashboardV1 = () => {
         </S.DashboardMainHeader>
         <S.DashboardMainViewsWrapper>
           <S.DashboardMainView>
-            {activeMenu ? activeMenu.menuView : <div>Selecione um menu</div>}
+            {activeMenu ? (
+              activeMenu.menuView
+            ) : (
+              <Navigate to={`/dashboard/${menus[0]?.menuId}`} />
+            )}
           </S.DashboardMainView>
         </S.DashboardMainViewsWrapper>
       </S.DashboardMain>

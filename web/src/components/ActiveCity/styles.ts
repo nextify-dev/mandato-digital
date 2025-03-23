@@ -34,8 +34,8 @@ export const ActiveCityLabel = styled.p`
   width: fit-content;
   margin-top: 1px;
 
-  ${fontSize('xxxs')}
-  ${fontHeight('xxxs')}
+  ${fontSize('ss')}
+  ${fontHeight('ss')}
   ${fontWeight('medium')}
 
   ${textColor('colorTextLabel')};
@@ -47,8 +47,8 @@ export const ActiveCityTag = styled(Tag)`
   margin: 0;
   padding: 4px 6px;
 
-  ${fontSize('xxxs')}
-  ${fontHeight('xxxs')}
+  ${fontSize('ss')}
+  ${fontHeight('ss')}
 `
 
 export const ActiveCityAdminWarning = styled.div`
@@ -59,8 +59,8 @@ export const ActiveCityAdminWarning = styled.div`
   border-radius: 6px;
   padding: 4px 6px;
 
-  ${fontSize('xxxs')}
-  ${fontHeight('xxxs')}
+  ${fontSize('ss')}
+  ${fontHeight('ss')}
   ${fontWeight('regular')}
 
   color: white;

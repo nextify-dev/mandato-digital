@@ -85,7 +85,7 @@ const MapaEleitoralView = () => {
             users={users}
           />
           <S.ActionButtons>
-            <Button type="primary" onClick={handleGenerateReport}>
+            <Button type="primary" onClick={handleGenerateReport} disabled>
               Gerar Relatório Geográfico
             </Button>
           </S.ActionButtons>

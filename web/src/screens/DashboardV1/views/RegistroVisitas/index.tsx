@@ -59,8 +59,7 @@ const RegistroVisitasView = () => {
       title: 'Eleitor',
       dataIndex: 'voterId',
       key: 'voterId',
-      render: (id: string) =>
-        allUsers.find((u) => u.id === id)?.profile?.nomeCompleto || id
+      render: (id: string) => getUserById(id)?.profile?.nomeCompleto
     },
     {
       title: 'Cidade',

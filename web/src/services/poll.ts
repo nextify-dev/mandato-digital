@@ -182,11 +182,8 @@ export const pollService = {
     // Limpar o objeto antes de salvar
     const cleanedResponse = cleanPollResponseData(newResponse)
 
-    // Salvar a resposta
-    await saveToDatabase(
-      `pollResponses/${pollId}/${responseId}`,
-      cleanedResponse
-    )
+    // Salvar a resposta diretamente no caminho correto
+    await saveToDatabase(`pollResponses/${pollId}`, cleanedResponse)
 
     // Atualizar o responseCount da enquete
     const newResponseCount = (existingPoll.responseCount || 0) + 1

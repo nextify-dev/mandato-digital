@@ -69,6 +69,12 @@ const PollResponseForm = forwardRef<
                   </h4>
                 </S.QuestionHeader>
                 <Controller
+                  name={`answers.${index}.questionId`}
+                  control={control}
+                  defaultValue={question.id}
+                  render={({ field }) => <input type="hidden" {...field} />}
+                />
+                <Controller
                   name={`answers.${index}.value`}
                   control={control}
                   render={({ field }) => (

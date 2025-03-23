@@ -34,6 +34,7 @@ const UserMenu = ({}: UserMenuProps) => {
     key: menu.menuId,
     label: menu.menuName,
     icon: menu.menuIcon,
+    disabled: menu.menuDisabled,
     onClick: menu.menuId === 'sair' ? logout : undefined
   }))
 
