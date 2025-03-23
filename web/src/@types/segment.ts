@@ -49,7 +49,7 @@ export interface SegmentRegistrationFormType {
   zonaEleitoral?: string[]
   dataCadastroInicio?: string
   dataCadastroFim?: string
-  cityIds?: string[]
+  cityIds: string[]
   isActive: boolean
 }
 
@@ -124,7 +124,7 @@ export const getSegmentRegistrationSchema = () => {
           return true
         }
       ),
-    cityIds: yup.array().optional(),
+    cityIds: yup.array().required('Selecione pelo menos uma cidade'),
     isActive: yup.boolean().default(true)
   })
 }

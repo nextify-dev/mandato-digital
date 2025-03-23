@@ -41,11 +41,11 @@ export const SegmentsProvider: React.FC<{ children: React.ReactNode }> = ({
       (segmentsArray) => {
         let filteredSegments = segmentsArray
 
-        if (user.role !== UserRole.ADMINISTRADOR_GERAL) {
-          filteredSegments = filteredSegments.filter(
-            (segment) => segment.cityId === user.cityId
-          )
-        }
+        // if (user.role !== UserRole.ADMINISTRADOR_GERAL) {
+        //   filteredSegments = filteredSegments.filter(
+        //     (segment) => segment.cityIds === user.cityIds
+        //   )
+        // }
 
         setSegments(filteredSegments)
         setLoading(false)
@@ -67,11 +67,7 @@ export const SegmentsProvider: React.FC<{ children: React.ReactNode }> = ({
     setLoading(true)
     try {
       if (!user) throw new Error('Usuário não autenticado')
-      const newSegmentId = await segmentService.createSegment(
-        data,
-        user.id,
-        user.cityId || ''
-      )
+      const newSegmentId = await segmentService.createSegment(data, user.id)
       messageApi.success('Segmento criado com sucesso!')
       setLoading(false)
       return newSegmentId

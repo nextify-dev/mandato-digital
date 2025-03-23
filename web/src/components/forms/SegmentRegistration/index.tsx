@@ -152,25 +152,25 @@ const SegmentRegistrationForm = forwardRef<
     const steps = [
       {
         title: 'Dados Básicos',
-        fields:
-          user?.role === UserRole.ADMINISTRADOR_GERAL
-            ? ['name', 'description', 'cityIds', 'isActive']
-            : ['name', 'description', 'isActive'],
+        fields: ['name', 'description', 'isActive'],
         requiredFields: ['name']
       },
       {
         title: 'Filtros Demográficos',
-        fields: [
-          'bairro',
-          'idadeMin',
-          'idadeMax',
-          'genero',
-          'religiao'
-          // 'escolaridade',
-          // 'rendaFamiliar',
-          // 'ocupacao'
-        ],
-        requiredFields: []
+        fields:
+          user?.role === UserRole.ADMINISTRADOR_GERAL
+            ? [
+                'cityIds',
+                'idadeMin',
+                'idadeMax',
+                'genero',
+                'religiao'
+                // 'escolaridade',
+                // 'rendaFamiliar',
+                // 'ocupacao'
+              ]
+            : ['idadeMin', 'idadeMax', 'genero', 'religiao'],
+        requiredFields: ['cityIds']
       },
       {
         title: 'Filtros Eleitorais',

@@ -18,7 +18,6 @@ export const segmentService = {
   createSegment: async (
     data: SegmentRegistrationFormType,
     userId: string,
-    userCityId: string
   ): Promise<string> => {
     const newSegmentId = `segment_${Date.now()}_${Math.random()
       .toString(36)
@@ -43,7 +42,7 @@ export const segmentService = {
       createdAt: currentDate,
       updatedAt: currentDate,
       createdBy: userId,
-      cityIds: data.cityIds || [userCityId],
+      cityIds: data.cityIds,
       isActive: data.isActive ?? true,
       votersCount: 0 // Será preenchido dinamicamente em outros contextos
     }
