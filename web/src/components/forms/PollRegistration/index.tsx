@@ -1,4 +1,4 @@
-// src/components/forms/PollRegistration/index.tsx
+// src/components/forms/PollRegistrationForm/index.tsx
 
 import React, { forwardRef, Ref, useEffect, useCallback } from 'react'
 import * as S from './styles'
@@ -24,7 +24,6 @@ import DynamicDescriptions, {
 } from '@/components/DynamicDescriptions'
 import { useAuth } from '@/contexts/AuthProvider'
 import { UserRole } from '@/@types/user'
-import { DragOutlined } from '@ant-design/icons'
 import { v4 as uuidv4 } from 'uuid'
 
 const { TextArea } = Input
@@ -141,7 +140,19 @@ const PollRegistrationForm = forwardRef<
           const value = formData[field as keyof PollRegistrationFormType]
           const hasError = !!errors[field as keyof PollRegistrationFormType]
           if (field === 'questions') {
-            return value && (value as any[]).length > 0 && !hasError
+            const questionsArray = value as PollQuestion[]
+            return (
+              questionsArray &&
+              questionsArray.length > 0 &&
+              questionsArray.every((q, idx) => {
+                const questionErrors = errors.questions?.[idx]
+                return (
+                  !questionErrors?.title &&
+                  (!q.options || !questionErrors?.options)
+                )
+              }) &&
+              !hasError
+            )
           }
           return value !== undefined && value !== '' && !hasError
         })
@@ -203,7 +214,9 @@ const PollRegistrationForm = forwardRef<
           { id: uuidv4(), value: '' },
           { id: uuidv4(), value: '' }
         ],
-        isRequired: false
+        isRequired: false,
+        maxLength: undefined,
+        ratingScale: undefined
       })
     }
 
@@ -286,6 +299,7 @@ const PollRegistrationForm = forwardRef<
               control={control}
               errors={errors}
               setValue={setValue}
+              watch={watch}
               visible={currentStep === 1}
               questions={questions}
               remove={remove}
@@ -343,6 +357,7 @@ interface IPollRegistrationStep {
   control: any
   errors: any
   setValue: any
+  watch?: any
   formData?: any
   visible: boolean
   segmentOptions?: { label: string; value: string }[]
@@ -440,6 +455,7 @@ const QuestionsStep = ({
   control,
   errors,
   setValue,
+  watch,
   visible,
   questions,
   remove,
@@ -447,17 +463,30 @@ const QuestionsStep = ({
   addQuestion,
   questionTypeOptions
 }: IPollRegistrationStep) => {
-  const {
-    fields: optionsFields,
-    append: appendOption,
-    remove: removeOption
-  } = useFieldArray({
-    control,
-    name: 'questions'
-  })
-
-  const handleDragSort = (fromIndex: number, toIndex: number) => {
-    move?.(fromIndex, toIndex)
+  const handleTypeChange = (index: number, newType: PollQuestionType) => {
+    const currentQuestion = watch(`questions.${index}`)
+    const updatedQuestion = {
+      ...currentQuestion,
+      type: newType,
+      options:
+        newType === PollQuestionType.MULTIPLE_CHOICE
+          ? currentQuestion.options && currentQuestion.options.length >= 2
+            ? currentQuestion.options
+            : [
+                { id: uuidv4(), value: '' },
+                { id: uuidv4(), value: '' }
+              ]
+          : undefined,
+      maxLength:
+        newType === PollQuestionType.TEXT
+          ? currentQuestion.maxLength || 100
+          : undefined,
+      ratingScale:
+        newType === PollQuestionType.RATING
+          ? currentQuestion.ratingScale || 5
+          : undefined
+    }
+    setValue(`questions.${index}`, updatedQuestion)
   }
 
   return (
@@ -512,86 +541,26 @@ const QuestionsStep = ({
                     {...field}
                     placeholder="Selecione o tipo da pergunta"
                     options={questionTypeOptions}
-                    onChange={(value) =>
-                      setValue(`questions.${index}.type`, value)
-                    }
+                    onChange={(value) => handleTypeChange(index, value)}
                     value={field.value}
                   />
                 </StyledForm.Item>
               )}
             />
-            {question.type === PollQuestionType.MULTIPLE_CHOICE && (
+            {watch(`questions.${index}.type`) ===
+              PollQuestionType.MULTIPLE_CHOICE && (
               <S.OptionsWrapper>
                 <h5>Opções</h5>
-                {question.options?.map((option: any, optIndex: number) => (
-                  <S.OptionRow key={option.id}>
-                    <Controller
-                      name={`questions.${index}.options.${optIndex}.value`}
-                      control={control}
-                      render={({ field }) => (
-                        <StyledForm.Item
-                          help={
-                            errors.questions?.[index]?.options?.[optIndex]
-                              ?.value?.message
-                          }
-                          validateStatus={
-                            errors.questions?.[index]?.options?.[optIndex]
-                              ?.value
-                              ? 'error'
-                              : ''
-                          }
-                        >
-                          <Input
-                            {...field}
-                            placeholder={`Opção ${optIndex + 1}`}
-                            value={field.value}
-                            onChange={(e) =>
-                              setValue(
-                                `questions.${index}.options.${optIndex}.value`,
-                                e.target.value
-                              )
-                            }
-                          />
-                        </StyledForm.Item>
-                      )}
-                    />
-                    <Button
-                      type="link"
-                      danger
-                      onClick={() => {
-                        const options =
-                          control._formValues.questions[index].options
-                        if (options.length > 2) {
-                          setValue(
-                            `questions.${index}.options`,
-                            options.filter(
-                              (_: any, i: number) => i !== optIndex
-                            )
-                          )
-                        } else {
-                          // messageApi.warning('Deve haver pelo menos 2 opções.')
-                        }
-                      }}
-                    >
-                      Remover
-                    </Button>
-                  </S.OptionRow>
-                ))}
-                <Button
-                  type="dashed"
-                  onClick={() =>
-                    setValue(`questions.${index}.options`, [
-                      ...control._formValues.questions[index].options,
-                      { id: uuidv4(), value: '' }
-                    ])
-                  }
-                  block
-                >
-                  Adicionar Opção
-                </Button>
+                <OptionsFieldArray
+                  control={control}
+                  errors={errors}
+                  setValue={setValue}
+                  watch={watch}
+                  questionIndex={index}
+                />
               </S.OptionsWrapper>
             )}
-            {question.type === PollQuestionType.TEXT && (
+            {watch(`questions.${index}.type`) === PollQuestionType.TEXT && (
               <Controller
                 name={`questions.${index}.maxLength`}
                 control={control}
@@ -619,7 +588,7 @@ const QuestionsStep = ({
                 )}
               />
             )}
-            {question.type === PollQuestionType.RATING && (
+            {watch(`questions.${index}.type`) === PollQuestionType.RATING && (
               <Controller
                 name={`questions.${index}.ratingScale`}
                 control={control}
@@ -668,6 +637,81 @@ const QuestionsStep = ({
         </Button>
       </StyledForm.Item>
     </FormStep>
+  )
+}
+
+const OptionsFieldArray = ({
+  control,
+  errors,
+  setValue,
+  watch,
+  questionIndex
+}: any) => {
+  const {
+    fields: options,
+    append,
+    remove
+  } = useFieldArray({
+    control,
+    name: `questions.${questionIndex}.options`
+  })
+
+  return (
+    <>
+      {options.map((option, optIndex) => (
+        <S.OptionRow key={option.id}>
+          <Controller
+            name={`questions.${questionIndex}.options.${optIndex}.value`}
+            control={control}
+            render={({ field }) => (
+              <StyledForm.Item
+                help={
+                  errors.questions?.[questionIndex]?.options?.[optIndex]?.value
+                    ?.message
+                }
+                validateStatus={
+                  errors.questions?.[questionIndex]?.options?.[optIndex]?.value
+                    ? 'error'
+                    : ''
+                }
+              >
+                <Input
+                  {...field}
+                  placeholder={`Opção ${optIndex + 1}`}
+                  value={field.value}
+                  onChange={(e) =>
+                    setValue(
+                      `questions.${questionIndex}.options.${optIndex}.value`,
+                      e.target.value
+                    )
+                  }
+                />
+              </StyledForm.Item>
+            )}
+          />
+          <Button
+            type="link"
+            danger
+            onClick={() => {
+              if (options.length > 2) {
+                remove(optIndex)
+              } else {
+                // messageApi.warning('Deve haver pelo menos 2 opções.')
+              }
+            }}
+          >
+            Remover
+          </Button>
+        </S.OptionRow>
+      ))}
+      <Button
+        type="dashed"
+        onClick={() => append({ id: uuidv4(), value: '' })}
+        block
+      >
+        Adicionar Opção
+      </Button>
+    </>
   )
 }
 

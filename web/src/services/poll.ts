@@ -1,12 +1,57 @@
 // src/services/pollService.ts
 
-import { Poll, PollRegistrationFormType } from '@/@types/poll'
+import { Poll, PollRegistrationFormType, PollQuestionType } from '@/@types/poll'
 import { Segment } from '@/@types/segment'
 import {
   fetchFromDatabase,
   saveToDatabase,
   deleteFromDatabase
 } from '@/utils/functions/databaseUtils'
+
+// Função auxiliar para limpar valores undefined e formatar o objeto Poll
+const cleanPollData = (poll: Poll): Poll => {
+  const cleanedPoll: Poll = { ...poll }
+
+  // Limpar campos undefined no nível do Poll
+  if (cleanedPoll.description === undefined) {
+    delete cleanedPoll.description
+  }
+  if (cleanedPoll.responseCount === undefined) {
+    delete cleanedPoll.responseCount
+  }
+
+  // Limpar e formatar as perguntas
+  cleanedPoll.questions = cleanedPoll.questions.map((question) => {
+    const cleanedQuestion: any = { ...question }
+
+    // Garantir que options só exista para perguntas do tipo MULTIPLE_CHOICE
+    if (question.type !== PollQuestionType.MULTIPLE_CHOICE) {
+      delete cleanedQuestion.options
+    } else {
+      // Filtrar opções vazias ou inválidas e remover undefined
+      cleanedQuestion.options = (question.options || [])
+        .filter((option) => option.value && option.value.trim() !== '')
+        .map((option) => ({
+          id: option.id,
+          value: option.value.trim()
+        }))
+    }
+
+    // Garantir que maxLength só exista para perguntas do tipo TEXT
+    if (question.type !== PollQuestionType.TEXT) {
+      delete cleanedQuestion.maxLength
+    }
+
+    // Garantir que ratingScale só exista para perguntas do tipo RATING
+    if (question.type !== PollQuestionType.RATING) {
+      delete cleanedQuestion.ratingScale
+    }
+
+    return cleanedQuestion
+  })
+
+  return cleanedPoll
+}
 
 export const pollService = {
   getPolls: async (filters?: { createdBy: string }): Promise<Poll[]> => {
@@ -39,7 +84,10 @@ export const pollService = {
       responseCount: 0 // Será preenchido dinamicamente
     }
 
-    await saveToDatabase('polls', newPoll)
+    // Limpar o objeto antes de salvar
+    const cleanedPoll = cleanPollData(newPoll)
+
+    await saveToDatabase('polls', cleanedPoll)
     return newPollId
   },
 
@@ -65,10 +113,14 @@ export const pollService = {
       questions: data.questions ?? existingPoll.questions,
       updatedAt: new Date().toISOString(),
       cityIds: data.cityIds ?? existingPoll.cityIds,
-      isActive: data.isActive ?? existingPoll.isActive
+      isActive: data.isActive ?? existingPoll.isActive,
+      responseCount: existingPoll.responseCount // Mantém o valor existente
     }
 
-    await saveToDatabase('polls', updatedPoll)
+    // Limpar o objeto antes de salvar
+    const cleanedPoll = cleanPollData(updatedPoll)
+
+    await saveToDatabase('polls', cleanedPoll)
   },
 
   deletePoll: async (id: string): Promise<void> => {
