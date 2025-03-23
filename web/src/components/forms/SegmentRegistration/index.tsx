@@ -1,9 +1,17 @@
 // src/components/forms/SegmentRegistrationForm/index.tsx
 
-import React, { forwardRef, Ref, useEffect, useCallback, useState } from 'react'
+import React, { forwardRef, Ref, useEffect, useCallback } from 'react'
 import * as S from './styles'
 import { Controller, UseFormReturn, DefaultValues } from 'react-hook-form'
-import { Select, Button, Input, Slider, message } from 'antd'
+import {
+  Select,
+  Button,
+  Input,
+  Slider,
+  Switch,
+  DatePicker,
+  message
+} from 'antd'
 import { StyledForm, StyledButton, StyledSteps } from '@/utils/styles/antd'
 import { FormInputsWrapper, FormStep } from '@/utils/styles/commons'
 import { useModalForm } from '@/hooks/useModalForm'
@@ -18,8 +26,12 @@ import DynamicDescriptions, {
 import { useCities } from '@/contexts/CitiesProvider'
 import { useAuth } from '@/contexts/AuthProvider'
 import { UserRole } from '@/@types/user'
+import dayjs from 'dayjs'
+import moment from 'moment'
+import { GENDER_OPTIONS, RELIGION_OPTIONS } from '@/data/options'
 
 const { TextArea } = Input
+const { RangePicker } = DatePicker
 
 type FormMode = 'create' | 'edit' | 'viewOnly'
 
@@ -46,12 +58,20 @@ const SegmentRegistrationForm = forwardRef<
 
     const defaultValues: DefaultValues<SegmentRegistrationFormType> = {
       name: '',
-      bairro: undefined,
+      description: '',
       idadeMin: 18,
       idadeMax: 100,
       demandStatus: [],
-      cityId:
-        user?.role === UserRole.ADMINISTRADOR_GERAL ? '' : user?.cityId || ''
+      genero: [],
+      religiao: [],
+      escolaridade: [],
+      rendaFamiliar: [],
+      ocupacao: [],
+      zonaEleitoral: [],
+      dataCadastroInicio: undefined,
+      dataCadastroFim: undefined,
+      cityIds: [],
+      isActive: true
     }
 
     const formMethods = useModalForm<SegmentRegistrationFormType>({
@@ -93,18 +113,73 @@ const SegmentRegistrationForm = forwardRef<
       value: status
     }))
 
+    const ESCOLARIDADE_OPTIONS = [
+      { label: 'Fundamental Incompleto', value: 'FUNDAMENTAL_INCOMPLETO' },
+      { label: 'Fundamental Completo', value: 'FUNDAMENTAL_COMPLETO' },
+      { label: 'Médio Incompleto', value: 'MEDIO_INCOMPLETO' },
+      { label: 'Médio Completo', value: 'MEDIO_COMPLETO' },
+      { label: 'Superior Incompleto', value: 'SUPERIOR_INCOMPLETO' },
+      { label: 'Superior Completo', value: 'SUPERIOR_COMPLETO' },
+      { label: 'Pós-graduação', value: 'POS_GRADUACAO' }
+    ]
+
+    const RENDA_FAMILIAR_OPTIONS = [
+      { label: 'Até 1 salário mínimo', value: 'ATE_1_SALARIO' },
+      { label: '1 a 2 salários mínimos', value: '1_A_2_SALARIOS' },
+      { label: '2 a 5 salários mínimos', value: '2_A_5_SALARIOS' },
+      { label: '5 a 10 salários mínimos', value: '5_A_10_SALARIOS' },
+      { label: 'Acima de 10 salários mínimos', value: 'ACIMA_10_SALARIOS' }
+    ]
+
+    const OCUPACAO_OPTIONS = [
+      { label: 'Estudante', value: 'ESTUDANTE' },
+      { label: 'Autônomo', value: 'AUTONOMO' },
+      { label: 'Assalariado', value: 'ASSALARIADO' },
+      { label: 'Aposentado', value: 'APOSENTADO' },
+      { label: 'Desempregado', value: 'DESEMPREGADO' },
+      { label: 'Empresário', value: 'EMPRESARIO' },
+      { label: 'Servidor Público', value: 'SERVIDOR_PUBLICO' }
+    ]
+
+    const ZONA_ELEITORAL_OPTIONS = [
+      { label: 'Zona 1', value: 'ZONA_1' },
+      { label: 'Zona 2', value: 'ZONA_2' },
+      { label: 'Zona 3', value: 'ZONA_3' },
+      { label: 'Zona 4', value: 'ZONA_4' },
+      { label: 'Zona 5', value: 'ZONA_5' }
+    ]
+
     const steps = [
       {
         title: 'Dados Básicos',
         fields:
           user?.role === UserRole.ADMINISTRADOR_GERAL
-            ? ['name', 'cityId']
-            : ['name'],
+            ? ['name', 'description', 'cityIds', 'isActive']
+            : ['name', 'description', 'isActive'],
         requiredFields: ['name']
       },
       {
-        title: 'Filtros',
-        fields: ['bairro', 'idadeMin', 'idadeMax', 'demandStatus'],
+        title: 'Filtros Demográficos',
+        fields: [
+          'bairro',
+          'idadeMin',
+          'idadeMax',
+          'genero',
+          'religiao'
+          // 'escolaridade',
+          // 'rendaFamiliar',
+          // 'ocupacao'
+        ],
+        requiredFields: []
+      },
+      {
+        title: 'Filtros Eleitorais',
+        fields: [
+          'demandStatus',
+          'zonaEleitoral',
+          'dataCadastroInicio',
+          'dataCadastroFim'
+        ],
         requiredFields: []
       },
       { title: 'Revisão', fields: [], requiredFields: [] }
@@ -165,14 +240,85 @@ const SegmentRegistrationForm = forwardRef<
       [
         { key: 'name', label: 'Nome do Segmento' },
         {
-          key: 'cityId',
-          label: 'Cidade',
-          render: (value) =>
-            cities.find((city) => city.id === value)?.name || value || '-'
+          key: 'isActive',
+          label: 'Ativo',
+          render: (value) => (value ? 'Sim' : 'Não')
         },
-        { key: 'bairro', label: 'Bairro' },
-        { key: 'idadeMin', label: 'Idade Mínima' },
-        { key: 'idadeMax', label: 'Idade Máxima' },
+        {
+          key: 'description',
+          label: 'Descrição',
+          render: (value) => value || '-'
+        },
+        {
+          key: 'cityIds',
+          label: 'Cidades',
+          render: (value) =>
+            `cities.find((city) => city.id === value)?.name || value || '-'`
+        },
+        {
+          key: 'idadeMin',
+          label: 'Faixa Etária',
+          render: (record) => {
+            const idadeMin = record.idadeMin
+            const idadeMax = record.idadeMax
+            if (idadeMin && idadeMax) {
+              return `${idadeMin} - ${idadeMax} anos`
+            }
+            return '-'
+          }
+        },
+        {
+          key: 'genero',
+          label: 'Gênero',
+          render: (value: string[]) =>
+            value && value.length > 0 ? value.join(', ') : '-'
+        },
+        {
+          key: 'religiao',
+          label: 'Religião',
+          render: (value: string[]) =>
+            value && value.length > 0 ? value.join(', ') : '-'
+        },
+        // {
+        //   key: 'escolaridade',
+        //   label: 'Escolaridade',
+        //   render: (value: string[]) =>
+        //     value && value.length > 0
+        //       ? value
+        //           .map(
+        //             (v) =>
+        //               ESCOLARIDADE_OPTIONS.find((opt) => opt.value === v)?.label
+        //           )
+        //           .join(', ')
+        //       : '-'
+        // },
+        // {
+        //   key: 'rendaFamiliar',
+        //   label: 'Renda Familiar',
+        //   render: (value: string[]) =>
+        //     value && value.length > 0
+        //       ? value
+        //           .map(
+        //             (v) =>
+        //               RENDA_FAMILIAR_OPTIONS.find((opt) => opt.value === v)
+        //                 ?.label
+        //           )
+        //           .join(', ')
+        //       : '-'
+        // },
+        // {
+        //   key: 'ocupacao',
+        //   label: 'Ocupação',
+        //   render: (value: string[]) =>
+        //     value && value.length > 0
+        //       ? value
+        //           .map(
+        //             (v) =>
+        //               OCUPACAO_OPTIONS.find((opt) => opt.value === v)?.label
+        //           )
+        //           .join(', ')
+        //       : '-'
+        // },
         {
           key: 'demandStatus',
           label: 'Status das Demandas',
@@ -182,6 +328,34 @@ const SegmentRegistrationForm = forwardRef<
                   .map((status) => getDemandStatusData(status).label)
                   .join(', ')
               : '-'
+        },
+        {
+          key: 'zonaEleitoral',
+          label: 'Zona Eleitoral',
+          render: (value: string[]) =>
+            value && value.length > 0
+              ? value
+                  .map(
+                    (v) =>
+                      ZONA_ELEITORAL_OPTIONS.find((opt) => opt.value === v)
+                        ?.label
+                  )
+                  .join(', ')
+              : '-'
+        },
+        {
+          key: 'dataCadastroInicio',
+          label: 'Período de Cadastro',
+          render: (record) => {
+            const inicio = record?.dataCadastroInicio
+            const fim = record?.dataCadastroFim
+            if (inicio && fim) {
+              return `${moment(inicio).format('DD/MM/YYYY')} - ${moment(
+                fim
+              ).format('DD/MM/YYYY')}`
+            }
+            return '-'
+          }
         }
       ]
 
@@ -210,23 +384,35 @@ const SegmentRegistrationForm = forwardRef<
               errors={errors}
               setValue={setValue}
               visible={currentStep === 0}
-              mode={mode}
-              cityOptions={CITY_OPTIONS}
-              isAdminGeral={user?.role === UserRole.ADMINISTRADOR_GERAL}
             />
-            <FiltersStep
+            <DemographicFiltersStep
               control={control}
               errors={errors}
               setValue={setValue}
               visible={currentStep === 1}
+              genderOptions={GENDER_OPTIONS}
+              religionOptions={RELIGION_OPTIONS}
+              escolaridadeOptions={ESCOLARIDADE_OPTIONS}
+              rendaFamiliarOptions={RENDA_FAMILIAR_OPTIONS}
+              ocupacaoOptions={OCUPACAO_OPTIONS}
+              mode={mode}
+              cityOptions={CITY_OPTIONS}
+              isAdminGeral={user?.role === UserRole.ADMINISTRADOR_GERAL}
+            />
+            <ElectoralFiltersStep
+              control={control}
+              errors={errors}
+              setValue={setValue}
+              visible={currentStep === 2}
               demandStatusOptions={DEMAND_STATUS_OPTIONS}
+              zonaEleitoralOptions={ZONA_ELEITORAL_OPTIONS}
             />
             <ReviewStep
               control={control}
               errors={errors}
               formData={formData}
               setValue={setValue}
-              visible={currentStep === 2}
+              visible={currentStep === 3}
               descriptionFields={descriptionFields}
               initialData={initialData}
             />
@@ -275,7 +461,13 @@ interface ISegmentRegistrationStep {
   visible: boolean
   mode?: FormMode
   cityOptions?: { label: string; value: string }[]
+  genderOptions?: { label: string; value: string }[]
+  religionOptions?: { label: string; value: string }[]
+  escolaridadeOptions?: { label: string; value: string }[]
+  rendaFamiliarOptions?: { label: string; value: string }[]
+  ocupacaoOptions?: { label: string; value: string }[]
   demandStatusOptions?: { label: string; value: string }[]
+  zonaEleitoralOptions?: { label: string; value: string }[]
   descriptionFields?: DynamicDescriptionsField<SegmentRegistrationFormType>[]
   initialData?: Partial<SegmentRegistrationFormType>
   isAdminGeral?: boolean
@@ -285,10 +477,7 @@ const BasicDataStep = ({
   control,
   errors,
   setValue,
-  visible,
-  mode,
-  cityOptions,
-  isAdminGeral
+  visible
 }: ISegmentRegistrationStep) => {
   return (
     <FormStep visible={visible ? 1 : 0}>
@@ -310,21 +499,73 @@ const BasicDataStep = ({
           </StyledForm.Item>
         )}
       />
+      <Controller
+        name="description"
+        control={control}
+        render={({ field }) => (
+          <StyledForm.Item
+            label="Descrição (opcional)"
+            help={errors.description?.message}
+            validateStatus={errors.description ? 'error' : ''}
+          >
+            <TextArea
+              {...field}
+              placeholder="Descreva o objetivo deste segmento"
+              value={field.value}
+              onChange={(e) => setValue('description', e.target.value)}
+              rows={4}
+            />
+          </StyledForm.Item>
+        )}
+      />
+      <Controller
+        name="isActive"
+        control={control}
+        render={({ field }) => (
+          <StyledForm.Item label="Inicialmente ativo?">
+            <Switch
+              checked={field.value}
+              onChange={(checked) => setValue('isActive', checked)}
+            />
+          </StyledForm.Item>
+        )}
+      />
+    </FormStep>
+  )
+}
+
+const DemographicFiltersStep = ({
+  control,
+  errors,
+  setValue,
+  visible,
+  genderOptions,
+  religionOptions,
+  escolaridadeOptions,
+  rendaFamiliarOptions,
+  ocupacaoOptions,
+  mode,
+  cityOptions,
+  isAdminGeral
+}: ISegmentRegistrationStep) => {
+  return (
+    <FormStep visible={visible ? 1 : 0}>
       {isAdminGeral && (
         <Controller
-          name="cityId"
+          name="cityIds"
           control={control}
           render={({ field }) => (
             <StyledForm.Item
               label="Cidade"
-              help={errors.cityId?.message}
-              validateStatus={errors.cityId ? 'error' : ''}
+              help={errors.cityIds?.message}
+              validateStatus={errors.cityIds ? 'error' : ''}
             >
               <Select
                 {...field}
+                mode="multiple"
                 placeholder="Selecione a cidade"
                 options={cityOptions}
-                onChange={(value) => setValue('cityId', value)}
+                onChange={(value) => setValue('cityIds', value)}
                 value={field.value}
                 disabled={mode === 'edit'}
               />
@@ -332,37 +573,6 @@ const BasicDataStep = ({
           )}
         />
       )}
-    </FormStep>
-  )
-}
-
-const FiltersStep = ({
-  control,
-  errors,
-  setValue,
-  visible,
-  demandStatusOptions
-}: ISegmentRegistrationStep) => {
-  return (
-    <FormStep visible={visible ? 1 : 0}>
-      <Controller
-        name="bairro"
-        control={control}
-        render={({ field }) => (
-          <StyledForm.Item
-            label="Bairro (opcional)"
-            help={errors.bairro?.message}
-            validateStatus={errors.bairro ? 'error' : ''}
-          >
-            <Input
-              {...field}
-              placeholder="Digite o bairro"
-              value={field.value}
-              onChange={(e) => setValue('bairro', e.target.value)}
-            />
-          </StyledForm.Item>
-        )}
-      />
       <Controller
         name="idadeMin"
         control={control}
@@ -384,10 +594,125 @@ const FiltersStep = ({
                 setValue('idadeMin', value[0])
                 setValue('idadeMax', value[1])
               }}
+              style={{ marginInline: 10 }}
             />
           </StyledForm.Item>
         )}
       />
+      <Controller
+        name="genero"
+        control={control}
+        render={({ field }) => (
+          <StyledForm.Item
+            label="Gênero (opcional)"
+            help={errors.genero?.message}
+            validateStatus={errors.genero ? 'error' : ''}
+          >
+            <Select
+              {...field}
+              mode="multiple"
+              placeholder="Selecione os gêneros"
+              options={genderOptions}
+              onChange={(value) => setValue('genero', value)}
+              value={field.value}
+            />
+          </StyledForm.Item>
+        )}
+      />
+      <Controller
+        name="religiao"
+        control={control}
+        render={({ field }) => (
+          <StyledForm.Item
+            label="Religão (opcional)"
+            help={errors.religiao?.message}
+            validateStatus={errors.religiao ? 'error' : ''}
+          >
+            <Select
+              {...field}
+              mode="multiple"
+              placeholder="Selecione as religiões"
+              options={religionOptions}
+              onChange={(value) => setValue('religiao', value)}
+              value={field.value}
+            />
+          </StyledForm.Item>
+        )}
+      />
+      {/* <Controller
+        name="escolaridade"
+        control={control}
+        render={({ field }) => (
+          <StyledForm.Item
+            label="Escolaridade (opcional)"
+            help={errors.escolaridade?.message}
+            validateStatus={errors.escolaridade ? 'error' : ''}
+          >
+            <Select
+              {...field}
+              mode="multiple"
+              placeholder="Selecione os níveis de escolaridade"
+              options={escolaridadeOptions}
+              onChange={(value) => setValue('escolaridade', value)}
+              value={field.value}
+            />
+          </StyledForm.Item>
+        )}
+      />
+      <Controller
+        name="rendaFamiliar"
+        control={control}
+        render={({ field }) => (
+          <StyledForm.Item
+            label="Renda Familiar (opcional)"
+            help={errors.rendaFamiliar?.message}
+            validateStatus={errors.rendaFamiliar ? 'error' : ''}
+          >
+            <Select
+              {...field}
+              mode="multiple"
+              placeholder="Selecione as faixas de renda"
+              options={rendaFamiliarOptions}
+              onChange={(value) => setValue('rendaFamiliar', value)}
+              value={field.value}
+            />
+          </StyledForm.Item>
+        )}
+      />
+      <Controller
+        name="ocupacao"
+        control={control}
+        render={({ field }) => (
+          <StyledForm.Item
+            label="Ocupação (opcional)"
+            help={errors.ocupacao?.message}
+            validateStatus={errors.ocupacao ? 'error' : ''}
+          >
+            <Select
+              {...field}
+              mode="multiple"
+              placeholder="Selecione as ocupações"
+              options={ocupacaoOptions}
+              onChange={(value) => setValue('ocupacao', value)}
+              value={field.value}
+            />
+          </StyledForm.Item>
+        )}
+      /> */}
+    </FormStep>
+  )
+}
+
+const ElectoralFiltersStep = ({
+  control,
+  errors,
+  setValue,
+  visible,
+  demandStatusOptions,
+  zonaEleitoralOptions
+}: ISegmentRegistrationStep) => {
+  return (
+    <FormStep visible={visible ? 1 : 0}>
       <Controller
         name="demandStatus"
         control={control}
@@ -404,6 +729,62 @@ const FiltersStep = ({
               options={demandStatusOptions}
               onChange={(value) => setValue('demandStatus', value)}
               value={field.value}
+            />
+          </StyledForm.Item>
+        )}
+      />
+      <Controller
+        name="zonaEleitoral"
+        control={control}
+        render={({ field }) => (
+          <StyledForm.Item
+            label="Zona Eleitoral (opcional)"
+            help={errors.zonaEleitoral?.message}
+            validateStatus={errors.zonaEleitoral ? 'error' : ''}
+          >
+            <Select
+              {...field}
+              mode="multiple"
+              placeholder="Selecione as zonas eleitorais"
+              options={zonaEleitoralOptions}
+              onChange={(value) => setValue('zonaEleitoral', value)}
+              value={field.value}
+              disabled
+            />
+          </StyledForm.Item>
+        )}
+      />
+      <Controller
+        name="dataCadastroInicio"
+        control={control}
+        render={({ field }) => (
+          <StyledForm.Item
+            label="Período de Cadastro (opcional)"
+            help={
+              errors.dataCadastroInicio?.message ||
+              errors.dataCadastroFim?.message
+            }
+            validateStatus={
+              errors.dataCadastroInicio || errors.dataCadastroFim ? 'error' : ''
+            }
+          >
+            <RangePicker
+              format="DD/MM/YYYY"
+              onChange={(dates) => {
+                if (dates) {
+                  setValue('dataCadastroInicio', dates[0]?.toISOString())
+                  setValue('dataCadastroFim', dates[1]?.toISOString())
+                } else {
+                  setValue('dataCadastroInicio', undefined)
+                  setValue('dataCadastroFim', undefined)
+                }
+              }}
+              value={[
+                field.value ? dayjs(field.value) : null,
+                control._formValues.dataCadastroFim
+                  ? dayjs(control._formValues.dataCadastroFim)
+                  : null
+              ]}
             />
           </StyledForm.Item>
         )}

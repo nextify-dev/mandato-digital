@@ -2,12 +2,11 @@
 
 import React, { useState, useRef } from 'react'
 import * as S from './styles'
-import { LuPen, LuTrash2, LuEye } from 'react-icons/lu'
-import { Button, Select, message } from 'antd'
+import { LuPen, LuTrash2, LuEye, LuCheck, LuX } from 'react-icons/lu'
+import { Button, Select, Table, message, Switch } from 'antd'
 import {
   View,
   Modal,
-  Table,
   ConfirmModal,
   SegmentRegistrationForm
 } from '@/components'
@@ -24,8 +23,14 @@ import { UseFormReturn } from 'react-hook-form'
 const SegmentacaoEleitoresView = () => {
   const { user } = useAuth()
   const { cities } = useCities()
-  const { segments, loading, createSegment, updateSegment, deleteSegment } =
-    useSegments()
+  const {
+    segments,
+    loading,
+    createSegment,
+    updateSegment,
+    deleteSegment,
+    toggleSegmentActive
+  } = useSegments()
   const [messageApi, contextHolder] = message.useMessage()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -94,6 +99,13 @@ const SegmentacaoEleitoresView = () => {
       }
     },
     {
+      title: 'Gênero',
+      dataIndex: ['filters', 'genero'],
+      key: 'genero',
+      render: (genero: string[]) =>
+        genero && genero.length > 0 ? genero.join(', ') : '-'
+    },
+    {
       title: 'Status das Demandas',
       dataIndex: ['filters', 'demandStatus'],
       key: 'demandStatus',
@@ -103,6 +115,19 @@ const SegmentacaoEleitoresView = () => {
               .map((status) => getDemandStatusData(status).label)
               .join(', ')
           : '-'
+    },
+    {
+      title: 'Ativo',
+      dataIndex: 'isActive',
+      key: 'isActive',
+      render: (isActive: boolean, record: Segment) => (
+        <Switch
+          checked={isActive}
+          onChange={(checked) => toggleSegmentActive(record.id, checked)}
+          checkedChildren={<LuCheck />}
+          unCheckedChildren={<LuX />}
+        />
+      )
     },
     {
       title: 'Criado em',
@@ -123,11 +148,20 @@ const SegmentacaoEleitoresView = () => {
               setSelectedSegment(record)
               setInitialEditData({
                 name: record.name,
+                description: record.description,
                 bairro: record.filters.bairro,
                 idadeMin: record.filters.idadeMin,
                 idadeMax: record.filters.idadeMax,
                 demandStatus: record.filters.demandStatus,
-                cityId: record.cityId
+                genero: record.filters.genero,
+                escolaridade: record.filters.escolaridade,
+                rendaFamiliar: record.filters.rendaFamiliar,
+                ocupacao: record.filters.ocupacao,
+                zonaEleitoral: record.filters.zonaEleitoral,
+                dataCadastroInicio: record.filters.dataCadastroInicio,
+                dataCadastroFim: record.filters.dataCadastroFim,
+                cityId: record.cityId,
+                isActive: record.isActive
               })
               setIsEditModalOpen(true)
             }}
@@ -148,11 +182,20 @@ const SegmentacaoEleitoresView = () => {
               setSelectedSegment(record)
               setInitialEditData({
                 name: record.name,
+                description: record.description,
                 bairro: record.filters.bairro,
                 idadeMin: record.filters.idadeMin,
                 idadeMax: record.filters.idadeMax,
                 demandStatus: record.filters.demandStatus,
-                cityId: record.cityId
+                genero: record.filters.genero,
+                escolaridade: record.filters.escolaridade,
+                rendaFamiliar: record.filters.rendaFamiliar,
+                ocupacao: record.filters.ocupacao,
+                zonaEleitoral: record.filters.zonaEleitoral,
+                dataCadastroInicio: record.filters.dataCadastroInicio,
+                dataCadastroFim: record.filters.dataCadastroFim,
+                cityId: record.cityId,
+                isActive: record.isActive
               })
               setIsViewModalOpen(true)
             }}

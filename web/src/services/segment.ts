@@ -23,19 +23,30 @@ export const segmentService = {
     const newSegmentId = `segment_${Date.now()}_${Math.random()
       .toString(36)
       .substring(2, 8)}`
+    const currentDate = new Date().toISOString()
     const newSegment: Segment = {
       id: newSegmentId,
       name: data.name,
+      description: data.description,
       filters: {
         bairro: data.bairro,
         idadeMin: data.idadeMin,
         idadeMax: data.idadeMax,
-        demandStatus: data.demandStatus
+        demandStatus: data.demandStatus,
+        genero: data.genero,
+        escolaridade: data.escolaridade,
+        rendaFamiliar: data.rendaFamiliar,
+        ocupacao: data.ocupacao,
+        zonaEleitoral: data.zonaEleitoral,
+        dataCadastroInicio: data.dataCadastroInicio,
+        dataCadastroFim: data.dataCadastroFim
       },
-      createdAt: new Date().toISOString(),
+      createdAt: currentDate,
+      updatedAt: currentDate,
       createdBy: userId,
       cityId: data.cityId || userCityId,
-      voters: [] // Será preenchido dinamicamente na view
+      isActive: data.isActive ?? true,
+      votersCount: 0 // Será preenchido dinamicamente em outros contextos
     }
 
     await saveToDatabase('segments', newSegment)
@@ -59,13 +70,27 @@ export const segmentService = {
     const updatedSegment: Segment = {
       ...existingSegment,
       name: data.name ?? existingSegment.name,
+      description: data.description ?? existingSegment.description,
       filters: {
         bairro: data.bairro ?? existingSegment.filters.bairro,
         idadeMin: data.idadeMin ?? existingSegment.filters.idadeMin,
         idadeMax: data.idadeMax ?? existingSegment.filters.idadeMax,
-        demandStatus: data.demandStatus ?? existingSegment.filters.demandStatus
+        demandStatus: data.demandStatus ?? existingSegment.filters.demandStatus,
+        genero: data.genero ?? existingSegment.filters.genero,
+        escolaridade: data.escolaridade ?? existingSegment.filters.escolaridade,
+        rendaFamiliar:
+          data.rendaFamiliar ?? existingSegment.filters.rendaFamiliar,
+        ocupacao: data.ocupacao ?? existingSegment.filters.ocupacao,
+        zonaEleitoral:
+          data.zonaEleitoral ?? existingSegment.filters.zonaEleitoral,
+        dataCadastroInicio:
+          data.dataCadastroInicio ?? existingSegment.filters.dataCadastroInicio,
+        dataCadastroFim:
+          data.dataCadastroFim ?? existingSegment.filters.dataCadastroFim
       },
-      cityId: data.cityId ?? existingSegment.cityId
+      updatedAt: new Date().toISOString(),
+      cityId: data.cityId ?? existingSegment.cityId,
+      isActive: data.isActive ?? existingSegment.isActive
     }
 
     await saveToDatabase('segments', updatedSegment)

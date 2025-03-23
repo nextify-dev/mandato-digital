@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { message } from 'antd'
 import { Segment, SegmentRegistrationFormType } from '@/@types/segment'
-import { User, UserRole } from '@/@types/user'
+import { UserRole } from '@/@types/user'
 import { segmentService } from '@/services/segment'
 import { useAuth } from '@/contexts/AuthProvider'
 import { listenToDatabase } from '@/utils/functions/databaseUtils'
@@ -17,6 +17,7 @@ interface SegmentsContextData {
     data: Partial<SegmentRegistrationFormType>
   ) => Promise<void>
   deleteSegment: (id: string) => Promise<void>
+  toggleSegmentActive: (id: string, isActive: boolean) => Promise<void>
 }
 
 const SegmentsContext = createContext<SegmentsContextData>(
@@ -110,6 +111,26 @@ export const SegmentsProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }
 
+  const toggleSegmentActive = async (
+    id: string,
+    isActive: boolean
+  ): Promise<void> => {
+    setLoading(true)
+    try {
+      await segmentService.updateSegment(id, { isActive })
+      messageApi.success(
+        `Segmento ${isActive ? 'ativado' : 'desativado'} com sucesso!`
+      )
+      setLoading(false)
+    } catch (error: any) {
+      messageApi.error(
+        'Erro ao atualizar o status do segmento, tente novamente'
+      )
+      setLoading(false)
+      throw error
+    }
+  }
+
   return (
     <SegmentsContext.Provider
       value={{
@@ -117,7 +138,8 @@ export const SegmentsProvider: React.FC<{ children: React.ReactNode }> = ({
         loading,
         createSegment,
         updateSegment,
-        deleteSegment
+        deleteSegment,
+        toggleSegmentActive
       }}
     >
       {contextHolder}
