@@ -29,7 +29,6 @@ export const segmentService = {
       name: data.name,
       description: data.description,
       filters: {
-        bairro: data.bairro,
         idadeMin: data.idadeMin,
         idadeMax: data.idadeMax,
         demandStatus: data.demandStatus,
@@ -44,7 +43,7 @@ export const segmentService = {
       createdAt: currentDate,
       updatedAt: currentDate,
       createdBy: userId,
-      cityId: data.cityId || userCityId,
+      cityIds: data.cityIds || [userCityId],
       isActive: data.isActive ?? true,
       votersCount: 0 // Será preenchido dinamicamente em outros contextos
     }
@@ -72,7 +71,6 @@ export const segmentService = {
       name: data.name ?? existingSegment.name,
       description: data.description ?? existingSegment.description,
       filters: {
-        bairro: data.bairro ?? existingSegment.filters.bairro,
         idadeMin: data.idadeMin ?? existingSegment.filters.idadeMin,
         idadeMax: data.idadeMax ?? existingSegment.filters.idadeMax,
         demandStatus: data.demandStatus ?? existingSegment.filters.demandStatus,
@@ -89,7 +87,7 @@ export const segmentService = {
           data.dataCadastroFim ?? existingSegment.filters.dataCadastroFim
       },
       updatedAt: new Date().toISOString(),
-      cityId: data.cityId ?? existingSegment.cityId,
+      cityIds: data.cityIds ?? existingSegment.cityIds,
       isActive: data.isActive ?? existingSegment.isActive
     }
 

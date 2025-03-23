@@ -1,4 +1,4 @@
-// src/screens/DashboardV1/views/SegmentacaoEleitores/styles.ts
+// src/screens/DashboardV1/views/EnquetesPesquisasView/styles.ts
 
 import styled from 'styled-components'
 

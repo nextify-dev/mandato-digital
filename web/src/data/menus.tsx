@@ -230,7 +230,10 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuName: 'Enquetes e Pesquisas',
     menuLegend: 'Criar e analisar enquetes',
     menuIcon: <LuClipboardList />,
-    menuView: <div>EnquetesPesquisasView (a ser implementado)</div>,
+    menuView: <>
+    
+      <EnquetesPesquisasView />
+    </>,
     menuCategory: 'Comunicação',
     requiredPermissions: { canManageCampaigns: true },
     menuDisabled: true,

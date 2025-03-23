@@ -57,9 +57,11 @@ const SegmentacaoEleitoresView = () => {
     let matchesCity = true
     let matchesScope = true
 
-    if (cityFilter) {
-      matchesCity = segment.cityId === cityFilter
-    }
+    // =======================================================================================
+
+    // if (cityFilter) {
+    //   matchesCity = segment.cityIds === cityFilter
+    // }
 
     if (user?.role === UserRole.VEREADOR && scopeFilter === 'minhaBase') {
       matchesScope = segment.createdBy === user.id
@@ -149,7 +151,6 @@ const SegmentacaoEleitoresView = () => {
               setInitialEditData({
                 name: record.name,
                 description: record.description,
-                bairro: record.filters.bairro,
                 idadeMin: record.filters.idadeMin,
                 idadeMax: record.filters.idadeMax,
                 demandStatus: record.filters.demandStatus,
@@ -160,7 +161,7 @@ const SegmentacaoEleitoresView = () => {
                 zonaEleitoral: record.filters.zonaEleitoral,
                 dataCadastroInicio: record.filters.dataCadastroInicio,
                 dataCadastroFim: record.filters.dataCadastroFim,
-                cityId: record.cityId,
+                cityIds: record.cityIds,
                 isActive: record.isActive
               })
               setIsEditModalOpen(true)
@@ -183,7 +184,6 @@ const SegmentacaoEleitoresView = () => {
               setInitialEditData({
                 name: record.name,
                 description: record.description,
-                bairro: record.filters.bairro,
                 idadeMin: record.filters.idadeMin,
                 idadeMax: record.filters.idadeMax,
                 demandStatus: record.filters.demandStatus,
@@ -194,7 +194,7 @@ const SegmentacaoEleitoresView = () => {
                 zonaEleitoral: record.filters.zonaEleitoral,
                 dataCadastroInicio: record.filters.dataCadastroInicio,
                 dataCadastroFim: record.filters.dataCadastroFim,
-                cityId: record.cityId,
+                cityIds: record.cityIds,
                 isActive: record.isActive
               })
               setIsViewModalOpen(true)
