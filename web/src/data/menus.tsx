@@ -15,12 +15,12 @@ import {
   LuCircleUser,
   LuLogOut,
   LuMessagesSquare,
-  LuChartBar, // Para Segmentação de Eleitores
-  LuSend, // Para Campanhas Informativas
-  LuClipboardList, // Para Enquetes e Pesquisas
-  LuTarget, // Para Painel de Metas e Resultados
-  LuHistory, // Para Histórico do Eleitor
-  LuCalendarClock // Para Agendamento de Publicações
+  LuChartBar,
+  LuSend,
+  LuClipboardList,
+  LuTarget,
+  LuHistory,
+  LuCalendarClock
 } from 'react-icons/lu'
 
 import DashboardInicialView from '@/screens/DashboardV1/views/DashboardInicial'
@@ -37,12 +37,13 @@ import PlanejamentoView from '@/screens/DashboardV1/views/Planejamento'
 import MonitoramentoRedesView from '@/screens/DashboardV1/views/MonitoramentoRedes'
 import MinhaContaView from '@/screens/DashboardV1/views/MinhaConta'
 import SegmentacaoEleitoresView from '@/screens/DashboardV1/views/SegmentacaoEleitores'
+import EnquetesPesquisasView from '@/screens/DashboardV1/views/EnquetesPesquisas'
 
-import { UserType, Permissions } from '@/@types/user'
 import { MapProvider } from '@/contexts/MapProvider'
 import { TicketsProvider } from '@/contexts/TicketsProvider'
-import EnquetesPesquisasView from '@/screens/DashboardV1/views/EnquetesPesquisas'
 import { PollsProvider } from '@/contexts/PollsProvider'
+import { DashboardProvider } from '@/contexts/DashboardProvider'
+import { UserType, Permissions } from '@/@types/user'
 
 // Interface do Menu
 export interface IMenu {
@@ -66,9 +67,9 @@ export const DASHBOARD_MENUS: IMenu[] = [
     menuLegend: 'Visão geral do sistema',
     menuIcon: <LuHouse />,
     menuView: (
-      <>
+      <DashboardProvider>
         <DashboardInicialView />
-      </>
+      </DashboardProvider>
     ),
     menuCategory: 'Principal',
     requiredPermissions: {},
