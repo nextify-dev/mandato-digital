@@ -361,7 +361,7 @@ const CadastroUsuariosView = () => {
         open={isCreateModalOpen}
         onCancel={() => handleModalClose('create')}
         footer={null}
-        size="default"
+        size="large"
       >
         {isCreateModalOpen && (
           <UserRegistrationForm

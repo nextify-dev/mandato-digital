@@ -10,13 +10,14 @@ import {
   LuX,
   LuMessageSquare
 } from 'react-icons/lu'
-import { Button, Select, Table, message, Switch, Tabs, Empty } from 'antd'
+import { Button, Select, message, Switch, Tabs, Empty } from 'antd'
 import {
   View,
   Modal,
   ConfirmModal,
   PollRegistrationForm,
-  PollResponseForm
+  PollResponseForm,
+  Table
 } from '@/components'
 import { TableExtrasWrapper } from '@/utils/styles/commons'
 import { usePolls } from '@/contexts/PollsProvider'
@@ -359,7 +360,6 @@ const EnquetesPesquisasView = () => {
     <View
       header={
         <S.HeaderWrapper>
-          <S.HeaderTitle>Enquetes e Pesquisas</S.HeaderTitle>
           <S.HeaderActions>
             {user?.role === UserRole.ADMINISTRADOR_GERAL && (
               <Select
@@ -382,16 +382,14 @@ const EnquetesPesquisasView = () => {
                 style={{ width: 200 }}
               />
             )}
-            <Button type="primary" onClick={() => setIsCreateModalOpen(true)}>
-              Nova Enquete
-            </Button>
           </S.HeaderActions>
+          <Button type="primary" onClick={() => setIsCreateModalOpen(true)}>
+            Nova Enquete
+          </Button>
         </S.HeaderWrapper>
       }
     >
-      <S.EnquetesPesquisasView>
-        <Tabs items={tabItems} defaultActiveKey="1" />
-      </S.EnquetesPesquisasView>
+      <Tabs items={tabItems} defaultActiveKey="1" />
 
       <Modal
         title="Criação de Nova Enquete"

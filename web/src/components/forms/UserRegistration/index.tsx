@@ -374,7 +374,7 @@ const UserRegistrationForm = forwardRef<
         <DynamicDescriptions
           data={initialData ?? {}}
           fields={viewFields}
-          title="Detalhes do Usuário/Eleitor"
+          // title="Detalhes do Usuário/Eleitor"
         />
       )
     }
@@ -1114,7 +1114,7 @@ const ReviewStep = ({
       <DynamicDescriptions
         data={formData}
         fields={reviewFields}
-        title="Resumo dos Dados"
+        // title="Resumo dos Dados"
       />
       {mode === 'firstAccess' ? (
         <>

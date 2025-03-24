@@ -387,7 +387,7 @@ const CityRegistrationForm = forwardRef<
       <DynamicDescriptions
         data={initialData ?? {}}
         fields={descriptionFields}
-        title="Detalhes da Cidade"
+        // title="Detalhes da Cidade"
       />
     )
 

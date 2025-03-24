@@ -3,12 +3,13 @@
 import React, { useState, useRef } from 'react'
 import * as S from './styles'
 import { LuPen, LuTrash2, LuEye, LuCheck, LuX } from 'react-icons/lu'
-import { Button, Select, Table, message, Switch } from 'antd'
+import { Button, Select, message, Switch } from 'antd'
 import {
   View,
   Modal,
   ConfirmModal,
-  SegmentRegistrationForm
+  SegmentRegistrationForm,
+  Table
 } from '@/components'
 import { TableExtrasWrapper } from '@/utils/styles/commons'
 import { useSegments } from '@/contexts/SegmentsProvider'

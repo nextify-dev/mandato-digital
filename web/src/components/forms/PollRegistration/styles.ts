@@ -3,13 +3,17 @@
 import styled from 'styled-components'
 
 export const PollRegistrationFormContent = styled.div`
-  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+  row-gap: 20px;
+  width: 100%;
 `
 
 export const PollRegistrationFormFooter = styled.div`
   display: flex;
-  justify-content: space-between;
-  padding: 20px 0;
+  justify-content: flex-end;
+  column-gap: 8px;
+  width: 100%;
 `
 
 export const QuestionWrapper = styled.div`

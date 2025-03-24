@@ -247,7 +247,7 @@ const DemandasEleitoraisView = () => {
     <View
       header={
         <S.HeaderWrapper>
-          <S.SearchWrapper>
+          <S.HeaderActions>
             <Search
               placeholder="Pesquisar por eleitor"
               onSearch={handleSearch}
@@ -276,7 +276,7 @@ const DemandasEleitoraisView = () => {
               onChange={handleUserFilter}
               style={{ width: 200 }}
             />
-          </S.SearchWrapper>
+          </S.HeaderActions>
           <Button type="primary" onClick={() => setIsCreateModalOpen(true)}>
             Nova Demanda
           </Button>
